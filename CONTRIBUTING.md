@@ -27,15 +27,15 @@ Thank you for your interest in contributing! \uD83C\uDF89
 
 Use [Conventional Commits](https://www.conventionalcommits.org/):
 
-| Prefix | Description |
-|---|---|
-| `feat:` | New feature |
-| `fix:` | Bug fix |
-| `docs:` | Documentation changes |
-| `style:` | Code style (formatting) |
-| `refactor:` | Code refactoring |
-| `test:` | Adding or updating tests |
-| `chore:` | Maintenance tasks |
+| Prefix      | Description              |
+| ----------- | ------------------------ |
+| `feat:`     | New feature              |
+| `fix:`      | Bug fix                  |
+| `docs:`     | Documentation changes    |
+| `style:`    | Code style (formatting)  |
+| `refactor:` | Code refactoring         |
+| `test:`     | Adding or updating tests |
+| `chore:`    | Maintenance tasks        |
 
 **Example:** `feat: add file drag and drop support`
 

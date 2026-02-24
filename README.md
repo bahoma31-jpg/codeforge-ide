@@ -13,17 +13,17 @@ A modern, web-based code editor inspired by VS Code, built with Next.js 14 and T
 
 ## \uD83D\uDEE0\uFE0F Tech Stack
 
-| Category | Technology |
-|---|---|
-| **Framework** | Next.js 14 (App Router) |
-| **Language** | TypeScript |
-| **Styling** | Tailwind CSS + shadcn/ui |
-| **State** | Zustand |
-| **Testing** | Vitest + Testing Library |
-| **Editor** | Monaco Editor |
-| **Terminal** | xterm.js |
-| **Git** | Octokit.js (GitHub REST API) |
-| **Deployment** | Vercel |
+| Category       | Technology                   |
+| -------------- | ---------------------------- |
+| **Framework**  | Next.js 14 (App Router)      |
+| **Language**   | TypeScript                   |
+| **Styling**    | Tailwind CSS + shadcn/ui     |
+| **State**      | Zustand                      |
+| **Testing**    | Vitest + Testing Library     |
+| **Editor**     | Monaco Editor                |
+| **Terminal**   | xterm.js                     |
+| **Git**        | Octokit.js (GitHub REST API) |
+| **Deployment** | Vercel                       |
 
 ## \uD83C\uDFD7\uFE0F Project Structure
 
@@ -71,17 +71,17 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## \uD83D\uDCDD Available Scripts
 
-| Command | Description |
-|---|---|
-| `pnpm dev` | Start development server |
-| `pnpm build` | Build for production |
-| `pnpm start` | Start production server |
-| `pnpm lint` | Run ESLint |
-| `pnpm lint:fix` | Fix ESLint errors |
-| `pnpm format` | Format code with Prettier |
-| `pnpm test` | Run tests |
-| `pnpm test:ui` | Run tests with UI |
-| `pnpm test:coverage` | Generate coverage report |
+| Command              | Description               |
+| -------------------- | ------------------------- |
+| `pnpm dev`           | Start development server  |
+| `pnpm build`         | Build for production      |
+| `pnpm start`         | Start production server   |
+| `pnpm lint`          | Run ESLint                |
+| `pnpm lint:fix`      | Fix ESLint errors         |
+| `pnpm format`        | Format code with Prettier |
+| `pnpm test`          | Run tests                 |
+| `pnpm test:ui`       | Run tests with UI         |
+| `pnpm test:coverage` | Generate coverage report  |
 
 ## \uD83E\uDDEA Testing
 
@@ -106,15 +106,15 @@ pnpm test:coverage   # Generate coverage
 
 ## \uD83D\uDC65 Agents
 
-| Agent | Role | Status |
-|---|---|---|
-| Agent 1 | Infrastructure Architect | \u2705 Complete |
-| Agent 2 | UI Layout Builder | \u23F3 Next |
-| Agent 3 | Monaco Integration Expert | Pending |
-| Agent 4 | File System Manager | Pending |
-| Agent 5 | GitHub Integration Specialist | Pending |
-| Agent 6 | Terminal Emulator Engineer | Pending |
-| Agent 7 | Quality Assurance & Testing | Ongoing |
+| Agent   | Role                          | Status          |
+| ------- | ----------------------------- | --------------- |
+| Agent 1 | Infrastructure Architect      | \u2705 Complete |
+| Agent 2 | UI Layout Builder             | \u23F3 Next     |
+| Agent 3 | Monaco Integration Expert     | Pending         |
+| Agent 4 | File System Manager           | Pending         |
+| Agent 5 | GitHub Integration Specialist | Pending         |
+| Agent 6 | Terminal Emulator Engineer    | Pending         |
+| Agent 7 | Quality Assurance & Testing   | Ongoing         |
 
 ## \uD83D\uDCC4 License
 
