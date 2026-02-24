@@ -30,6 +30,7 @@
     "react-dom": "^18.3.0",
     "react-resizable-panels": "^4.6.5",
     "tailwind-merge": "^2.2.0",
+    "uuid": "^9.0.1",
     "zustand": "^4.5.0"
   },
   "devDependencies": {
@@ -38,6 +39,7 @@
     "@types/node": "^20.11.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
+    "@types/uuid": "^9.0.8",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
     "@vitejs/plugin-react": "^4.2.0",
