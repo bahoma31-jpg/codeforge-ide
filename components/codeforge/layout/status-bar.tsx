@@ -1,10 +1,7 @@
 ﻿'use client';
 
 import { useUIStore } from '@/lib/stores/ui-store';
-import {
-  setTheme as persistTheme,
-  toggleTheme,
-} from '@/lib/utils/theme';
+import { setTheme as persistTheme, toggleTheme } from '@/lib/utils/theme';
 import { GitBranch, Moon, Sun } from 'lucide-react';
 
 export default function StatusBar() {

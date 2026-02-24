@@ -12,12 +12,8 @@ const views = [
 ] as const;
 
 export default function ActivityBar() {
-  const {
-    activityBarView,
-    setActivityBarView,
-    sidebarVisible,
-    toggleSidebar,
-  } = useUIStore();
+  const { activityBarView, setActivityBarView, sidebarVisible, toggleSidebar } =
+    useUIStore();
 
   const onClick = (id: (typeof views)[number]['id']) => {
     if (activityBarView === id) {
@@ -40,9 +36,7 @@ export default function ActivityBar() {
             className={[
               'rounded p-2 transition-colors',
               'hover:bg-secondary',
-              active
-                ? 'bg-secondary text-primary'
-                : 'text-muted-foreground',
+              active ? 'bg-secondary text-primary' : 'text-muted-foreground',
             ].join(' ')}
             title={view.label}
             aria-pressed={active}

@@ -37,9 +37,7 @@ export const useEditorStore = create<EditorState>((set) => ({
     set((state) => {
       const newTabs = state.tabs.filter((t) => t.id !== id);
       const newActiveId =
-        state.activeTabId === id
-          ? newTabs[0]?.id ?? null
-          : state.activeTabId;
+        state.activeTabId === id ? (newTabs[0]?.id ?? null) : state.activeTabId;
       return { tabs: newTabs, activeTabId: newActiveId };
     }),
 
@@ -48,7 +46,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   updateTabContent: (id, content) =>
     set((state) => ({
       tabs: state.tabs.map((t) =>
-        t.id === id ? { ...t, content, isDirty: true } : t,
+        t.id === id ? { ...t, content, isDirty: true } : t
       ),
     })),
 }));

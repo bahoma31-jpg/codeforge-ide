@@ -26,9 +26,7 @@ export default function EditorArea() {
           </div>
         ) : (
           <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-            <p>
-              No files open. Click the + button to create a new file.
-            </p>
+            <p>No files open. Click the + button to create a new file.</p>
           </div>
         )}
       </div>

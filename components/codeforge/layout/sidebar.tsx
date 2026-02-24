@@ -100,9 +100,7 @@ export default function Sidebar({ width }: SidebarProps) {
                     {node.children.map((child) => (
                       <button
                         key={child}
-                        onClick={() =>
-                          openFile(`/${node.name}/${child}`)
-                        }
+                        onClick={() => openFile(`/${node.name}/${child}`)}
                         className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm hover:bg-secondary"
                       >
                         <File className="h-4 w-4 text-muted-foreground" />

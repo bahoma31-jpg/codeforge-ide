@@ -26,6 +26,7 @@
     "next": "14.2.x",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
+    "react-resizable-panels": "^4.6.5",
     "tailwind-merge": "^2.2.0",
     "zustand": "^4.5.0"
   },

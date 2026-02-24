@@ -70,5 +70,12 @@ export function useKeyboardShortcuts() {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [toggleSidebar, togglePanel, closeTab, activeTabId, theme, setThemeInStore]);
+  }, [
+    toggleSidebar,
+    togglePanel,
+    closeTab,
+    activeTabId,
+    theme,
+    setThemeInStore,
+  ]);
 }

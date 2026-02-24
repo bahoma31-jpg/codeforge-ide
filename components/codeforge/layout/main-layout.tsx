@@ -44,11 +44,11 @@ export default function MainLayout() {
 
   const sidebarStyle = useMemo(
     () => ({ width: `${sidebarWidth}px` }),
-    [sidebarWidth],
+    [sidebarWidth]
   );
   const panelStyle = useMemo(
     () => ({ height: `${panelHeight}px` }),
-    [panelHeight],
+    [panelHeight]
   );
 
   useEffect(() => {

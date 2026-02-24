@@ -38,12 +38,8 @@ export default function TabBar() {
               ].join(' ')}
               title={tab.filePath}
             >
-              <span className="max-w-[160px] truncate">
-                {tab.fileName}
-              </span>
-              {tab.isDirty && (
-                <span className="text-xs">&#9679;</span>
-              )}
+              <span className="max-w-[160px] truncate">{tab.fileName}</span>
+              {tab.isDirty && <span className="text-xs">&#9679;</span>}
               <span
                 className="ml-1 inline-flex opacity-0 transition-opacity group-hover:opacity-100"
                 onClick={(e) => {
