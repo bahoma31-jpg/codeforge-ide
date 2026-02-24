@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useRef } from "react";
 import { Editor, OnMount } from "@monaco-editor/react";
@@ -16,11 +16,15 @@ import {
   registerCustomSnippets,
 } from "@/lib/monaco/language-providers";
 import { registerCodeActions } from "@/lib/monaco/code-actions";
+import { useMonacoKeyboardShortcuts } from "@/lib/hooks/useMonacoEditor";
 
 export default function MonacoEditor() {
   const { tabs, activeTabId, updateTabContent } = useEditorStore();
   const { theme } = useUIStore();
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+
+  // ✅ تفعيل اختصارات لوحة المفاتيح
+  useMonacoKeyboardShortcuts(editorRef.current);
 
   const activeTab = tabs.find((t) => t.id === activeTabId);
 
