@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand';
+import { create } from 'zustand';
 
 export interface EditorTab {
   id: string;
@@ -18,6 +18,7 @@ interface EditorState {
   closeTab: (id: string) => void;
   setActiveTab: (id: string) => void;
   updateTabContent: (id: string, content: string) => void;
+  openFile: (file: { id: string; name: string; content: string; language?: string; path: string }) => void;
 }
 
 export const useEditorStore = create<EditorState>((set) => ({
@@ -49,4 +50,32 @@ export const useEditorStore = create<EditorState>((set) => ({
         t.id === id ? { ...t, content, isDirty: true } : t
       ),
     })),
+
+  // Helper function to open a file from the file system
+  openFile: (file) => {
+    const tab: EditorTab = {
+      id: file.id,
+      filePath: file.path,
+      fileName: file.name,
+      language: file.language || 'plaintext',
+      content: file.content,
+      isDirty: false,
+      isActive: true
+    };
+    
+    set((state) => {
+      // Check if file is already open
+      const exists = state.tabs.find((t) => t.id === file.id);
+      if (exists) {
+        // Just activate it
+        return { activeTabId: exists.id };
+      }
+      
+      // Add new tab
+      return {
+        tabs: [...state.tabs, tab],
+        activeTabId: tab.id
+      };
+    });
+  }
 }));
