@@ -9,6 +9,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   ci:
     name: CI (Node ${{ matrix.node-version }})
@@ -47,11 +51,13 @@ jobs:
         run: npm run test:coverage
 
       - name: Upload coverage artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-node-${{ matrix.node-version }}
           path: coverage/
           retention-days: 30
+          if-no-files-found: warn
 
       - name: Build project
         run: npm run build

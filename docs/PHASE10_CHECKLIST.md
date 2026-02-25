@@ -1,59 +1,73 @@
-# Phase 10: CI/CD Pipeline — Completion Checklist
+# Phase 10: CI/CD & Deployment — Completion Checklist
 
 ## Status: ✅ Complete
 
-**Completion Date:** 2026-02-25
+**Phase:** 10 — CI/CD & Deployment  
+**Branch:** `feature/github-integration`  
+**Completion Date:** 2026-02-25  
 
 ---
 
 ## Task Checklist
 
-### CI Pipeline
-- ✅ Created `.github/workflows/ci.yml`
-- ✅ Configured triggers: push (main, feature/**) + PR to main
+### CI Pipeline (`.github/workflows/ci.yml`)
+- ✅ Created CI workflow file
+- ✅ Triggers: `push` on `main` + `feature/**`, `pull_request` to `main`
 - ✅ Node matrix: 18.x and 20.x
-- ✅ Steps: checkout → setup-node → npm ci → lint → tsc → test:run → test:integration → test:coverage → build
-- ✅ Coverage artifact uploaded per Node version
-- ✅ Fail-fast enabled: any step failure stops the pipeline
+- ✅ Step: `npm ci` (clean install)
+- ✅ Step: `npm run lint` (ESLint)
+- ✅ Step: `npx tsc --noEmit` (TypeScript check)
+- ✅ Step: `npm run test:run` (unit tests)
+- ✅ Step: `npm run test:integration` (integration tests)
+- ✅ Step: `npm run test:coverage` (coverage report)
+- ✅ Step: Upload coverage artifact per Node version
+- ✅ Step: `npm run build` (production build)
+- ✅ Fail-fast: any failure stops pipeline
+- ✅ Concurrency group to prevent duplicate runs
 
-### Deploy Workflow
-- ✅ Created `.github/workflows/deploy.yml`
-- ✅ Trigger: push to main only
-- ✅ Secrets configured: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID
-- ✅ Steps: checkout → setup-node → npm ci → build → Vercel deploy → health check
-- ✅ Health check with retry mechanism (5 attempts, 10s interval)
-- ✅ Deploy only runs after successful build
+### Deploy Workflow (`.github/workflows/deploy.yml`)
+- ✅ Created deploy workflow file
+- ✅ Trigger: `push` to `main` only
+- ✅ Secrets: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`
+- ✅ Steps: checkout → setup-node → npm ci → build → Vercel deploy
+- ✅ Uses `amondnet/vercel-action@v25` with `--prod`
+- ✅ Health check with 5 retries (10s interval)
+- ✅ Deployment only after successful build
+- ✅ Concurrency: single production deploy (no cancel)
 
-### PR Checks
-- ✅ Created `.github/workflows/pr-checks.yml`
-- ✅ PR title validation (Conventional Commits format)
-- ✅ PR size warning (>500 lines, notice only — not blocking)
+### PR Checks (`.github/workflows/pr-checks.yml`)
+- ✅ Created PR checks workflow file
+- ✅ PR title validation (Conventional Commits via `amannn/action-semantic-pull-request@v5`)
+- ✅ PR size check: warning (notice) if >500 lines
+- ✅ Size report added to job summary
+- ✅ Non-blocking: size warning does NOT fail the check
 
-### Vercel Configuration
+### Vercel Configuration (`vercel.json`)
 - ✅ Created `vercel.json`
-- ✅ Framework: nextjs
-- ✅ Install command: npm ci
-- ✅ Build command: npm run build
-- ✅ Region: cdg1 (Paris — closest to Algeria)
+- ✅ Framework: `nextjs`
+- ✅ Install command: `npm ci`
+- ✅ Build command: `npm run build`
+- ✅ Region: `cdg1` (Paris — closest to Algeria)
 - ✅ Security headers: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy, Permissions-Policy
 
-### Dependabot
-- ✅ Created `.github/dependabot.yml`
-- ✅ npm: weekly updates (limit: 10 open PRs)
-- ✅ GitHub Actions: monthly updates (limit: 5 open PRs)
-- ✅ Timezone set to Africa/Algiers
+### Dependabot (`.github/dependabot.yml`)
+- ✅ Created Dependabot configuration
+- ✅ npm ecosystem: weekly updates (Monday 09:00 Africa/Algiers)
+- ✅ GitHub Actions ecosystem: monthly updates
+- ✅ PR limits: 10 (npm) + 5 (actions)
+- ✅ Auto-assign reviewer: `bahoma31-jpg`
+- ✅ Labels configured for each ecosystem
 
 ### Documentation
-- ✅ Created `docs/phase10-cicd.md` — full documentation
-- ✅ Sections: workflows, secrets setup, Vercel connection, local checks, troubleshooting
-- ✅ Created `docs/PHASE10_CHECKLIST.md` — this file
+- ✅ Created `docs/phase10-cicd.md` (full documentation)
+- ✅ Created `docs/PHASE10_CHECKLIST.md` (this file)
 
 ---
 
 ## Commit History
 
 | # | Commit Message | Files |
-|---|---|---|
+|---|----------------|-------|
 | 1 | `ci(phase10): add main CI pipeline` | `.github/workflows/ci.yml` |
 | 2 | `ci(phase10): add deploy workflow` | `.github/workflows/deploy.yml` |
 | 3 | `ci(phase10): add pr checks workflow` | `.github/workflows/pr-checks.yml` |
@@ -66,21 +80,25 @@
 ## Metrics
 
 | Metric | Value |
-|---|---|
-| Total workflows | 3 |
-| Total new files | 7 |
+|--------|-------|
+| Total workflows created | 3 |
+| Total new files added | 7 |
 | Total commits | 6 |
-| Node versions tested | 2 (18.x, 20.x) |
+| Node versions in CI matrix | 2 (18.x, 20.x) |
 | Dependabot ecosystems | 2 (npm, github-actions) |
-| Vercel region | cdg1 (Paris) |
-| Security headers | 5 |
+| Max open Dependabot PRs | 15 (10 npm + 5 actions) |
+| Vercel deployment region | cdg1 (Paris) |
+| Security headers configured | 5 |
+| Existing files modified | 0 |
 
 ---
 
-## Next Steps
+## Post-Merge Action Items
 
-- [ ] Add `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` secrets in GitHub Settings
+- [ ] Add `VERCEL_TOKEN` secret in GitHub Settings → Secrets → Actions
+- [ ] Add `VERCEL_ORG_ID` secret in GitHub Settings → Secrets → Actions
+- [ ] Add `VERCEL_PROJECT_ID` secret in GitHub Settings → Secrets → Actions
 - [ ] (Optional) Add `PRODUCTION_URL` secret for health check fallback
-- [ ] Verify first CI run passes on PR merge
-- [ ] Verify Vercel deployment on first push to main
-- [ ] Monitor Dependabot PRs after first weekly/monthly cycle
+- [ ] Verify first CI run passes after merge
+- [ ] Verify Vercel deployment succeeds on first push to main
+- [ ] Monitor first Dependabot PR cycle (next Monday)

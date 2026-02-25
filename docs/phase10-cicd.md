@@ -2,159 +2,174 @@
 
 ## Overview
 
-Phase 10 introduces a complete CI/CD pipeline for the CodeForge IDE project. This includes automated testing, linting, type checking, and deployment workflows that run on every push and pull request, ensuring code quality and reliable deployments.
+Phase 10 introduces a complete CI/CD pipeline for the **CodeForge IDE** project. This ensures automated quality gates (lint, typecheck, tests, build) on every push and pull request, automated deployment to Vercel on `main`, and dependency management via Dependabot.
 
 ---
 
-## Workflows
+## How the Workflows Work
 
-### 1. CI Pipeline (`.github/workflows/ci.yml`)
+### 1. CI Pipeline — `.github/workflows/ci.yml`
+
+**Purpose:** Validate code quality on every change.
 
 **Triggers:**
 - `push` to `main` and `feature/**` branches
 - `pull_request` targeting `main`
 
-**Node Matrix:** 18.x and 20.x
+**Node Matrix:** Runs on both Node 18.x and 20.x in parallel.
 
-**Steps (in order):**
-1. **Checkout** — Clones the repository
-2. **Setup Node.js** — Installs the specified Node version with npm cache
-3. **Install dependencies** — `npm ci` for clean, reproducible installs
-4. **Lint** — `npm run lint` to check code style and quality
-5. **Type check** — `npx tsc --noEmit` to verify TypeScript types
-6. **Unit tests** — `npm run test:run`
-7. **Integration tests** — `npm run test:integration`
-8. **Coverage** — `npm run test:coverage` + uploads coverage artifact
-9. **Build** — `npm run build` to ensure the project compiles
+**Pipeline Steps (sequential, fail-fast):**
 
-**Behavior:** Any step failure immediately stops the pipeline. Coverage artifacts are uploaded for each Node version.
+| Step | Command | Purpose |
+|------|---------|---------|
+| 1 | `actions/checkout@v4` | Clone the repository |
+| 2 | `actions/setup-node@v4` | Install Node.js with npm cache |
+| 3 | `npm ci` | Clean install of dependencies |
+| 4 | `npm run lint` | ESLint code quality check |
+| 5 | `npx tsc --noEmit` | TypeScript type verification |
+| 6 | `npm run test:run` | Run unit tests |
+| 7 | `npm run test:integration` | Run integration tests |
+| 8 | `npm run test:coverage` | Generate coverage report |
+| 9 | `actions/upload-artifact@v4` | Upload coverage/ as artifact |
+| 10 | `npm run build` | Verify production build |
+
+**Behavior:**
+- Any step failure stops the entire pipeline immediately (`fail-fast: true`)
+- Coverage artifact is uploaded for **each** Node version
+- Concurrency group prevents duplicate runs on the same ref
 
 ---
 
-### 2. Deploy Workflow (`.github/workflows/deploy.yml`)
+### 2. Deploy Workflow — `.github/workflows/deploy.yml`
 
-**Trigger:** `push` to `main` only
+**Purpose:** Deploy to Vercel production on every push to main.
+
+**Trigger:** `push` to `main` only.
 
 **Steps:**
-1. Checkout and setup Node.js 20.x
-2. Install dependencies and build
-3. Deploy to Vercel using `amondnet/vercel-action@v25`
-4. Health check with retry (5 attempts, 10s interval)
+1. Checkout + Setup Node.js 20.x
+2. `npm ci` + `npm run build`
+3. Deploy to Vercel using `amondnet/vercel-action@v25` with `--prod` flag
+4. Health check: 5 retry attempts with 10s interval, expecting HTTP 200
 
-**Behavior:** Deployment only happens after a successful build. Health check must return HTTP 200.
+**Behavior:**
+- Deployment only happens after successful build
+- Concurrency: only one production deploy at a time (no cancellation)
+- Health check is mandatory; failure = pipeline failure
 
 ---
 
-### 3. PR Checks (`.github/workflows/pr-checks.yml`)
+### 3. PR Checks — `.github/workflows/pr-checks.yml`
 
-**Trigger:** `pull_request` events (opened, edited, synchronize)
+**Purpose:** Lightweight validation for pull requests.
+
+**Trigger:** `pull_request` events (opened, edited, synchronize) to `main`.
 
 **Jobs:**
-- **Validate PR Title** — Ensures the title follows Conventional Commits format (e.g., `feat:`, `fix:`, `ci(phase10):`).
-- **Check PR Size** — Issues a `::notice` warning if the PR exceeds 500 lines changed. This is a warning only and does NOT block the PR.
+
+| Job | What it does | Blocking? |
+|-----|--------------|-----------|
+| `validate-pr-title` | Checks title follows Conventional Commits format | ✅ Yes |
+| `check-pr-size` | Warns if total changes > 500 lines | ⚠️ No (notice only) |
+
+**Accepted PR title prefixes:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
 
 ---
 
-## Adding GitHub Secrets
+## How to Add Secrets in GitHub
 
-The deploy workflow requires three secrets. To add them:
+The deploy workflow requires three secrets:
 
-1. Go to your repository on GitHub: `Settings` → `Secrets and variables` → `Actions`
+1. Navigate to: **Settings** → **Secrets and variables** → **Actions**
 2. Click **"New repository secret"**
-3. Add each of the following:
+3. Add each secret:
 
-| Secret Name | Description | Where to Find |
-|---|---|---|
-| `VERCEL_TOKEN` | Vercel API token | Vercel Dashboard → Settings → Tokens |
-| `VERCEL_ORG_ID` | Your Vercel organization/team ID | Vercel Dashboard → Settings → General |
-| `VERCEL_PROJECT_ID` | The Vercel project ID | Vercel Dashboard → Project → Settings → General |
+| Secret Name | Description | Where to Find It |
+|-------------|-------------|-------------------|
+| `VERCEL_TOKEN` | API authentication token | [Vercel Tokens](https://vercel.com/account/tokens) |
+| `VERCEL_ORG_ID` | Organization/team identifier | Vercel Dashboard → Settings → General |
+| `VERCEL_PROJECT_ID` | Project identifier | Vercel → Project → Settings → General |
 
-4. (Optional) Add `PRODUCTION_URL` as a fallback for health checks.
+**Optional:** Add `PRODUCTION_URL` as a fallback for health checks.
 
 ---
 
-## Connecting Vercel to the Repository
+## How to Connect Vercel to the Repository
 
-1. **Create a Vercel account** at [vercel.com](https://vercel.com) if you don't have one.
-2. **Import your repository:**
-   - Go to Vercel Dashboard → "Add New" → "Project"
+1. **Create a Vercel account** at [vercel.com](https://vercel.com)
+2. **Import the repository:**
+   - Dashboard → "Add New" → "Project"
    - Select "Import Git Repository"
    - Choose `bahoma31-jpg/codeforge-ide`
-3. **Configure the project:**
-   - Framework Preset: Next.js
+3. **Configure project settings:**
+   - Framework Preset: **Next.js**
    - Build Command: `npm run build`
    - Install Command: `npm ci`
    - Output Directory: `.next` (default)
-4. **Get your IDs:**
-   - After creating the project, go to Project Settings → General
-   - Copy `Project ID` and `Org ID`
-5. **Generate a token:**
-   - Go to Account Settings → Tokens → Create Token
-   - Name it (e.g., "GitHub Actions Deploy")
-   - Copy the token immediately (it won't be shown again)
-6. **Add all three values as GitHub Secrets** (see section above).
+4. **Retrieve IDs:**
+   - Project ID + Org ID from Project Settings → General
+5. **Generate API token:**
+   - Account Settings → Tokens → "Create Token"
+   - Copy immediately (shown only once)
+6. **Add all values as GitHub Secrets** (see section above)
 
 ---
 
-## Running Checks Locally
-
-You can run the same checks that CI runs:
+## Running the Same Checks Locally
 
 ```bash
-# Install dependencies (clean)
-npm ci
-
-# Lint
-npm run lint
-
-# TypeScript type check
-npx tsc --noEmit
-
-# Unit tests
-npm run test:run
-
-# Integration tests
-npm run test:integration
-
-# Tests with coverage report
-npm run test:coverage
-
-# Build
-npm run build
-```
-
-**Pro tip:** Run all checks in sequence before pushing:
-```bash
+# Full CI simulation
 npm ci && npm run lint && npx tsc --noEmit && npm run test:run && npm run test:integration && npm run test:coverage && npm run build
 ```
 
----
-
-## Troubleshooting
-
-### Common CI Errors
-
-| Error | Cause | Fix |
-|---|---|---|
-| `npm ci` fails with lockfile mismatch | `package-lock.json` is out of sync | Run `npm install` locally and commit the updated lockfile |
-| TypeScript errors (`tsc --noEmit`) | Type mismatches or missing types | Fix the types locally; run `npx tsc --noEmit` to verify |
-| Lint failures | ESLint rule violations | Run `npm run lint -- --fix` to auto-fix, then review remaining issues |
-| Test timeouts | Slow or hanging tests | Check for async operations without proper cleanup; increase timeout if needed |
-| Node version mismatch | Using features not available in Node 18.x | Ensure compatibility with both 18.x and 20.x |
-| Build failure | Next.js build errors | Check for runtime imports in server components, missing env vars, etc. |
-
-### Vercel Deploy Errors
-
-| Error | Cause | Fix |
-|---|---|---|
-| 401 Unauthorized | Invalid `VERCEL_TOKEN` | Regenerate the token in Vercel and update the GitHub secret |
-| Project not found | Wrong `VERCEL_PROJECT_ID` | Verify the ID in Vercel Dashboard → Project Settings |
-| Health check fails (non-200) | App crash or slow cold start | Check Vercel deployment logs; increase health check retries if needed |
-| Build succeeds but deploy fails | Vercel-specific config issue | Check `vercel.json` and Vercel build logs |
+**Individual checks:**
+```bash
+npm run lint            # Lint only
+npm run lint -- --fix   # Auto-fix lint issues
+npx tsc --noEmit        # Type check only
+npm run test:run        # Unit tests
+npm run test:integration # Integration tests
+npm run test:coverage   # Tests with coverage
+npm run build           # Build only
+```
 
 ---
 
-## File Structure
+## Troubleshooting Common CI Errors
+
+### Build & Install
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| `npm ci` lockfile mismatch | `package-lock.json` out of sync | Run `npm install` locally, commit updated lockfile |
+| Peer dependency conflict | Incompatible versions | Add `--legacy-peer-deps` or fix versions |
+| Module not found | Missing dependency | Run `npm ci` to ensure clean install |
+
+### TypeScript
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| Type errors on `tsc --noEmit` | Type mismatches | Fix types locally, verify with `npx tsc --noEmit` |
+| Missing type declarations | `@types/*` not installed | Install required `@types` package |
+
+### Tests
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| Test timeouts | Async without cleanup | Add proper teardown; increase timeout |
+| Pass locally, fail in CI | Environment diff | Check Node version, env vars, paths |
+
+### Vercel Deploy
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| 401 Unauthorized | Invalid `VERCEL_TOKEN` | Regenerate in Vercel, update secret |
+| Project not found | Wrong `VERCEL_PROJECT_ID` | Verify in Vercel Project Settings |
+| Health check fails | App crash or cold start | Check Vercel logs; increase retries |
+
+---
+
+## Files Added in Phase 10
 
 ```
 .github/

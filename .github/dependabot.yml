@@ -1,7 +1,7 @@
 version: 2
 
 updates:
-  # NPM dependencies - weekly updates
+  # npm dependencies — weekly
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
@@ -19,7 +19,7 @@ updates:
       prefix: "deps"
       include: "scope"
 
-  # GitHub Actions - monthly updates
+  # GitHub Actions — monthly
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

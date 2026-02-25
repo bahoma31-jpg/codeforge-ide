@@ -5,10 +5,17 @@ on:
     branches:
       - main
 
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
 jobs:
   deploy:
     name: Build & Deploy to Vercel
     runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.vercel-deploy.outputs.preview-url }}
 
     steps:
       - name: Checkout repository
@@ -42,14 +49,19 @@ jobs:
           if [ -z "$DEPLOY_URL" ]; then
             DEPLOY_URL="${{ secrets.PRODUCTION_URL }}"
           fi
-          echo "Checking health at: $DEPLOY_URL"
+          if [ -z "$DEPLOY_URL" ]; then
+            echo "::warning::No deployment URL available for health check. Skipping."
+            exit 0
+          fi
+          echo "Health checking: $DEPLOY_URL"
           for i in 1 2 3 4 5; do
-            STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$DEPLOY_URL" || true)
-            echo "Attempt $i: HTTP $STATUS"
+            STATUS=$(curl -s -o /dev/null -w '%{http_code}' "$DEPLOY_URL" --max-time 15 || true)
+            echo "Attempt $i/5: HTTP $STATUS"
             if [ "$STATUS" = "200" ]; then
               echo "✅ Health check passed!"
               exit 0
             fi
+            echo "Waiting 10s before retry..."
             sleep 10
           done
           echo "❌ Health check failed after 5 attempts"

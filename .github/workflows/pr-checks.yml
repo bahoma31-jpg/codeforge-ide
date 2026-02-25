@@ -3,6 +3,8 @@ name: PR Checks
 on:
   pull_request:
     types: [opened, edited, synchronize]
+    branches:
+      - main
 
 jobs:
   validate-pr-title:
@@ -31,8 +33,11 @@ jobs:
           subjectPattern: ^.+$
           subjectPatternError: |
             The PR title "{title}" doesn't match Conventional Commits format.
-            Expected format: type(scope): description
-            Examples: "ci(phase10): add CI pipeline", "feat: add new feature"
+            Expected: type(scope): description
+            Examples:
+              - ci(phase10): add CI pipeline
+              - feat: add new feature
+              - fix: resolve login issue
 
   check-pr-size:
     name: Check PR Size
@@ -44,14 +49,33 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check lines changed
+      - name: Calculate lines changed
+        id: size
         run: |
-          BASE_SHA=${{ github.event.pull_request.base.sha }}
-          HEAD_SHA=${{ github.event.pull_request.head.sha }}
-          LINES_CHANGED=$(git diff --stat "$BASE_SHA".."$HEAD_SHA" | tail -1 | grep -oP '\d+(?= insertions|deletions)' | paste -sd+ | bc 2>/dev/null || echo 0)
-          echo "Total lines changed: $LINES_CHANGED"
-          if [ "$LINES_CHANGED" -gt 500 ]; then
-            echo "::notice::⚠️ This PR has $LINES_CHANGED lines changed (>500). Consider splitting it into smaller PRs for easier review."
-          else
-            echo "✅ PR size is reasonable ($LINES_CHANGED lines changed)."
-          fi
+          BASE=${{ github.event.pull_request.base.sha }}
+          HEAD=${{ github.event.pull_request.head.sha }}
+
+          ADDITIONS=$(git diff --numstat "$BASE".."$HEAD" | awk '{s+=$1} END {print s+0}')
+          DELETIONS=$(git diff --numstat "$BASE".."$HEAD" | awk '{s+=$2} END {print s+0}')
+          TOTAL=$((ADDITIONS + DELETIONS))
+
+          echo "additions=$ADDITIONS" >> "$GITHUB_OUTPUT"
+          echo "deletions=$DELETIONS" >> "$GITHUB_OUTPUT"
+          echo "total=$TOTAL" >> "$GITHUB_OUTPUT"
+
+          echo "### PR Size Report" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Metric | Count |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Additions | +$ADDITIONS |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Deletions | -$DELETIONS |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Total** | **$TOTAL** |" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Warn if PR is large
+        if: fromJSON(steps.size.outputs.total) > 500
+        run: |
+          echo "::notice title=Large PR::This PR has ${{ steps.size.outputs.total }} lines changed (>500). Consider splitting into smaller PRs for easier review."
+
+      - name: PR size OK
+        if: fromJSON(steps.size.outputs.total) <= 500
+        run: |
+          echo "✅ PR size is reasonable (${{ steps.size.outputs.total }} lines changed)."
