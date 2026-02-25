@@ -23,7 +23,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "idb-keyval": "^6.2.1",
-    "lucide-react": "^0.344.0",
+    "lucide-react": "^0.575.0",
     "monaco-editor": "^0.55.1",
     "next": "14.2.x",
     "next-pwa": "^5.6.0",
