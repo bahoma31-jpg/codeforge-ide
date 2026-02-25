@@ -25,7 +25,7 @@
     "idb-keyval": "^6.2.1",
     "lucide-react": "^0.344.0",
     "monaco-editor": "^0.55.1",
-    "next": "14.2.x",
+    "next": "16.1.x",
     "next-pwa": "^5.6.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
