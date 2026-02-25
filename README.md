@@ -1,128 +1,279 @@
-# \uD83D\uDE80 CodeForge IDE
+# 🔨 CodeForge IDE
 
-A modern, web-based code editor inspired by VS Code, built with Next.js 14 and TypeScript.
+<div align="center">
 
-## \u2728 Features (Planned)
+![CodeForge IDE](https://img.shields.io/badge/CodeForge-IDE-blue?style=for-the-badge)
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=next.js&logoColor=white)
 
-- \uD83D\uDCDD **Monaco Editor** \u2014 The same editor that powers VS Code
-- \uD83D\uDCC1 **File Management** \u2014 Full CRUD operations with IndexedDB
-- \uD83D\uDD17 **GitHub Integration** \u2014 Clone, commit, push, and pull
-- \uD83D\uDDA5\uFE0F **Integrated Terminal** \u2014 Run commands directly in the browser
-- \uD83C\uDFA8 **Themes** \u2014 Light, Dark, and High Contrast modes
-- \u26A1 **Fast & Responsive** \u2014 Built with performance in mind
+**محرر أكواد متكامل في المتصفح مع دعم كامل لـ Git و GitHub**
 
-## \uD83D\uDEE0\uFE0F Tech Stack
+[Live Demo](#) • [Documentation](./docs) • [Report Bug](https://github.com/bahoma31-jpg/codeforge-ide/issues) • [Request Feature](https://github.com/bahoma31-jpg/codeforge-ide/issues)
 
-| Category       | Technology                   |
-| -------------- | ---------------------------- |
-| **Framework**  | Next.js 14 (App Router)      |
-| **Language**   | TypeScript                   |
-| **Styling**    | Tailwind CSS + shadcn/ui     |
-| **State**      | Zustand                      |
-| **Testing**    | Vitest + Testing Library     |
-| **Editor**     | Monaco Editor                |
-| **Terminal**   | xterm.js                     |
-| **Git**        | Octokit.js (GitHub REST API) |
-| **Deployment** | Vercel                       |
+</div>
 
-## \uD83C\uDFD7\uFE0F Project Structure
+---
 
-```
-codeforge-ide/
-\u251C\u2500\u2500 app/                  # Next.js App Router
-\u251C\u2500\u2500 components/           # React components
-\u2502   \u251C\u2500\u2500 ui/              # shadcn/ui components
-\u2502   \u2514\u2500\u2500 codeforge/       # Custom IDE components
-\u2502       \u251C\u2500\u2500 layout/      # Layout components
-\u2502       \u251C\u2500\u2500 editor/      # Editor components
-\u2502       \u251C\u2500\u2500 file-explorer/ # File tree
-\u2502       \u2514\u2500\u2500 terminal/    # Terminal
-\u251C\u2500\u2500 lib/                  # Core logic
-\u2502   \u251C\u2500\u2500 stores/          # Zustand stores
-\u2502   \u251C\u2500\u2500 services/        # Business logic
-\u2502   \u251C\u2500\u2500 types/           # TypeScript types
-\u2502   \u2514\u2500\u2500 utils/           # Utility functions
-\u251C\u2500\u2500 public/               # Static assets
-\u2514\u2500\u2500 tests/                # Test files
-```
+## 🌟 Features
 
-## \uD83D\uDE80 Getting Started
+### محرر الأكواد المتقدم
+- ✨ **Monaco Editor** - نفس محرر VS Code مع دعم كامل للغات البرمجة
+- 🎨 **Syntax Highlighting** - تلوين تلقائي لأكثر من 60 لغة برمجة
+- 💡 **IntelliSense** - إكمال تلقائي ذكي واقتراحات
+- 🔍 **Find & Replace** - بحث واستبدال قوي مع Regex
+- 📝 **Multi-cursor Editing** - تعديل متعدد النقاط
+- 🎯 **Code Formatting** - تنسيق تلقائي للكود
 
-### Prerequisites
+### تكامل Git و GitHub
+- 🔐 **GitHub OAuth** - مصادقة آمنة مع GitHub
+- 📦 **Repository Management** - إدارة كاملة للمستودعات
+- 🌿 **Branch Operations** - إنشاء، تبديل، ودمج الفروع
+- 💾 **Local Git** - عمليات Git محلية (commit, push, pull, merge)
+- 🔄 **Sync Status** - مزامنة فورية مع GitHub
+- 🔀 **Conflict Resolution** - حل التعارضات بصريًا
 
-- Node.js 18+
-- pnpm (recommended) or npm
+### نظام الملفات المتقدم
+- 💿 **IndexedDB Storage** - تخزين محلي قوي وسريع
+- 📂 **File Explorer** - مستكشف ملفات تفاعلي
+- 📄 **Multi-file Tabs** - فتح ملفات متعددة في نفس الوقت
+- 🗂️ **Folder Structure** - دعم كامل للمجلدات والملفات
+- 📋 **Copy/Paste/Rename** - عمليات الملفات الأساسية
 
-### Installation
+### محطة طرفية متكاملة
+- 💻 **xterm.js Terminal** - محطة طرفية حقيقية في المتصفح
+- 🖥️ **Multiple Terminals** - فتح محطات متعددة
+- ⚡ **Built-in Commands** - أوامر مدمجة (ls, cd, mkdir, cat...)
+- 🔧 **Git Commands** - أوامر Git كاملة
+- 📊 **Command History** - سجل الأوامر المستخدمة
+
+### تخصيص واجهة المستخدم
+- 🎨 **Themes** - ثيمات قابلة للتخصيص (Light/Dark)
+- 🔤 **Font Customization** - تخصيص الخطوط والأحجام
+- ⌨️ **Keyboard Shortcuts** - اختصارات لوحة مفاتيح قابلة للتعديل
+- 📱 **Responsive Design** - تصميم متجاوب لجميع الأجهزة
+
+---
+
+## 🚀 Quick Start
+
+### المتطلبات المسبقة
+
+قبل البدء، تأكد من تثبيت:
+
+- **Node.js** ≥ 18.x ([تحميل](https://nodejs.org/))
+- **npm** ≥ 9.x (يأتي مع Node.js)
+- **Git** (اختياري، للنشر) ([تحميل](https://git-scm.com/))
+
+### التثبيت
 
 ```bash
-# Clone the repository
+# 1. استنساخ المستودع
 git clone https://github.com/bahoma31-jpg/codeforge-ide.git
+
+# 2. الدخول إلى المجلد
 cd codeforge-ide
 
-# Install dependencies
-pnpm install
+# 3. تثبيت المكتبات
+npm install
 
-# Run development server
-pnpm dev
+# 4. تشغيل في وضع التطوير
+npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+سيعمل التطبيق على `http://localhost:3000`
 
-## \uD83D\uDCDD Available Scripts
-
-| Command              | Description               |
-| -------------------- | ------------------------- |
-| `pnpm dev`           | Start development server  |
-| `pnpm build`         | Build for production      |
-| `pnpm start`         | Start production server   |
-| `pnpm lint`          | Run ESLint                |
-| `pnpm lint:fix`      | Fix ESLint errors         |
-| `pnpm format`        | Format code with Prettier |
-| `pnpm test`          | Run tests                 |
-| `pnpm test:ui`       | Run tests with UI         |
-| `pnpm test:coverage` | Generate coverage report  |
-
-## \uD83E\uDDEA Testing
+### البناء للإنتاج
 
 ```bash
-pnpm test            # Run all tests
-pnpm test:ui         # Run tests with UI
-pnpm test:coverage   # Generate coverage
+# بناء التطبيق
+npm run build
+
+# تشغيل نسخة الإنتاج
+npm start
 ```
 
-## \uD83D\uDCE6 Project Status
+---
 
-**Current Phase:** Infrastructure Setup \u2705
+## 📖 Documentation
 
-### Milestones
+### دليل المستخدم
 
-- [x] **M1:** Infrastructure Setup (Week 1-2)
-- [ ] **M2:** Editor + File System (Week 3-5)
-- [ ] **M3:** Tabs + Search (Week 5-7)
-- [ ] **M4:** GitHub Integration (Week 7-10)
-- [ ] **M5:** Terminal + Optimizations (Week 10-13)
-- [ ] **M6:** Testing + Deployment (Week 13-16)
+- 📐 [**نظرة عامة على البنية**](./docs/architecture.md) - تفاصيل معمارية التطبيق
+- 🔗 [**دليل تكامل Git**](./docs/git-integration.md) - كيفية استخدام Git و GitHub
+- 💻 [**أوامر المحطة الطرفية**](./docs/terminal-commands.md) - قائمة كاملة بالأوامر المدعومة
+- ⌨️ [**اختصارات لوحة المفاتيح**](./docs/keyboard-shortcuts.md) - جميع الاختصارات المتاحة
+- 🤝 [**دليل المساهمة**](./CONTRIBUTING.md) - كيفية المساهمة في المشروع
 
-## \uD83D\uDC65 Agents
+### مقالات تعليمية
 
-| Agent   | Role                          | Status          |
-| ------- | ----------------------------- | --------------- |
-| Agent 1 | Infrastructure Architect      | \u2705 Complete |
-| Agent 2 | UI Layout Builder             | \u23F3 Next     |
-| Agent 3 | Monaco Integration Expert     | Pending         |
-| Agent 4 | File System Manager           | Pending         |
-| Agent 5 | GitHub Integration Specialist | Pending         |
-| Agent 6 | Terminal Emulator Engineer    | Pending         |
-| Agent 7 | Quality Assurance & Testing   | Ongoing         |
+- 🎯 [Getting Started Guide](./docs/getting-started.md)
+- 🔧 [Configuration Guide](./docs/configuration.md)
+- 🎨 [Customization Guide](./docs/customization.md)
+- 🐛 [Troubleshooting](./docs/troubleshooting.md)
 
-## \uD83D\uDCC4 License
+---
 
-MIT License - see [LICENSE](LICENSE) file for details.
+## 🏗️ Architecture
 
-## \uD83D\uDE4F Acknowledgments
+```
+CodeForge IDE
+├── 🎨 Frontend (Next.js + React)
+│   ├── Monaco Editor (Code Editing)
+│   ├── xterm.js (Terminal)
+│   └── shadcn/ui (Components)
+│
+├── 💾 State Management (Zustand)
+│   ├── Editor Store
+│   ├── Git Store
+│   ├── File System Store
+│   └── Terminal Store
+│
+├── 🔧 Core Services
+│   ├── Git Service (isomorphic-git)
+│   ├── File System Service (IndexedDB)
+│   ├── GitHub API Service
+│   └── Terminal Service
+│
+└── 🗄️ Storage Layer
+    ├── IndexedDB (File Storage)
+    ├── LocalStorage (Settings)
+    └── Session Storage (Auth Tokens)
+```
 
-- [VS Code](https://code.visualstudio.com/) \u2014 Inspiration
-- [Monaco Editor](https://microsoft.github.io/monaco-editor/) \u2014 Code editor engine
-- [Next.js](https://nextjs.org/) \u2014 React framework
-- [shadcn/ui](https://ui.shadcn.com/) \u2014 UI components
+### Technology Stack
+
+| Category | Technology |
+|----------|-----------|
+| **Frontend** | Next.js 15, React 19, TypeScript |
+| **Editor** | Monaco Editor |
+| **Terminal** | xterm.js |
+| **UI Library** | shadcn/ui, Tailwind CSS |
+| **State Management** | Zustand |
+| **Git Integration** | isomorphic-git |
+| **Storage** | IndexedDB, LightningFS |
+| **Authentication** | NextAuth.js (GitHub OAuth) |
+
+---
+
+## 🧪 Testing
+
+```bash
+# تشغيل الاختبارات
+npm run test
+
+# تشغيل الاختبارات مع التغطية
+npm run test:coverage
+
+# تشغيل الاختبارات في وضع المراقبة
+npm run test:watch
+```
+
+### أنواع الاختبارات
+
+- ✅ **Unit Tests** - اختبارات الوحدات للمكونات الفردية
+- 🔗 **Integration Tests** - اختبارات التكامل بين الخدمات
+- 🎭 **E2E Tests** - اختبارات شاملة للمستخدم النهائي
+
+---
+
+## 🤝 Contributing
+
+نرحب بجميع المساهمات! يرجى قراءة [دليل المساهمة](./CONTRIBUTING.md) قبل البدء.
+
+### خطوات المساهمة
+
+1. **Fork** المشروع
+2. **Create** فرع للميزة الجديدة (`git checkout -b feature/AmazingFeature`)
+3. **Commit** التغييرات (`git commit -m 'Add some AmazingFeature'`)
+4. **Push** إلى الفرع (`git push origin feature/AmazingFeature`)
+5. **Open** Pull Request
+
+### قواعد Commit Messages
+
+نستخدم [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+feat: add new feature
+fix: bug fix
+docs: documentation changes
+style: formatting, missing semi colons, etc
+refactor: code refactoring
+test: adding tests
+chore: maintain
+```
+
+---
+
+## 📝 Roadmap
+
+### Version 1.0 (Current)
+- [x] Monaco Editor Integration
+- [x] GitHub OAuth
+- [x] Basic Git Operations
+- [x] Terminal Emulator
+- [x] File System
+
+### Version 1.1 (Next)
+- [ ] Extensions System
+- [ ] Themes Marketplace
+- [ ] Collaborative Editing
+- [ ] Cloud Sync
+- [ ] Mobile Support
+
+### Version 2.0 (Future)
+- [ ] AI Code Assistant
+- [ ] Live Share
+- [ ] Debugging Tools
+- [ ] Performance Profiler
+- [ ] Container Support
+
+---
+
+## 📄 License
+
+هذا المشروع مرخص بموجب **MIT License** - راجع ملف [LICENSE](./LICENSE) للتفاصيل.
+
+```
+MIT License
+
+Copyright (c) 2026 CodeForge IDE Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction...
+```
+
+---
+
+## 👥 Team
+
+<div align="center">
+
+تم التطوير بواسطة **bahoma31-jpg** وفريق المساهمين الرائعين
+
+[![GitHub](https://img.shields.io/github/followers/bahoma31-jpg?label=Follow&style=social)](https://github.com/bahoma31-jpg)
+
+</div>
+
+---
+
+## 🙏 Acknowledgments
+
+شكر خاص لـ:
+
+- [Monaco Editor](https://microsoft.github.io/monaco-editor/) - Microsoft
+- [xterm.js](https://xtermjs.org/) - SourceLair
+- [isomorphic-git](https://isomorphic-git.org/) - William Hilton
+- [shadcn/ui](https://ui.shadcn.com/) - shadcn
+- [Next.js](https://nextjs.org/) - Vercel
+
+---
+
+<div align="center">
+
+**⭐ إذا أعجبك المشروع، لا تنسى إضافة نجمة! ⭐**
+
+Made with ❤️ by developers, for developers
+
+</div>
