@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useMemo, useRef } from 'react';
 import { useUIStore } from '@/lib/stores/ui-store';
@@ -14,6 +14,8 @@ import Sidebar from './sidebar';
 import EditorArea from './editor-area';
 import Panel from './panel';
 import StatusBar from './status-bar';
+import SkipToMain from '../a11y/skip-to-main';
+import LiveRegion from '../a11y/live-region';
 
 export default function MainLayout() {
   useKeyboardShortcuts();
@@ -125,6 +127,9 @@ export default function MainLayout() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
+      <SkipToMain />
+      <LiveRegion />
+      
       <div className="flex flex-1 overflow-hidden">
         <ActivityBar />
 
@@ -135,9 +140,14 @@ export default function MainLayout() {
             </div>
             <div
               ref={sidebarHandleRef}
-              className="w-1 shrink-0 cursor-col-resize bg-border/60 hover:bg-border"
+              className="w-1 shrink-0 cursor-col-resize bg-border/60 hover:bg-border focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Resize sidebar"
+              aria-orientation="vertical"
+              aria-valuemin={200}
+              aria-valuemax={600}
+              aria-valuenow={sidebarWidth}
               role="separator"
+              tabIndex={0}
             />
           </>
         )}
@@ -149,9 +159,14 @@ export default function MainLayout() {
             <>
               <div
                 ref={panelHandleRef}
-                className="h-1 cursor-row-resize bg-border/60 hover:bg-border"
+                className="h-1 cursor-row-resize bg-border/60 hover:bg-border focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="Resize panel"
+                aria-orientation="horizontal"
+                aria-valuemin={100}
+                aria-valuemax={500}
+                aria-valuenow={panelHeight}
                 role="separator"
+                tabIndex={0}
               />
               <div style={panelStyle} className="shrink-0 overflow-hidden">
                 <Panel height={panelHeight} />
