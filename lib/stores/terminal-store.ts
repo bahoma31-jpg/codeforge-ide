@@ -1,211 +1,171 @@
-/**
- * CodeForge IDE - Terminal Store
- * Phase 5: Terminal Emulator Integration
- * Agent 6: Terminal Emulator Engineer
- *
- * Zustand store for managing multiple terminal instances.
- * Supports up to 5 concurrent terminal instances with auto-switching logic.
- */
-
 import { create } from 'zustand';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
- * Represents a single terminal instance
+ * Terminal instance interface
  */
 export interface TerminalInstance {
-  /** Unique identifier for the terminal instance */
+  /** Unique identifier */
   id: string;
-  /** Display name (e.g., "Terminal 1", "Terminal 2") */
-  name: string;
-  /** Whether this is the currently active terminal */
+  /** Terminal title (editable) */
+  title: string;
+  /** Current working directory */
+  cwd: string;
+  /** Command history */
+  history: string[];
+  /** Whether this terminal is active */
   isActive: boolean;
+  /** Creation timestamp */
+  createdAt: Date;
 }
 
 /**
- * Terminal store state and actions
+ * Terminal store interface
  */
 interface TerminalStore {
-  /** Array of all terminal instances */
-  instances: TerminalInstance[];
-  /** ID of the currently active terminal instance */
-  activeInstanceId: string | null;
+  /** Array of terminal instances */
+  terminals: TerminalInstance[];
+  /** ID of the currently active terminal */
+  activeTerminalId: string | null;
+  /** Maximum number of terminals allowed */
+  maxTerminals: number;
 
   // Actions
-  /**
-   * Creates a new terminal instance.
-   * Maximum 5 instances allowed.
-   * @returns The ID of the newly created instance
-   */
-  createInstance: () => string;
-
-  /**
-   * Removes a terminal instance by ID.
-   * If removing the active instance, auto-switches to adjacent instance.
-   * If removing the last instance, auto-creates a new "Terminal 1".
-   * @param id - The instance ID to remove
-   */
-  removeInstance: (id: string) => void;
-
-  /**
-   * Sets the active terminal instance.
-   * @param id - The instance ID to activate
-   */
-  setActiveInstance: (id: string) => void;
-
-  /**
-   * Renames a terminal instance.
-   * @param id - The instance ID to rename
-   * @param name - The new name
-   */
-  renameInstance: (id: string, name: string) => void;
+  createTerminal: () => boolean;
+  closeTerminal: (id: string) => void;
+  setActiveTerminal: (id: string) => void;
+  updateTerminalTitle: (id: string, title: string) => void;
+  updateTerminalCwd: (id: string, cwd: string) => void;
+  addToHistory: (id: string, command: string) => void;
+  getActiveTerminal: () => TerminalInstance | null;
 }
 
 /**
- * Maximum number of terminal instances allowed
- */
-const MAX_INSTANCES = 5;
-
-/**
- * Generates a unique ID for a terminal instance
- */
-const generateId = (): string => {
-  return `terminal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-};
-
-/**
- * Generates a default name for a terminal instance based on count
- * @param count - The instance count (1-based)
- */
-const generateDefaultName = (count: number): string => {
-  return `Terminal ${count}`;
-};
-
-/**
- * Terminal store implementation
+ * Terminal store
+ * Manages up to 5 concurrent terminal instances
  */
 export const useTerminalStore = create<TerminalStore>((set, get) => ({
-  instances: [],
-  activeInstanceId: null,
+  terminals: [],
+  activeTerminalId: null,
+  maxTerminals: 5,
 
-  createInstance: () => {
-    const { instances } = get();
+  /**
+   * Create a new terminal instance
+   * @returns true if created successfully, false if max limit reached
+   */
+  createTerminal: () => {
+    const { terminals, maxTerminals } = get();
 
-    // Enforce maximum instance limit
-    if (instances.length >= MAX_INSTANCES) {
-      console.warn(`Maximum ${MAX_INSTANCES} terminal instances reached`);
-      return instances[instances.length - 1].id;
+    // Check max limit
+    if (terminals.length >= maxTerminals) {
+      console.warn(`Cannot create more than ${maxTerminals} terminals`);
+      return false;
     }
 
-    // Generate new instance
-    const newId = generateId();
-    const newInstance: TerminalInstance = {
-      id: newId,
-      name: generateDefaultName(instances.length + 1),
+    const id = uuidv4();
+    const newTerminal: TerminalInstance = {
+      id,
+      title: `Terminal ${terminals.length + 1}`,
+      cwd: '/',
+      history: [],
       isActive: true,
+      createdAt: new Date(),
     };
 
-    // Deactivate all other instances
-    const updatedInstances = instances.map((inst) => ({
-      ...inst,
-      isActive: false,
+    set((state) => ({
+      terminals: [
+        ...state.terminals.map((t) => ({ ...t, isActive: false })),
+        newTerminal,
+      ],
+      activeTerminalId: id,
     }));
 
-    set({
-      instances: [...updatedInstances, newInstance],
-      activeInstanceId: newId,
-    });
-
-    return newId;
+    return true;
   },
 
-  removeInstance: (id: string) => {
-    const { instances, activeInstanceId } = get();
+  /**
+   * Close a terminal instance
+   * @param id - Terminal ID to close
+   */
+  closeTerminal: (id: string) => {
+    set((state) => {
+      const filtered = state.terminals.filter((t) => t.id !== id);
 
-    // Find the instance to remove
-    const indexToRemove = instances.findIndex((inst) => inst.id === id);
-    if (indexToRemove === -1) {
-      console.warn(`Terminal instance ${id} not found`);
-      return;
-    }
+      // If closing the active terminal, activate the last remaining one
+      let newActiveId = state.activeTerminalId;
+      if (state.activeTerminalId === id && filtered.length > 0) {
+        newActiveId = filtered[filtered.length - 1].id;
+      } else if (filtered.length === 0) {
+        newActiveId = null;
+      }
 
-    // Remove the instance
-    const updatedInstances = instances.filter((inst) => inst.id !== id);
-
-    // If removing the last instance, auto-create a new one
-    if (updatedInstances.length === 0) {
-      const newId = generateId();
-      const newInstance: TerminalInstance = {
-        id: newId,
-        name: generateDefaultName(1),
-        isActive: true,
+      return {
+        terminals: filtered.map((t) => ({
+          ...t,
+          isActive: t.id === newActiveId,
+        })),
+        activeTerminalId: newActiveId,
       };
-
-      set({
-        instances: [newInstance],
-        activeInstanceId: newId,
-      });
-      return;
-    }
-
-    // If removing the active instance, switch to adjacent instance
-    let newActiveId = activeInstanceId;
-    if (id === activeInstanceId) {
-      // Try to switch to the next instance, or previous if last
-      const newActiveIndex = indexToRemove < updatedInstances.length
-        ? indexToRemove
-        : updatedInstances.length - 1;
-
-      newActiveId = updatedInstances[newActiveIndex].id;
-
-      // Update active state
-      updatedInstances.forEach((inst, idx) => {
-        inst.isActive = idx === newActiveIndex;
-      });
-    }
-
-    set({
-      instances: updatedInstances,
-      activeInstanceId: newActiveId,
     });
   },
 
-  setActiveInstance: (id: string) => {
-    const { instances } = get();
-
-    // Verify instance exists
-    const targetInstance = instances.find((inst) => inst.id === id);
-    if (!targetInstance) {
-      console.warn(`Terminal instance ${id} not found`);
-      return;
-    }
-
-    // Update active state
-    const updatedInstances = instances.map((inst) => ({
-      ...inst,
-      isActive: inst.id === id,
+  /**
+   * Set the active terminal
+   * @param id - Terminal ID to activate
+   */
+  setActiveTerminal: (id: string) => {
+    set((state) => ({
+      terminals: state.terminals.map((t) => ({
+        ...t,
+        isActive: t.id === id,
+      })),
+      activeTerminalId: id,
     }));
-
-    set({
-      instances: updatedInstances,
-      activeInstanceId: id,
-    });
   },
 
-  renameInstance: (id: string, name: string) => {
-    const { instances } = get();
+  /**
+   * Update a terminal's title
+   * @param id - Terminal ID
+   * @param title - New title
+   */
+  updateTerminalTitle: (id: string, title: string) => {
+    set((state) => ({
+      terminals: state.terminals.map((t) =>
+        t.id === id ? { ...t, title } : t
+      ),
+    }));
+  },
 
-    // Validate name
-    const trimmedName = name.trim();
-    if (!trimmedName) {
-      console.warn('Terminal name cannot be empty');
-      return;
-    }
+  /**
+   * Update a terminal's current working directory
+   * @param id - Terminal ID
+   * @param cwd - New current working directory
+   */
+  updateTerminalCwd: (id: string, cwd: string) => {
+    set((state) => ({
+      terminals: state.terminals.map((t) => (t.id === id ? { ...t, cwd } : t)),
+    }));
+  },
 
-    // Update instance name
-    const updatedInstances = instances.map((inst) =>
-      inst.id === id ? { ...inst, name: trimmedName } : inst
-    );
+  /**
+   * Add a command to terminal's history
+   * @param id - Terminal ID
+   * @param command - Command to add
+   */
+  addToHistory: (id: string, command: string) => {
+    set((state) => ({
+      terminals: state.terminals.map((t) =>
+        t.id === id ? { ...t, history: [...t.history, command] } : t
+      ),
+    }));
+  },
 
-    set({ instances: updatedInstances });
+  /**
+   * Get the currently active terminal
+   * @returns Active terminal instance or null
+   */
+  getActiveTerminal: () => {
+    const { terminals, activeTerminalId } = get();
+    return terminals.find((t) => t.id === activeTerminalId) ?? null;
   },
 }));
