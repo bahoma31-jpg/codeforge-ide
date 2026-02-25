@@ -4,16 +4,15 @@ export interface GitHubRepository {
   fullName: string;
   defaultBranch: string;
   isPrivate: boolean;
+  description?: string;
+  url: string;
 }
 
-export interface GitHubFile {
+export interface GitHubBranch {
   name: string;
-  path: string;
   sha: string;
-  size: number;
-  type: 'file' | 'dir';
-  content?: string;
-  encoding?: string;
+  isDefault: boolean;
+  isProtected: boolean;
 }
 
 export interface GitHubCommit {
@@ -21,24 +20,22 @@ export interface GitHubCommit {
   message: string;
   author: string;
   date: string;
+  url: string;
 }
 
-export interface GitHubTreeItem {
+export interface GitHubFileChange {
   path: string;
-  mode: '100644' | '100755' | '040000' | '160000' | '120000';
-  type: 'blob' | 'tree' | 'commit';
-  sha?: string;
-  content?: string;
+  status: 'added' | 'modified' | 'deleted' | 'renamed';
+  additions: number;
+  deletions: number;
+  patch?: string;
 }
 
-export interface GitHubPushResult {
-  success: boolean;
-  commitSha: string;
-  message: string;
-}
-
-export interface GitHubAuthState {
-  token: string | null;
-  isAuthenticated: boolean;
-  username: string | null;
+export interface GitHubPullRequest {
+  number: number;
+  title: string;
+  state: 'open' | 'closed' | 'merged';
+  author: string;
+  createdAt: string;
+  url: string;
 }

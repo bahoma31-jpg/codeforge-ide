@@ -1,67 +1,66 @@
 /**
  * Rate limiter utility using Sliding Window algorithm.
- * Tracks request timestamps and allows/blocks based on configured limits.
+ * Tracks request timestamps and allows/rejects based on window config.
  */
+export interface RateLimiterConfig {
+  /** Maximum number of requests allowed in the window */
+  maxRequests: number;
+  /** Window size in milliseconds */
+  windowMs: number;
+}
+
 export class RateLimiter {
-  private maxRequests: number;
-  private windowMs: number;
-  private requests: number[];
+  private timestamps: number[] = [];
+  private readonly config: RateLimiterConfig;
 
-  /**
-   * Create a new RateLimiter instance.
-   * @param maxRequests - Maximum number of requests allowed within the window
-   * @param windowMs - Time window in milliseconds
-   */
-  constructor(maxRequests: number, windowMs: number) {
-    this.maxRequests = maxRequests;
-    this.windowMs = windowMs;
-    this.requests = [];
+  constructor(config: RateLimiterConfig) {
+    this.config = config;
   }
 
   /**
-   * Clean up expired timestamps outside the sliding window.
+   * Check if a request is allowed and record it if so.
+   * @returns true if the request is allowed, false if rate limited
    */
-  private cleanup(): void {
+  tryRequest(): boolean {
     const now = Date.now();
-    this.requests = this.requests.filter(
-      (timestamp) => now - timestamp < this.windowMs
-    );
-  }
+    this.cleanup(now);
 
-  /**
-   * Check if an action is allowed without recording it.
-   * @returns true if the action can proceed
-   */
-  canProceed(): boolean {
-    this.cleanup();
-    return this.requests.length < this.maxRequests;
-  }
-
-  /**
-   * Record an action timestamp.
-   */
-  record(): void {
-    this.requests.push(Date.now());
-  }
-
-  /**
-   * Execute a function if rate limit allows, otherwise throw an error.
-   * @param fn - Function to execute
-   * @returns The return value of the executed function
-   * @throws Error if rate limit is exceeded
-   */
-  execute<T>(fn: () => T): T {
-    if (!this.canProceed()) {
-      throw new Error('Rate limit exceeded');
+    if (this.timestamps.length >= this.config.maxRequests) {
+      return false;
     }
-    this.record();
-    return fn();
+
+    this.timestamps.push(now);
+    return true;
   }
 
   /**
-   * Reset the rate limiter by clearing all recorded requests.
+   * Get the number of remaining requests in the current window.
+   */
+  remaining(): number {
+    this.cleanup(Date.now());
+    return Math.max(0, this.config.maxRequests - this.timestamps.length);
+  }
+
+  /**
+   * Get the time until the next request will be allowed (ms).
+   * Returns 0 if a request is currently allowed.
+   */
+  retryAfter(): number {
+    this.cleanup(Date.now());
+    if (this.timestamps.length < this.config.maxRequests) return 0;
+    const oldest = this.timestamps[0];
+    return Math.max(0, oldest + this.config.windowMs - Date.now());
+  }
+
+  /**
+   * Reset the rate limiter, clearing all recorded timestamps.
    */
   reset(): void {
-    this.requests = [];
+    this.timestamps = [];
+  }
+
+  private cleanup(now: number): void {
+    const windowStart = now - this.config.windowMs;
+    this.timestamps = this.timestamps.filter((t) => t > windowStart);
   }
 }

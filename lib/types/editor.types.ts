@@ -6,29 +6,29 @@ export interface EditorTab {
   content: string;
   isDirty: boolean;
   isActive: boolean;
+  cursorPosition?: {
+    lineNumber: number;
+    column: number;
+  };
+  scrollPosition?: {
+    scrollTop: number;
+    scrollLeft: number;
+  };
+  viewState?: unknown;
 }
 
-export interface EditorSettings {
+export interface EditorLayout {
+  sidebarVisible: boolean;
+  panelVisible: boolean;
+  sidebarWidth: number;
+  panelHeight: number;
+}
+
+export interface EditorConfig {
   fontSize: number;
   tabSize: number;
-  lineHeight: number;
-  minimap: boolean;
   wordWrap: 'on' | 'off' | 'wordWrapColumn';
+  minimap: boolean;
+  lineNumbers: 'on' | 'off' | 'relative';
   theme: string;
 }
-
-export interface EditorState {
-  tabs: EditorTab[];
-  activeTabId: string | null;
-  settings: EditorSettings;
-}
-
-export type SupportedLanguage =
-  | 'javascript'
-  | 'typescript'
-  | 'python'
-  | 'html'
-  | 'css'
-  | 'json'
-  | 'markdown'
-  | 'plaintext';

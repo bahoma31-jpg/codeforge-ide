@@ -3,23 +3,24 @@ export interface FileNode {
   name: string;
   type: 'file' | 'folder';
   path: string;
-  content?: string;
   children?: FileNode[];
-  updatedAt: number;
+  content?: string;
+  language?: string;
+  isOpen?: boolean;
+  isRenaming?: boolean;
+  parentId?: string;
 }
 
-export interface FileMetadata {
-  size: number;
-  encoding: string;
-  mimeType: string;
-  createdAt: number;
-  updatedAt: number;
+export interface FileOperation {
+  type: 'create' | 'rename' | 'delete' | 'move';
+  path: string;
+  newPath?: string;
+  content?: string;
+  timestamp: number;
 }
 
-export type FileOperation = 'create' | 'read' | 'update' | 'delete';
-
-export interface FileSystemState {
-  rootNode: FileNode | null;
-  activeFile: FileNode | null;
-  expandedFolders: Set<string>;
-}
+export type FileTreeAction =
+  | { type: 'CREATE_FILE'; payload: { parentPath: string; name: string } }
+  | { type: 'CREATE_FOLDER'; payload: { parentPath: string; name: string } }
+  | { type: 'DELETE'; payload: { path: string } }
+  | { type: 'RENAME'; payload: { path: string; newName: string } };
