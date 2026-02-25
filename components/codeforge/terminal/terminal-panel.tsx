@@ -1,15 +1,25 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo, memo } from 'react';
+import dynamic from 'next/dynamic';
 import { useTerminalStore } from '@/lib/stores/terminal-store';
-import TerminalEmulator from './terminal-emulator';
 import { Plus, X, Terminal as TerminalIcon } from 'lucide-react';
+import { TerminalSkeleton } from '@/components/ui/loading-spinner';
+
+// Lazy load terminal emulator (heavy component with xterm.js)
+const TerminalEmulator = dynamic(
+  () => import('./terminal-emulator'),
+  {
+    ssr: false,
+    loading: () => <TerminalSkeleton />,
+  }
+);
 
 /**
  * Terminal Panel Component
  * Manages multiple terminal instances with tabs
  */
-export default function TerminalPanel() {
+function TerminalPanel() {
   const {
     terminals,
     activeTerminalId,
@@ -32,6 +42,61 @@ export default function TerminalPanel() {
       createTerminal();
     }
   }, []);
+
+  /**
+   * Handle creating a new terminal (memoized)
+   */
+  const handleCreateTerminal = useCallback((): void => {
+    const created = createTerminal();
+    if (!created) {
+      alert(`Maximum ${maxTerminals} terminals allowed`);
+    }
+  }, [createTerminal, maxTerminals]);
+
+  /**
+   * Handle closing a terminal (memoized)
+   */
+  const handleCloseTerminal = useCallback((id: string): void => {
+    closeTerminal(id);
+  }, [closeTerminal]);
+
+  /**
+   * Start editing terminal title (memoized)
+   */
+  const startEditing = useCallback((id: string, currentTitle: string): void => {
+    setEditingId(id);
+    setEditingTitle(currentTitle);
+  }, []);
+
+  /**
+   * Save edited title (memoized)
+   */
+  const saveTitle = useCallback((): void => {
+    if (editingId && editingTitle.trim()) {
+      updateTerminalTitle(editingId, editingTitle.trim());
+    }
+    setEditingId(null);
+    setEditingTitle('');
+  }, [editingId, editingTitle, updateTerminalTitle]);
+
+  /**
+   * Cancel editing (memoized)
+   */
+  const cancelEditing = useCallback((): void => {
+    setEditingId(null);
+    setEditingTitle('');
+  }, []);
+
+  /**
+   * Handle key press in title input (memoized)
+   */
+  const handleTitleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>): void => {
+    if (e.key === 'Enter') {
+      saveTitle();
+    } else if (e.key === 'Escape') {
+      cancelEditing();
+    }
+  }, [saveTitle, cancelEditing]);
 
   /**
    * Handle keyboard shortcuts
@@ -75,7 +140,7 @@ export default function TerminalPanel() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [terminals, activeTerminalId, setActiveTerminal]);
+  }, [terminals, activeTerminalId, setActiveTerminal, handleCreateTerminal, handleCloseTerminal]);
 
   /**
    * Focus input when editing starts
@@ -87,63 +152,11 @@ export default function TerminalPanel() {
     }
   }, [editingId]);
 
-  /**
-   * Handle creating a new terminal
-   */
-  const handleCreateTerminal = (): void => {
-    const created = createTerminal();
-    if (!created) {
-      alert(`Maximum ${maxTerminals} terminals allowed`);
-    }
-  };
-
-  /**
-   * Handle closing a terminal
-   * @param id - Terminal ID to close
-   */
-  const handleCloseTerminal = (id: string): void => {
-    closeTerminal(id);
-  };
-
-  /**
-   * Start editing terminal title
-   * @param id - Terminal ID
-   * @param currentTitle - Current title
-   */
-  const startEditing = (id: string, currentTitle: string): void => {
-    setEditingId(id);
-    setEditingTitle(currentTitle);
-  };
-
-  /**
-   * Save edited title
-   */
-  const saveTitle = (): void => {
-    if (editingId && editingTitle.trim()) {
-      updateTerminalTitle(editingId, editingTitle.trim());
-    }
-    setEditingId(null);
-    setEditingTitle('');
-  };
-
-  /**
-   * Cancel editing
-   */
-  const cancelEditing = (): void => {
-    setEditingId(null);
-    setEditingTitle('');
-  };
-
-  /**
-   * Handle key press in title input
-   */
-  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
-    if (e.key === 'Enter') {
-      saveTitle();
-    } else if (e.key === 'Escape') {
-      cancelEditing();
-    }
-  };
+  // Memoize active terminal check
+  const isAtMaxTerminals = useMemo(
+    () => terminals.length >= maxTerminals,
+    [terminals.length, maxTerminals]
+  );
 
   return (
     <div className="flex h-full flex-col">
@@ -200,14 +213,14 @@ export default function TerminalPanel() {
         {/* New terminal button */}
         <button
           onClick={handleCreateTerminal}
-          disabled={terminals.length >= maxTerminals}
+          disabled={isAtMaxTerminals}
           className={[
             'flex items-center gap-1 rounded px-2 py-1.5 text-xs font-medium transition-colors',
-            terminals.length >= maxTerminals
+            isAtMaxTerminals
               ? 'cursor-not-allowed text-muted-foreground/50'
               : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
           ].join(' ')}
-          title={`New Terminal (Ctrl+Shift+\`)${terminals.length >= maxTerminals ? ' - Max limit reached' : ''}`}
+          title={`New Terminal (Ctrl+Shift+\`)${isAtMaxTerminals ? ' - Max limit reached' : ''}`}
         >
           <Plus className="h-3.5 w-3.5" />
         </button>
@@ -251,3 +264,6 @@ export default function TerminalPanel() {
     </div>
   );
 }
+
+// Export memoized component
+export default memo(TerminalPanel);
