@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search } from 'lucide-react';
+import { useFocusTrap } from '@/lib/hooks/useFocusTrap';
 
 interface Shortcut {
   keys: string;
@@ -77,6 +78,24 @@ export function KeyboardShortcutsDialog({
   onOpenChange,
 }: KeyboardShortcutsDialogProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const dialogRef = useFocusTrap(open);
+
+  // Handle Escape key to close dialog
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && open) {
+        onOpenChange(false);
+      }
+    };
+
+    if (open) {
+      window.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [open, onOpenChange]);
 
   const filteredCategories = shortcutsData
     .map((category) => ({
@@ -92,40 +111,62 @@ export function KeyboardShortcutsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl h-[600px]">
+      <DialogContent 
+        ref={dialogRef as any}
+        className="max-w-3xl h-[600px]"
+        role="dialog"
+        aria-labelledby="shortcuts-dialog-title"
+        aria-describedby="shortcuts-dialog-description"
+      >
         <DialogHeader>
-          <DialogTitle>Keyboard Shortcuts</DialogTitle>
-          <DialogDescription>
+          <DialogTitle id="shortcuts-dialog-title">
+            Keyboard Shortcuts
+          </DialogTitle>
+          <DialogDescription id="shortcuts-dialog-description">
             اختصارات لوحة المفاتيح المتاحة في CodeForge IDE
           </DialogDescription>
         </DialogHeader>
 
         <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search 
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" 
+            aria-hidden="true"
+          />
           <Input
             placeholder="ابحث عن اختصار..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
+            aria-label="Search keyboard shortcuts"
           />
         </div>
 
         <Tabs defaultValue="Editor" className="flex-1">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="Editor">Editor</TabsTrigger>
-            <TabsTrigger value="Git">Git</TabsTrigger>
-            <TabsTrigger value="Terminal">Terminal</TabsTrigger>
-            <TabsTrigger value="Navigation">Navigation</TabsTrigger>
+          <TabsList 
+            className="grid w-full grid-cols-4"
+            role="tablist"
+            aria-label="Shortcut categories"
+          >
+            <TabsTrigger value="Editor" role="tab">Editor</TabsTrigger>
+            <TabsTrigger value="Git" role="tab">Git</TabsTrigger>
+            <TabsTrigger value="Terminal" role="tab">Terminal</TabsTrigger>
+            <TabsTrigger value="Navigation" role="tab">Navigation</TabsTrigger>
           </TabsList>
 
-          <ScrollArea className="h-[400px] mt-4">
+          <ScrollArea className="h-[400px] mt-4" role="region" aria-live="polite">
             {filteredCategories.map((category) => (
-              <TabsContent key={category.category} value={category.category}>
+              <TabsContent 
+                key={category.category} 
+                value={category.category}
+                role="tabpanel"
+                aria-labelledby={`tab-${category.category}`}
+              >
                 <div className="space-y-2">
                   {category.shortcuts.map((shortcut, index) => (
                     <div
                       key={index}
                       className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent transition-colors"
+                      role="listitem"
                     >
                       <div className="flex-1">
                         <p className="font-medium">{shortcut.description}</p>
@@ -133,7 +174,10 @@ export function KeyboardShortcutsDialog({
                           {shortcut.arabic}
                         </p>
                       </div>
-                      <kbd className="px-3 py-1.5 text-sm font-mono font-semibold border rounded-md bg-muted">
+                      <kbd 
+                        className="px-3 py-1.5 text-sm font-mono font-semibold border rounded-md bg-muted"
+                        aria-label={`Keyboard shortcut: ${shortcut.keys}`}
+                      >
                         {shortcut.keys}
                       </kbd>
                     </div>
@@ -144,7 +188,7 @@ export function KeyboardShortcutsDialog({
           </ScrollArea>
         </Tabs>
 
-        <div className="text-sm text-muted-foreground text-center">
+        <div className="text-sm text-muted-foreground text-center" role="note">
           Press{' '}
           <kbd className="px-2 py-1 mx-1 text-xs font-mono border rounded bg-muted">
             ?
@@ -153,7 +197,11 @@ export function KeyboardShortcutsDialog({
           <kbd className="px-2 py-1 mx-1 text-xs font-mono border rounded bg-muted">
             Ctrl+K Ctrl+S
           </kbd>{' '}
-          to open this dialog
+          to open this dialog. Press{' '}
+          <kbd className="px-2 py-1 mx-1 text-xs font-mono border rounded bg-muted">
+            Escape
+          </kbd>{' '}
+          to close.
         </div>
       </DialogContent>
     </Dialog>
