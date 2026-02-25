@@ -1,315 +1,231 @@
 /**
- * CodeForge IDE - Git Status Calculator
- * Agent 5: GitHub Integration
+ * Git Status Calculator
  * 
- * Calculates file status (modified, added, deleted, renamed, unchanged)
- * and provides UI helpers (icons, colors)
+ * Provides utilities for determining file status and visual indicators
+ * for Git operations.
+ * 
+ * @module lib/git/status
  */
 
-import { FileNode } from '../db/schema';
-
-/**
- * File status types
- */
 export type FileStatus = 
-  | 'modified'    // M - File modified
-  | 'added'       // A - File added (new)
-  | 'deleted'     // D - File deleted
-  | 'renamed'     // R - File renamed/moved
-  | 'unchanged'   // - - No changes
-  | 'untracked';  // U - Not tracked by git
+  | 'modified'
+  | 'added'
+  | 'deleted'
+  | 'renamed'
+  | 'unchanged'
+  | 'conflicted';
 
 /**
- * File status result
- */
-export interface FileStatusResult {
-  path: string;
-  status: FileStatus;
-  oldPath?: string;        // For renamed files
-  additions?: number;      // Lines added
-  deletions?: number;      // Lines deleted
-}
-
-/**
- * Compare two file contents to determine status
+ * Determine file status by comparing local and remote versions
  * 
- * @param localFile - Current local file
- * @param remoteFile - File from last commit (or undefined if new)
- * @returns File status
+ * @param localFile - Local file content (null if doesn't exist locally)
+ * @param remoteFile - Remote file content (null if doesn't exist remotely)
+ * @param localPath - Local file path
+ * @param remotePath - Remote file path (different if renamed)
+ * @returns FileStatus
+ * 
+ * @example
+ * ```ts
+ * const status = getFileStatus('new content', 'old content', 'file.ts', 'file.ts');
+ * // Returns: 'modified'
+ * ```
  */
 export function getFileStatus(
-  localFile: FileNode | undefined,
-  remoteFile: FileNode | undefined
+  localFile: string | null,
+  remoteFile: string | null,
+  localPath?: string,
+  remotePath?: string
 ): FileStatus {
-  // File exists locally but not remotely - added
-  if (localFile && !remoteFile) {
-    return 'added';
-  }
-
-  // File exists remotely but not locally - deleted
-  if (!localFile && remoteFile) {
-    return 'deleted';
-  }
-
-  // File exists in both - check if modified
-  if (localFile && remoteFile) {
-    // Compare content
-    if (localFile.content !== remoteFile.content) {
-      return 'modified';
+  try {
+    // File doesn't exist locally but exists remotely = deleted
+    if (localFile === null && remoteFile !== null) {
+      return 'deleted';
     }
 
-    // Check if renamed (path changed)
-    if (localFile.path !== remoteFile.path) {
+    // File exists locally but not remotely = added
+    if (localFile !== null && remoteFile === null) {
+      return 'added';
+    }
+
+    // Both null = unchanged (shouldn't happen)
+    if (localFile === null && remoteFile === null) {
+      return 'unchanged';
+    }
+
+    // Check if file was renamed
+    if (localPath && remotePath && localPath !== remotePath) {
       return 'renamed';
     }
 
+    // Compare content
+    if (localFile !== remoteFile) {
+      return 'modified';
+    }
+
+    // Content is identical
+    return 'unchanged';
+  } catch (error) {
+    console.error('Error determining file status:', error);
     return 'unchanged';
   }
-
-  return 'unchanged';
 }
 
 /**
- * Get status for multiple files
- * 
- * @param localFiles - Current local files
- * @param remoteFiles - Files from last commit
- * @returns Array of file status results
- */
-export function getFilesStatus(
-  localFiles: FileNode[],
-  remoteFiles: FileNode[]
-): FileStatusResult[] {
-  const results: FileStatusResult[] = [];
-  const remoteMap = new Map(remoteFiles.map(f => [f.path, f]));
-  const localMap = new Map(localFiles.map(f => [f.path, f]));
-
-  // Check all local files
-  for (const localFile of localFiles) {
-    if (localFile.type === 'folder') continue;
-
-    const remoteFile = remoteMap.get(localFile.path);
-    const status = getFileStatus(localFile, remoteFile);
-
-    if (status !== 'unchanged') {
-      results.push({
-        path: localFile.path,
-        status,
-      });
-    }
-  }
-
-  // Check for deleted files (in remote but not in local)
-  for (const remoteFile of remoteFiles) {
-    if (remoteFile.type === 'folder') continue;
-
-    if (!localMap.has(remoteFile.path)) {
-      results.push({
-        path: remoteFile.path,
-        status: 'deleted',
-      });
-    }
-  }
-
-  return results;
-}
-
-/**
- * Get status icon for UI display
+ * Get Git status icon for file
  * 
  * @param status - File status
- * @returns Single character icon
+ * @returns Single character icon (M, A, D, R, U, C)
+ * 
+ * @example
+ * ```ts
+ * const icon = getStatusIcon('modified'); // Returns: 'M'
+ * const icon = getStatusIcon('added');    // Returns: 'A'
+ * ```
  */
 export function getStatusIcon(status: FileStatus): string {
-  switch (status) {
-    case 'modified':
-      return 'M';
-    case 'added':
-      return 'A';
-    case 'deleted':
-      return 'D';
-    case 'renamed':
-      return 'R';
-    case 'untracked':
-      return 'U';
-    case 'unchanged':
-      return '-';
-    default:
-      return '?';
-  }
+  const icons: Record<FileStatus, string> = {
+    modified: 'M',
+    added: 'A',
+    deleted: 'D',
+    renamed: 'R',
+    unchanged: 'U',
+    conflicted: 'C'
+  };
+
+  return icons[status] || 'U';
 }
 
 /**
- * Get status color for UI display
+ * Get color for file status (hex code)
  * 
  * @param status - File status
- * @returns Color (CSS color name or hex)
+ * @returns Hex color code
+ * 
+ * @example
+ * ```ts
+ * const color = getStatusColor('modified'); // Returns: '#FFA500' (orange)
+ * const color = getStatusColor('added');    // Returns: '#00FF00' (green)
+ * ```
  */
 export function getStatusColor(status: FileStatus): string {
-  switch (status) {
-    case 'modified':
-      return '#FFA500'; // Orange
-    case 'added':
-      return '#00FF00'; // Green
-    case 'deleted':
-      return '#FF0000'; // Red
-    case 'renamed':
-      return '#00BFFF'; // Deep Sky Blue
-    case 'untracked':
-      return '#808080'; // Gray
-    case 'unchanged':
-      return '#FFFFFF'; // White
-    default:
-      return '#FFFFFF';
-  }
+  const colors: Record<FileStatus, string> = {
+    modified: '#FFA500', // Orange
+    added: '#00FF00',    // Green
+    deleted: '#FF0000',  // Red
+    renamed: '#00BFFF',  // Deep Sky Blue
+    unchanged: '#808080', // Gray
+    conflicted: '#FF00FF' // Magenta
+  };
+
+  return colors[status] || colors.unchanged;
 }
 
 /**
- * Get status color for dark theme
+ * Get Tailwind CSS class for file status
  * 
  * @param status - File status
- * @returns Dark theme color
+ * @returns Tailwind color class
+ * 
+ * @example
+ * ```ts
+ * const className = getStatusColorClass('modified');
+ * // Returns: 'text-orange-500'
+ * ```
  */
-export function getStatusColorDark(status: FileStatus): string {
-  switch (status) {
-    case 'modified':
-      return '#E5B567'; // Softer orange
-    case 'added':
-      return '#98C379'; // Softer green
-    case 'deleted':
-      return '#E06C75'; // Softer red
-    case 'renamed':
-      return '#61AFEF'; // Softer blue
-    case 'untracked':
-      return '#ABB2BF'; // Light gray
-    case 'unchanged':
-      return '#D4D4D4'; // Very light gray
-    default:
-      return '#D4D4D4';
-  }
+export function getStatusColorClass(status: FileStatus): string {
+  const classes: Record<FileStatus, string> = {
+    modified: 'text-orange-500',
+    added: 'text-green-500',
+    deleted: 'text-red-500',
+    renamed: 'text-blue-500',
+    unchanged: 'text-gray-500',
+    conflicted: 'text-pink-500'
+  };
+
+  return classes[status] || classes.unchanged;
 }
 
 /**
- * Get status description for tooltips
+ * Get human-readable status description
  * 
  * @param status - File status
  * @returns Human-readable description
+ * 
+ * @example
+ * ```ts
+ * const desc = getStatusDescription('modified');
+ * // Returns: 'Modified'
+ * ```
  */
 export function getStatusDescription(status: FileStatus): string {
-  switch (status) {
-    case 'modified':
-      return 'Modified';
-    case 'added':
-      return 'Added (new file)';
-    case 'deleted':
-      return 'Deleted';
-    case 'renamed':
-      return 'Renamed';
-    case 'untracked':
-      return 'Untracked';
-    case 'unchanged':
-      return 'No changes';
-    default:
-      return 'Unknown status';
-  }
+  const descriptions: Record<FileStatus, string> = {
+    modified: 'Modified',
+    added: 'Added',
+    deleted: 'Deleted',
+    renamed: 'Renamed',
+    unchanged: 'Unchanged',
+    conflicted: 'Conflicted'
+  };
+
+  return descriptions[status] || descriptions.unchanged;
 }
 
 /**
- * Check if file should be shown in changes list
+ * Check if file status indicates changes
  * 
  * @param status - File status
  * @returns True if file has changes
+ * 
+ * @example
+ * ```ts
+ * hasChanges('modified'); // true
+ * hasChanges('unchanged'); // false
+ * ```
  */
 export function hasChanges(status: FileStatus): boolean {
-  return status !== 'unchanged' && status !== 'untracked';
+  return status !== 'unchanged';
 }
 
 /**
- * Group files by status
+ * Check if file status can be staged
  * 
- * @param files - Array of file status results
- * @returns Object with files grouped by status
+ * @param status - File status
+ * @returns True if file can be staged
+ * 
+ * @example
+ * ```ts
+ * canBeStaged('modified'); // true
+ * canBeStaged('unchanged'); // false
+ * canBeStaged('conflicted'); // false
+ * ```
  */
-export function groupFilesByStatus(
-  files: FileStatusResult[]
-): Record<FileStatus, FileStatusResult[]> {
-  const groups: Record<FileStatus, FileStatusResult[]> = {
-    modified: [],
-    added: [],
-    deleted: [],
-    renamed: [],
-    unchanged: [],
-    untracked: [],
+export function canBeStaged(status: FileStatus): boolean {
+  return status !== 'unchanged' && status !== 'conflicted';
+}
+
+/**
+ * Get status priority for sorting (lower = higher priority)
+ * 
+ * @param status - File status
+ * @returns Priority number (1-6)
+ * 
+ * @example
+ * ```ts
+ * // Sort files by status priority
+ * files.sort((a, b) => 
+ *   getStatusPriority(a.status) - getStatusPriority(b.status)
+ * );
+ * ```
+ */
+export function getStatusPriority(status: FileStatus): number {
+  const priorities: Record<FileStatus, number> = {
+    conflicted: 1, // Highest priority
+    modified: 2,
+    added: 3,
+    renamed: 4,
+    deleted: 5,
+    unchanged: 6  // Lowest priority
   };
 
-  for (const file of files) {
-    groups[file.status].push(file);
-  }
-
-  return groups;
-}
-
-/**
- * Calculate simple line-based diff statistics
- * 
- * @param oldContent - Original content
- * @param newContent - Modified content
- * @returns Additions and deletions count
- */
-export function calculateDiffStats(
-  oldContent: string,
-  newContent: string
-): { additions: number; deletions: number; total: number } {
-  const oldLines = oldContent.split('\n');
-  const newLines = newContent.split('\n');
-
-  const oldSet = new Set(oldLines);
-  const newSet = new Set(newLines);
-
-  // Count additions (lines in new but not in old)
-  let additions = 0;
-  for (const line of newLines) {
-    if (!oldSet.has(line)) {
-      additions++;
-    }
-  }
-
-  // Count deletions (lines in old but not in new)
-  let deletions = 0;
-  for (const line of oldLines) {
-    if (!newSet.has(line)) {
-      deletions++;
-    }
-  }
-
-  return {
-    additions,
-    deletions,
-    total: additions + deletions,
-  };
-}
-
-/**
- * Check if path should be ignored by git
- * (Basic implementation - checks common patterns)
- * 
- * @param path - File path
- * @returns True if file should be ignored
- */
-export function shouldIgnoreFile(path: string): boolean {
-  const ignorePatterns = [
-    /node_modules\//,
-    /\.git\//,
-    /\.next\//,
-    /dist\//,
-    /build\//,
-    /\.env/,
-    /\.DS_Store/,
-    /\.log$/,
-    /package-lock\.json$/,
-    /yarn\.lock$/,
-    /pnpm-lock\.yaml$/,
-  ];
-
-  return ignorePatterns.some(pattern => pattern.test(path));
+  return priorities[status] || 6;
 }
