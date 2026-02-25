@@ -1,500 +1,638 @@
 /**
- * CodeForge IDE - Git Metadata Database
- * Agent 5: GitHub Integration
+ * Git Database Layer - IndexedDB store for Git metadata
  * 
- * IndexedDB storage for Git metadata (repositories, commits, branches, remotes)
- * Separate from file system database to maintain clean separation of concerns
+ * Manages local Git repository metadata including:
+ * - Repositories: Cloned repo information
+ * - Commits: Commit history and metadata
+ * - Branches: Local and remote branch tracking
+ * - Remotes: Remote repository connections
+ * - Staging: File staging area before commit
+ * 
+ * @module lib/db/git-db
  */
 
-import { openDB, IDBPDatabase, DBSchema } from 'idb';
+import type {
+  GitRepository,
+  GitCommit,
+  GitBranch,
+  GitRemote,
+  GitStagedFile
+} from '../git/github-types';
 
-export const GIT_DB_NAME = 'codeforge-git';
-export const GIT_DB_VERSION = 1;
+const DB_NAME = 'codeforge-git';
+const DB_VERSION = 1;
 
 /**
- * Git Repository metadata
+ * Object Store names
  */
-export interface GitRepository {
-  id: string;              // UUID
-  name: string;            // "codeforge-ide"
-  fullName: string;        // "bahoma31-jpg/codeforge-ide"
-  owner: string;           // "bahoma31-jpg"
-  cloneUrl: string;        // "https://github.com/..."
-  sshUrl?: string;         // "git@github.com:..."
-  defaultBranch: string;   // "main"
+const STORES = {
+  REPOSITORIES: 'repositories',
+  COMMITS: 'commits',
+  BRANCHES: 'branches',
+  REMOTES: 'remotes',
+  STAGING: 'staging'
+} as const;
+
+/**
+ * Repository store schema
+ */
+export interface RepositoryRecord {
+  id: string;
+  name: string;
+  fullName: string;
+  owner: string;
+  cloneUrl: string;
+  defaultBranch: string;
+  lastSynced: number;
   description?: string;
-  isPrivate: boolean;
-  stars: number;
-  forks: number;
-  language?: string;
-  lastSynced: number;      // Timestamp
-  createdAt: number;
-  updatedAt: number;
+  isPrivate?: boolean;
 }
 
 /**
- * Git Commit metadata
+ * Commit store schema
  */
-export interface GitCommit {
-  sha: string;                    // Commit SHA (primary key)
-  repoId: string;                 // Repository ID
-  message: string;                // Commit message
+export interface CommitRecord {
+  sha: string;
+  repoId: string;
+  message: string;
   author: {
-    name: string;
-    email: string;
-    date: string;                 // ISO timestamp
-  };
-  committer: {
     name: string;
     email: string;
     date: string;
   };
-  parentShas: string[];           // Parent commit SHAs
-  treeSha: string;                // Tree SHA
-  stats?: {
-    additions: number;
-    deletions: number;
-    total: number;
-  };
-  files?: string[];               // Changed file paths
-  createdAt: number;              // Local timestamp
+  date: string;
+  parentShas: string[];
+  tree?: string;
 }
 
 /**
- * Git Branch metadata
+ * Branch store schema
  */
-export interface GitBranch {
-  id: string;                     // UUID
-  name: string;                   // "main", "feature/xyz"
-  repoId: string;                 // Repository ID
-  commitSha: string;              // Current commit SHA
-  isRemote: boolean;              // Local or remote branch
-  isActive: boolean;              // Currently checked out
-  protected: boolean;
-  ahead: number;                  // Commits ahead of remote
-  behind: number;                 // Commits behind remote
-  createdAt: number;
-  updatedAt: number;
+export interface BranchRecord {
+  id: string; // repoId:branchName
+  name: string;
+  repoId: string;
+  commitSha: string;
+  isRemote: boolean;
+  isActive: boolean;
+  lastUpdated: number;
 }
 
 /**
- * Git Remote metadata
+ * Remote store schema
  */
-export interface GitRemote {
-  id: string;                     // UUID
-  name: string;                   // "origin", "upstream"
-  repoId: string;                 // Repository ID
-  url: string;                    // Remote URL
-  type: 'https' | 'ssh';
-  createdAt: number;
+export interface RemoteRecord {
+  id: string; // repoId:remoteName
+  name: string;
+  repoId: string;
+  url: string;
+  type: 'fetch' | 'push' | 'both';
 }
 
 /**
- * Git Staging area
+ * Staging area schema
  */
-export interface GitStaging {
-  id: string;                     // UUID
-  repoId: string;                 // Repository ID
-  filePath: string;               // "/src/index.ts"
+export interface StagingRecord {
+  id: string; // repoId:filePath
+  repoId: string;
+  filePath: string;
   status: 'modified' | 'added' | 'deleted' | 'renamed';
-  originalContent?: string;       // Original file content
-  modifiedContent?: string;       // Modified file content
-  originalPath?: string;          // For renamed files
-  staged: boolean;                // Staged for commit
-  createdAt: number;
-  updatedAt: number;
+  originalContent?: string;
+  modifiedContent?: string;
+  stagedAt: number;
 }
 
 /**
- * IndexedDB Schema
+ * Initialize or upgrade the Git database
  */
-interface GitDBSchema extends DBSchema {
-  repositories: {
-    key: string;
-    value: GitRepository;
-    indexes: {
-      'fullName': string;
-      'owner': string;
-      'updatedAt': number;
-    };
-  };
-  commits: {
-    key: string;
-    value: GitCommit;
-    indexes: {
-      'repoId': string;
-      'createdAt': number;
-      'author.name': string;
-    };
-  };
-  branches: {
-    key: string;
-    value: GitBranch;
-    indexes: {
-      'repoId': string;
-      'name': string;
-      'isActive': boolean;
-    };
-  };
-  remotes: {
-    key: string;
-    value: GitRemote;
-    indexes: {
-      'repoId': string;
-      'name': string;
-    };
-  };
-  staging: {
-    key: string;
-    value: GitStaging;
-    indexes: {
-      'repoId': string;
-      'filePath': string;
-      'staged': boolean;
-    };
-  };
-}
+function initDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-/**
- * Open Git database
- */
-export async function openGitDB(): Promise<IDBPDatabase<GitDBSchema>> {
-  return openDB<GitDBSchema>(GIT_DB_NAME, GIT_DB_VERSION, {
-    upgrade(db, oldVersion, newVersion, transaction) {
-      // Create repositories store
-      if (!db.objectStoreNames.contains('repositories')) {
-        const repoStore = db.createObjectStore('repositories', { keyPath: 'id' });
+    request.onerror = () => {
+      reject(new Error(`Failed to open Git database: ${request.error?.message}`));
+    };
+
+    request.onsuccess = () => {
+      resolve(request.result);
+    };
+
+    request.onupgradeneeded = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+
+      // Repositories store
+      if (!db.objectStoreNames.contains(STORES.REPOSITORIES)) {
+        const repoStore = db.createObjectStore(STORES.REPOSITORIES, { keyPath: 'id' });
         repoStore.createIndex('fullName', 'fullName', { unique: true });
         repoStore.createIndex('owner', 'owner', { unique: false });
-        repoStore.createIndex('updatedAt', 'updatedAt', { unique: false });
+        repoStore.createIndex('lastSynced', 'lastSynced', { unique: false });
       }
 
-      // Create commits store
-      if (!db.objectStoreNames.contains('commits')) {
-        const commitStore = db.createObjectStore('commits', { keyPath: 'sha' });
+      // Commits store
+      if (!db.objectStoreNames.contains(STORES.COMMITS)) {
+        const commitStore = db.createObjectStore(STORES.COMMITS, { keyPath: 'sha' });
         commitStore.createIndex('repoId', 'repoId', { unique: false });
-        commitStore.createIndex('createdAt', 'createdAt', { unique: false });
-        commitStore.createIndex('author.name', 'author.name', { unique: false });
+        commitStore.createIndex('date', 'date', { unique: false });
+        commitStore.createIndex('author', 'author.email', { unique: false });
       }
 
-      // Create branches store
-      if (!db.objectStoreNames.contains('branches')) {
-        const branchStore = db.createObjectStore('branches', { keyPath: 'id' });
+      // Branches store
+      if (!db.objectStoreNames.contains(STORES.BRANCHES)) {
+        const branchStore = db.createObjectStore(STORES.BRANCHES, { keyPath: 'id' });
         branchStore.createIndex('repoId', 'repoId', { unique: false });
-        branchStore.createIndex('name', 'name', { unique: false });
         branchStore.createIndex('isActive', 'isActive', { unique: false });
+        branchStore.createIndex('name', 'name', { unique: false });
       }
 
-      // Create remotes store
-      if (!db.objectStoreNames.contains('remotes')) {
-        const remoteStore = db.createObjectStore('remotes', { keyPath: 'id' });
+      // Remotes store
+      if (!db.objectStoreNames.contains(STORES.REMOTES)) {
+        const remoteStore = db.createObjectStore(STORES.REMOTES, { keyPath: 'id' });
         remoteStore.createIndex('repoId', 'repoId', { unique: false });
-        remoteStore.createIndex('name', 'name', { unique: false });
       }
 
-      // Create staging store
-      if (!db.objectStoreNames.contains('staging')) {
-        const stagingStore = db.createObjectStore('staging', { keyPath: 'id' });
+      // Staging store
+      if (!db.objectStoreNames.contains(STORES.STAGING)) {
+        const stagingStore = db.createObjectStore(STORES.STAGING, { keyPath: 'id' });
         stagingStore.createIndex('repoId', 'repoId', { unique: false });
-        stagingStore.createIndex('filePath', 'filePath', { unique: false });
-        stagingStore.createIndex('staged', 'staged', { unique: false });
+        stagingStore.createIndex('status', 'status', { unique: false });
       }
-    },
+    };
   });
 }
 
 /**
- * Repository Operations
+ * Get database connection
  */
-export const GitRepositoryDB = {
-  async create(repo: Omit<GitRepository, 'createdAt' | 'updatedAt'>): Promise<GitRepository> {
-    const db = await openGitDB();
-    const now = Date.now();
-    const newRepo: GitRepository = {
-      ...repo,
-      createdAt: now,
-      updatedAt: now,
-    };
-    await db.add('repositories', newRepo);
-    return newRepo;
-  },
+async function getDB(): Promise<IDBDatabase> {
+  try {
+    return await initDB();
+  } catch (error) {
+    throw new Error(`Git DB connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
 
-  async get(id: string): Promise<GitRepository | undefined> {
-    const db = await openGitDB();
-    return db.get('repositories', id);
-  },
-
-  async getByFullName(fullName: string): Promise<GitRepository | undefined> {
-    const db = await openGitDB();
-    return db.getFromIndex('repositories', 'fullName', fullName);
-  },
-
-  async list(): Promise<GitRepository[]> {
-    const db = await openGitDB();
-    return db.getAll('repositories');
-  },
-
-  async listByOwner(owner: string): Promise<GitRepository[]> {
-    const db = await openGitDB();
-    return db.getAllFromIndex('repositories', 'owner', owner);
-  },
-
-  async update(id: string, updates: Partial<GitRepository>): Promise<void> {
-    const db = await openGitDB();
-    const repo = await db.get('repositories', id);
-    if (!repo) throw new Error(`Repository ${id} not found`);
-    
-    const updated: GitRepository = {
-      ...repo,
-      ...updates,
-      updatedAt: Date.now(),
-    };
-    await db.put('repositories', updated);
-  },
-
-  async delete(id: string): Promise<void> {
-    const db = await openGitDB();
-    await db.delete('repositories', id);
-  },
-};
+// ============================================================================
+// REPOSITORIES CRUD
+// ============================================================================
 
 /**
- * Commit Operations
+ * Add or update a repository
  */
-export const GitCommitDB = {
-  async create(commit: Omit<GitCommit, 'createdAt'>): Promise<GitCommit> {
-    const db = await openGitDB();
-    const newCommit: GitCommit = {
-      ...commit,
-      createdAt: Date.now(),
-    };
-    await db.add('commits', newCommit);
-    return newCommit;
-  },
+export async function saveRepository(repo: RepositoryRecord): Promise<void> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.REPOSITORIES, 'readwrite');
+    const store = tx.objectStore(STORES.REPOSITORIES);
+    const request = store.put(repo);
 
-  async get(sha: string): Promise<GitCommit | undefined> {
-    const db = await openGitDB();
-    return db.get('commits', sha);
-  },
-
-  async listByRepo(repoId: string, limit?: number): Promise<GitCommit[]> {
-    const db = await openGitDB();
-    const commits = await db.getAllFromIndex('commits', 'repoId', repoId);
-    // Sort by date descending
-    commits.sort((a, b) => b.createdAt - a.createdAt);
-    return limit ? commits.slice(0, limit) : commits;
-  },
-
-  async listByAuthor(author: string): Promise<GitCommit[]> {
-    const db = await openGitDB();
-    return db.getAllFromIndex('commits', 'author.name', author);
-  },
-
-  async delete(sha: string): Promise<void> {
-    const db = await openGitDB();
-    await db.delete('commits', sha);
-  },
-
-  async deleteByRepo(repoId: string): Promise<void> {
-    const db = await openGitDB();
-    const commits = await db.getAllFromIndex('commits', 'repoId', repoId);
-    const tx = db.transaction('commits', 'readwrite');
-    await Promise.all(commits.map(commit => tx.store.delete(commit.sha)));
-    await tx.done;
-  },
-};
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(new Error(`Failed to save repository: ${request.error?.message}`));
+  });
+}
 
 /**
- * Branch Operations
+ * Get repository by ID
  */
-export const GitBranchDB = {
-  async create(branch: Omit<GitBranch, 'createdAt' | 'updatedAt'>): Promise<GitBranch> {
-    const db = await openGitDB();
-    const now = Date.now();
-    const newBranch: GitBranch = {
-      ...branch,
-      createdAt: now,
-      updatedAt: now,
-    };
-    await db.add('branches', newBranch);
-    return newBranch;
-  },
+export async function getRepository(id: string): Promise<RepositoryRecord | null> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.REPOSITORIES, 'readonly');
+    const store = tx.objectStore(STORES.REPOSITORIES);
+    const request = store.get(id);
 
-  async get(id: string): Promise<GitBranch | undefined> {
-    const db = await openGitDB();
-    return db.get('branches', id);
-  },
-
-  async listByRepo(repoId: string): Promise<GitBranch[]> {
-    const db = await openGitDB();
-    return db.getAllFromIndex('branches', 'repoId', repoId);
-  },
-
-  async getActive(repoId: string): Promise<GitBranch | undefined> {
-    const db = await openGitDB();
-    const branches = await db.getAllFromIndex('branches', 'repoId', repoId);
-    return branches.find(b => b.isActive);
-  },
-
-  async setActive(repoId: string, branchId: string): Promise<void> {
-    const db = await openGitDB();
-    const branches = await db.getAllFromIndex('branches', 'repoId', repoId);
-    
-    const tx = db.transaction('branches', 'readwrite');
-    await Promise.all(
-      branches.map(branch => {
-        const updated: GitBranch = {
-          ...branch,
-          isActive: branch.id === branchId,
-          updatedAt: Date.now(),
-        };
-        return tx.store.put(updated);
-      })
-    );
-    await tx.done;
-  },
-
-  async update(id: string, updates: Partial<GitBranch>): Promise<void> {
-    const db = await openGitDB();
-    const branch = await db.get('branches', id);
-    if (!branch) throw new Error(`Branch ${id} not found`);
-    
-    const updated: GitBranch = {
-      ...branch,
-      ...updates,
-      updatedAt: Date.now(),
-    };
-    await db.put('branches', updated);
-  },
-
-  async delete(id: string): Promise<void> {
-    const db = await openGitDB();
-    await db.delete('branches', id);
-  },
-
-  async deleteByRepo(repoId: string): Promise<void> {
-    const db = await openGitDB();
-    const branches = await db.getAllFromIndex('branches', 'repoId', repoId);
-    const tx = db.transaction('branches', 'readwrite');
-    await Promise.all(branches.map(branch => tx.store.delete(branch.id)));
-    await tx.done;
-  },
-};
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(new Error(`Failed to get repository: ${request.error?.message}`));
+  });
+}
 
 /**
- * Remote Operations
+ * Get all repositories
  */
-export const GitRemoteDB = {
-  async create(remote: Omit<GitRemote, 'createdAt'>): Promise<GitRemote> {
-    const db = await openGitDB();
-    const newRemote: GitRemote = {
-      ...remote,
-      createdAt: Date.now(),
-    };
-    await db.add('remotes', newRemote);
-    return newRemote;
-  },
+export async function getAllRepositories(): Promise<RepositoryRecord[]> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.REPOSITORIES, 'readonly');
+    const store = tx.objectStore(STORES.REPOSITORIES);
+    const request = store.getAll();
 
-  async get(id: string): Promise<GitRemote | undefined> {
-    const db = await openGitDB();
-    return db.get('remotes', id);
-  },
-
-  async listByRepo(repoId: string): Promise<GitRemote[]> {
-    const db = await openGitDB();
-    return db.getAllFromIndex('remotes', 'repoId', repoId);
-  },
-
-  async getByName(repoId: string, name: string): Promise<GitRemote | undefined> {
-    const db = await openGitDB();
-    const remotes = await db.getAllFromIndex('remotes', 'repoId', repoId);
-    return remotes.find(r => r.name === name);
-  },
-
-  async delete(id: string): Promise<void> {
-    const db = await openGitDB();
-    await db.delete('remotes', id);
-  },
-
-  async deleteByRepo(repoId: string): Promise<void> {
-    const db = await openGitDB();
-    const remotes = await db.getAllFromIndex('remotes', 'repoId', repoId);
-    const tx = db.transaction('remotes', 'readwrite');
-    await Promise.all(remotes.map(remote => tx.store.delete(remote.id)));
-    await tx.done;
-  },
-};
+    request.onsuccess = () => resolve(request.result || []);
+    request.onerror = () => reject(new Error(`Failed to get repositories: ${request.error?.message}`));
+  });
+}
 
 /**
- * Staging Area Operations
+ * Delete repository
  */
-export const GitStagingDB = {
-  async stage(staging: Omit<GitStaging, 'createdAt' | 'updatedAt'>): Promise<GitStaging> {
-    const db = await openGitDB();
-    const now = Date.now();
-    
-    // Check if file already staged
-    const existing = await this.getByPath(staging.repoId, staging.filePath);
-    if (existing) {
-      const updated: GitStaging = {
-        ...existing,
-        ...staging,
-        staged: true,
-        updatedAt: now,
+export async function deleteRepository(id: string): Promise<void> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.REPOSITORIES, 'readwrite');
+    const store = tx.objectStore(STORES.REPOSITORIES);
+    const request = store.delete(id);
+
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(new Error(`Failed to delete repository: ${request.error?.message}`));
+  });
+}
+
+// ============================================================================
+// COMMITS CRUD
+// ============================================================================
+
+/**
+ * Save commit
+ */
+export async function saveCommit(commit: CommitRecord): Promise<void> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.COMMITS, 'readwrite');
+    const store = tx.objectStore(STORES.COMMITS);
+    const request = store.put(commit);
+
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(new Error(`Failed to save commit: ${request.error?.message}`));
+  });
+}
+
+/**
+ * Get commit by SHA
+ */
+export async function getCommit(sha: string): Promise<CommitRecord | null> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.COMMITS, 'readonly');
+    const store = tx.objectStore(STORES.COMMITS);
+    const request = store.get(sha);
+
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(new Error(`Failed to get commit: ${request.error?.message}`));
+  });
+}
+
+/**
+ * Get commits by repository
+ */
+export async function getCommitsByRepo(repoId: string): Promise<CommitRecord[]> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.COMMITS, 'readonly');
+    const store = tx.objectStore(STORES.COMMITS);
+    const index = store.index('repoId');
+    const request = index.getAll(repoId);
+
+    request.onsuccess = () => {
+      const commits = request.result || [];
+      // Sort by date descending
+      commits.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      resolve(commits);
+    };
+    request.onerror = () => reject(new Error(`Failed to get commits: ${request.error?.message}`));
+  });
+}
+
+/**
+ * Delete commit
+ */
+export async function deleteCommit(sha: string): Promise<void> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.COMMITS, 'readwrite');
+    const store = tx.objectStore(STORES.COMMITS);
+    const request = store.delete(sha);
+
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(new Error(`Failed to delete commit: ${request.error?.message}`));
+  });
+}
+
+// ============================================================================
+// BRANCHES CRUD
+// ============================================================================
+
+/**
+ * Save branch
+ */
+export async function saveBranch(branch: BranchRecord): Promise<void> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.BRANCHES, 'readwrite');
+    const store = tx.objectStore(STORES.BRANCHES);
+    const request = store.put(branch);
+
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(new Error(`Failed to save branch: ${request.error?.message}`));
+  });
+}
+
+/**
+ * Get branch by ID
+ */
+export async function getBranch(id: string): Promise<BranchRecord | null> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.BRANCHES, 'readonly');
+    const store = tx.objectStore(STORES.BRANCHES);
+    const request = store.get(id);
+
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(new Error(`Failed to get branch: ${request.error?.message}`));
+  });
+}
+
+/**
+ * Get branches by repository
+ */
+export async function getBranchesByRepo(repoId: string): Promise<BranchRecord[]> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.BRANCHES, 'readonly');
+    const store = tx.objectStore(STORES.BRANCHES);
+    const index = store.index('repoId');
+    const request = index.getAll(repoId);
+
+    request.onsuccess = () => resolve(request.result || []);
+    request.onerror = () => reject(new Error(`Failed to get branches: ${request.error?.message}`));
+  });
+}
+
+/**
+ * Get active branch for repository
+ */
+export async function getActiveBranch(repoId: string): Promise<BranchRecord | null> {
+  const branches = await getBranchesByRepo(repoId);
+  return branches.find(b => b.isActive) || null;
+}
+
+/**
+ * Set active branch
+ */
+export async function setActiveBranch(repoId: string, branchName: string): Promise<void> {
+  const db = await getDB();
+  const branches = await getBranchesByRepo(repoId);
+
+  const tx = db.transaction(STORES.BRANCHES, 'readwrite');
+  const store = tx.objectStore(STORES.BRANCHES);
+
+  return new Promise((resolve, reject) => {
+    let pending = branches.length;
+    let hasError = false;
+
+    branches.forEach(branch => {
+      const updated = { ...branch, isActive: branch.name === branchName };
+      const request = store.put(updated);
+
+      request.onsuccess = () => {
+        pending--;
+        if (pending === 0 && !hasError) resolve();
       };
-      await db.put('staging', updated);
-      return updated;
-    }
-    
-    const newStaging: GitStaging = {
-      ...staging,
-      staged: true,
-      createdAt: now,
-      updatedAt: now,
-    };
-    await db.add('staging', newStaging);
-    return newStaging;
-  },
 
-  async unstage(id: string): Promise<void> {
-    const db = await openGitDB();
-    await db.delete('staging', id);
-  },
-
-  async get(id: string): Promise<GitStaging | undefined> {
-    const db = await openGitDB();
-    return db.get('staging', id);
-  },
-
-  async getByPath(repoId: string, filePath: string): Promise<GitStaging | undefined> {
-    const db = await openGitDB();
-    const staged = await db.getAllFromIndex('staging', 'repoId', repoId);
-    return staged.find(s => s.filePath === filePath);
-  },
-
-  async listByRepo(repoId: string): Promise<GitStaging[]> {
-    const db = await openGitDB();
-    return db.getAllFromIndex('staging', 'repoId', repoId);
-  },
-
-  async listStaged(repoId: string): Promise<GitStaging[]> {
-    const db = await openGitDB();
-    const all = await db.getAllFromIndex('staging', 'repoId', repoId);
-    return all.filter(s => s.staged);
-  },
-
-  async clearStaging(repoId: string): Promise<void> {
-    const db = await openGitDB();
-    const staged = await db.getAllFromIndex('staging', 'repoId', repoId);
-    const tx = db.transaction('staging', 'readwrite');
-    await Promise.all(staged.map(s => tx.store.delete(s.id)));
-    await tx.done;
-  },
-};
+      request.onerror = () => {
+        hasError = true;
+        reject(new Error(`Failed to update branch: ${request.error?.message}`));
+      };
+    });
+  });
+}
 
 /**
- * Utility: Generate UUID
+ * Delete branch
  */
-export function generateId(): string {
-  return crypto.randomUUID();
+export async function deleteBranch(id: string): Promise<void> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.BRANCHES, 'readwrite');
+    const store = tx.objectStore(STORES.BRANCHES);
+    const request = store.delete(id);
+
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(new Error(`Failed to delete branch: ${request.error?.message}`));
+  });
+}
+
+// ============================================================================
+// REMOTES CRUD
+// ============================================================================
+
+/**
+ * Save remote
+ */
+export async function saveRemote(remote: RemoteRecord): Promise<void> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.REMOTES, 'readwrite');
+    const store = tx.objectStore(STORES.REMOTES);
+    const request = store.put(remote);
+
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(new Error(`Failed to save remote: ${request.error?.message}`));
+  });
+}
+
+/**
+ * Get remotes by repository
+ */
+export async function getRemotesByRepo(repoId: string): Promise<RemoteRecord[]> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.REMOTES, 'readonly');
+    const store = tx.objectStore(STORES.REMOTES);
+    const index = store.index('repoId');
+    const request = index.getAll(repoId);
+
+    request.onsuccess = () => resolve(request.result || []);
+    request.onerror = () => reject(new Error(`Failed to get remotes: ${request.error?.message}`));
+  });
+}
+
+/**
+ * Delete remote
+ */
+export async function deleteRemote(id: string): Promise<void> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.REMOTES, 'readwrite');
+    const store = tx.objectStore(STORES.REMOTES);
+    const request = store.delete(id);
+
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(new Error(`Failed to delete remote: ${request.error?.message}`));
+  });
+}
+
+// ============================================================================
+// STAGING CRUD
+// ============================================================================
+
+/**
+ * Stage file
+ */
+export async function stageFile(file: StagingRecord): Promise<void> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.STAGING, 'readwrite');
+    const store = tx.objectStore(STORES.STAGING);
+    const request = store.put(file);
+
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(new Error(`Failed to stage file: ${request.error?.message}`));
+  });
+}
+
+/**
+ * Get staged files by repository
+ */
+export async function getStagedFiles(repoId: string): Promise<StagingRecord[]> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.STAGING, 'readonly');
+    const store = tx.objectStore(STORES.STAGING);
+    const index = store.index('repoId');
+    const request = index.getAll(repoId);
+
+    request.onsuccess = () => resolve(request.result || []);
+    request.onerror = () => reject(new Error(`Failed to get staged files: ${request.error?.message}`));
+  });
+}
+
+/**
+ * Unstage file
+ */
+export async function unstageFile(id: string): Promise<void> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.STAGING, 'readwrite');
+    const store = tx.objectStore(STORES.STAGING);
+    const request = store.delete(id);
+
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(new Error(`Failed to unstage file: ${request.error?.message}`));
+  });
+}
+
+/**
+ * Clear all staged files for repository
+ */
+export async function clearStaging(repoId: string): Promise<void> {
+  const stagedFiles = await getStagedFiles(repoId);
+  const db = await getDB();
+
+  const tx = db.transaction(STORES.STAGING, 'readwrite');
+  const store = tx.objectStore(STORES.STAGING);
+
+  return new Promise((resolve, reject) => {
+    let pending = stagedFiles.length;
+    if (pending === 0) {
+      resolve();
+      return;
+    }
+
+    let hasError = false;
+
+    stagedFiles.forEach(file => {
+      const request = store.delete(file.id);
+
+      request.onsuccess = () => {
+        pending--;
+        if (pending === 0 && !hasError) resolve();
+      };
+
+      request.onerror = () => {
+        hasError = true;
+        reject(new Error(`Failed to clear staging: ${request.error?.message}`));
+      };
+    });
+  });
+}
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+/**
+ * Clear all data for a repository
+ */
+export async function clearRepositoryData(repoId: string): Promise<void> {
+  try {
+    // Delete repository
+    await deleteRepository(repoId);
+
+    // Delete all commits
+    const commits = await getCommitsByRepo(repoId);
+    await Promise.all(commits.map(c => deleteCommit(c.sha)));
+
+    // Delete all branches
+    const branches = await getBranchesByRepo(repoId);
+    await Promise.all(branches.map(b => deleteBranch(b.id)));
+
+    // Delete all remotes
+    const remotes = await getRemotesByRepo(repoId);
+    await Promise.all(remotes.map(r => deleteRemote(r.id)));
+
+    // Clear staging
+    await clearStaging(repoId);
+  } catch (error) {
+    throw new Error(`Failed to clear repository data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+/**
+ * Get database statistics
+ */
+export async function getDBStats(): Promise<{
+  repositories: number;
+  commits: number;
+  branches: number;
+  remotes: number;
+  staged: number;
+}> {
+  const db = await getDB();
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(
+      [STORES.REPOSITORIES, STORES.COMMITS, STORES.BRANCHES, STORES.REMOTES, STORES.STAGING],
+      'readonly'
+    );
+
+    const stats = {
+      repositories: 0,
+      commits: 0,
+      branches: 0,
+      remotes: 0,
+      staged: 0
+    };
+
+    let pending = 5;
+
+    const onComplete = () => {
+      pending--;
+      if (pending === 0) resolve(stats);
+    };
+
+    tx.objectStore(STORES.REPOSITORIES).count().onsuccess = (e) => {
+      stats.repositories = (e.target as IDBRequest).result;
+      onComplete();
+    };
+
+    tx.objectStore(STORES.COMMITS).count().onsuccess = (e) => {
+      stats.commits = (e.target as IDBRequest).result;
+      onComplete();
+    };
+
+    tx.objectStore(STORES.BRANCHES).count().onsuccess = (e) => {
+      stats.branches = (e.target as IDBRequest).result;
+      onComplete();
+    };
+
+    tx.objectStore(STORES.REMOTES).count().onsuccess = (e) => {
+      stats.remotes = (e.target as IDBRequest).result;
+      onComplete();
+    };
+
+    tx.objectStore(STORES.STAGING).count().onsuccess = (e) => {
+      stats.staged = (e.target as IDBRequest).result;
+      onComplete();
+    };
+
+    tx.onerror = () => reject(new Error(`Failed to get stats: ${tx.error?.message}`));
+  });
 }
