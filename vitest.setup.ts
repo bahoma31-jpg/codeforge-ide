@@ -1,18 +1,13 @@
 import { expect, afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
-import '@testing-library/jest-dom/vitest';
+import '@testing-library/jest-dom';
 
-/**
- * Cleanup after each test case
- */
+// Cleanup after each test
 afterEach(() => {
   cleanup();
-  vi.clearAllMocks();
 });
 
-/**
- * Mock window.matchMedia
- */
+// Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: vi.fn().mockImplementation((query) => ({
@@ -27,32 +22,21 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 });
 
-/**
- * Mock IntersectionObserver
- */
-global.IntersectionObserver = class IntersectionObserver {
-  constructor() {}
-  disconnect() {}
-  observe() {}
-  takeRecords() {
-    return [];
-  }
-  unobserve() {}
-} as any;
+// Mock ResizeObserver
+global.ResizeObserver = vi.fn().mockImplementation(() => ({
+  observe: vi.fn(),
+  unobserve: vi.fn(),
+  disconnect: vi.fn(),
+}));
 
-/**
- * Mock ResizeObserver
- */
-global.ResizeObserver = class ResizeObserver {
-  constructor() {}
-  disconnect() {}
-  observe() {}
-  unobserve() {}
-} as any;
+// Mock IntersectionObserver
+global.IntersectionObserver = vi.fn().mockImplementation(() => ({
+  observe: vi.fn(),
+  unobserve: vi.fn(),
+  disconnect: vi.fn(),
+}));
 
-/**
- * Mock localStorage
- */
+// Mock localStorage
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
 
@@ -74,11 +58,32 @@ Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
 });
 
-/**
- * Mock console methods to reduce noise in tests
- */
-global.console = {
-  ...console,
-  error: vi.fn(),
-  warn: vi.fn(),
-};
+// Mock sessionStorage
+const sessionStorageMock = (() => {
+  let store: Record<string, string> = {};
+
+  return {
+    getItem: (key: string) => store[key] || null,
+    setItem: (key: string, value: string) => {
+      store[key] = value.toString();
+    },
+    removeItem: (key: string) => {
+      delete store[key];
+    },
+    clear: () => {
+      store = {};
+    },
+  };
+})();
+
+Object.defineProperty(window, 'sessionStorage', {
+  value: sessionStorageMock,
+});
+
+// Mock fetch for API calls in tests
+global.fetch = vi.fn();
+
+// Extend expect with custom matchers if needed
+expect.extend({
+  // Add custom matchers here
+});
