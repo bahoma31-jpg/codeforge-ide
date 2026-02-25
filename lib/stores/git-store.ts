@@ -1,61 +1,49 @@
 /**
- * Git Store - State management for Git operations
+ * CodeForge IDE - Git Store
+ * Agent 5: Phase 2 - Task 2
  * 
- * Integrates:
- * - git-db.ts for metadata storage
- * - github-auth.ts for authentication
- * - github.ts for API calls
- * - operations.ts for Git logic
- * - files-store.ts for file management
- * 
- * @module lib/stores/git-store
+ * Zustand store for Git state management
  */
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { GitHubAuth } from '../git/github-auth';
-import { GitHubAPI } from '../git/github';
-import type { GitHubUser, GitHubRepository, GitCommit } from '../git/github-types';
-import type {
-  RepositoryRecord,
-  CommitRecord,
-  BranchRecord,
-  RemoteRecord,
-  StagingRecord
+import { GitHubAuth } from '../api/github-auth';
+import { GitHubAPI } from '../api/github';
+import type { GitHubUser, GitHubRepository } from '../api/github-types';
+import {
+  initializeGitDB,
+  saveRepository,
+  getRepository,
+  getAllRepositories,
+  deleteRepository,
+  saveBranch,
+  getBranchesByRepo,
+  getActiveBranch,
+  setActiveBranch,
+  deleteBranch as dbDeleteBranch,
+  saveCommit,
+  getCommitsByRepo,
+  getStagedFiles,
+  stageFile as dbStageFile,
+  unstageFile as dbUnstageFile,
+  clearStagingArea,
+  type GitRepository,
+  type GitBranch,
+  type GitCommit,
+  type GitStagingEntry
 } from '../db/git-db';
-import * as GitDB from '../db/git-db';
-import * as Operations from '../git/operations';
-import { getFileStatus, type FileStatus } from '../git/status';
-import type { FileNode } from './files-store';
-
-/**
- * Git branch info
- */
-export interface GitBranch {
-  name: string;
-  commitSha: string;
-  isRemote: boolean;
-  isActive: boolean;
-}
-
-/**
- * File status in Git
- */
-export interface GitFileStatus {
-  path: string;
-  status: FileStatus;
-  staged: boolean;
-}
-
-/**
- * Git status summary
- */
-export interface GitStatus {
-  modified: GitFileStatus[];
-  added: GitFileStatus[];
-  deleted: GitFileStatus[];
-  staged: GitFileStatus[];
-}
+import { useFilesStore } from './files-store';
+import type { FileNode } from '../db/schema';
+import {
+  cloneRepository,
+  calculateStatus,
+  createCommitTree,
+  createCommit,
+  pushToRemote,
+  pullFromRemote,
+  type GitStatus,
+  type FileChange
+} from '../git/operations';
 
 /**
  * Git store state
@@ -64,187 +52,187 @@ interface GitState {
   // Authentication
   isAuthenticated: boolean;
   user: GitHubUser | null;
+  token: string | null;
 
   // Current repository
-  currentRepo: RepositoryRecord | null;
+  currentRepo: GitRepository | null;
   currentBranch: string;
-
-  // Branches
   branches: GitBranch[];
 
   // Status
   status: GitStatus;
+  commits: GitCommit[];
+  stagedFiles: GitStagingEntry[];
 
-  // Commits
-  commits: CommitRecord[];
-
-  // UI state
+  // UI State
   isLoading: boolean;
   error: string | null;
-  cloneProgress: number;
+  cloneProgress: number; // 0-100
+  isInitialized: boolean;
 
-  // Actions
+  // Actions - Authentication
+  initialize: () => Promise<void>;
   login: (token: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 
+  // Actions - Repository
   cloneRepo: (repoUrl: string) => Promise<void>;
+  openRepo: (repoId: string) => Promise<void>;
+  closeRepo: () => void;
+  deleteRepo: (repoId: string) => Promise<void>;
+
+  // Actions - Commits
   commitChanges: (message: string) => Promise<void>;
   pushChanges: () => Promise<void>;
   pullChanges: () => Promise<void>;
+  refreshCommits: () => Promise<void>;
 
+  // Actions - Branches
   switchBranch: (branchName: string) => Promise<void>;
   createBranch: (name: string, fromBranch?: string) => Promise<void>;
-  deleteBranch: (name: string) => Promise<void>;
+  removeBranch: (name: string) => Promise<void>;
+  refreshBranches: () => Promise<void>;
 
-  stageFile: (path: string) => Promise<void>;
-  unstageFile: (path: string) => Promise<void>;
-  stageAll: () => Promise<void>;
-  unstageAll: () => Promise<void>;
-
+  // Actions - Staging
+  addToStaging: (path: string) => Promise<void>;
+  removeFromStaging: (path: string) => Promise<void>;
   getStatus: () => Promise<void>;
   refreshStatus: () => Promise<void>;
 
-  // Utility
+  // UI Actions
   clearError: () => void;
-  setCurrentRepo: (repo: RepositoryRecord | null) => void;
 }
 
 /**
- * Git store instance
+ * Git store implementation
  */
-export const useGitStore = create<GitState>()()
+export const useGitStore = create<GitState>()(
   persist(
     (set, get) => ({
       // Initial state
       isAuthenticated: false,
       user: null,
+      token: null,
       currentRepo: null,
       currentBranch: 'main',
       branches: [],
-      status: {
-        modified: [],
-        added: [],
-        deleted: [],
-        staged: []
-      },
+      status: { modified: [], added: [], deleted: [], staged: [] },
       commits: [],
+      stagedFiles: [],
       isLoading: false,
       error: null,
       cloneProgress: 0,
+      isInitialized: false,
 
-      /**
-       * Login with GitHub token
-       */
-      login: async (token: string) => {
+      // Initialize
+      initialize: async () => {
+        if (get().isInitialized) return;
+
+        set({ isLoading: true, error: null });
         try {
-          set({ isLoading: true, error: null });
+          await initializeGitDB();
 
-          // Validate token
-          const auth = new GitHubAuth();
-          auth.setToken(token);
+          // Restore authentication if token exists
+          const { token } = get();
+          if (token) {
+            try {
+              const auth = new GitHubAuth(token);
+              const user = await auth.getUser();
+              set({ isAuthenticated: true, user });
+            } catch (error) {
+              // Token invalid, clear authentication
+              set({ isAuthenticated: false, user: null, token: null });
+            }
+          }
 
-          // Get user info
-          const api = new GitHubAPI(token);
-          const user = await api.getUser();
-
-          set({
-            isAuthenticated: true,
-            user,
-            isLoading: false
-          });
+          set({ isInitialized: true });
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Authentication failed';
-          set({
-            isAuthenticated: false,
-            user: null,
-            error: message,
-            isLoading: false
-          });
-          throw error;
+          const message = error instanceof Error ? error.message : 'Failed to initialize Git';
+          set({ error: message });
+          console.error('Git initialization error:', error);
+        } finally {
+          set({ isLoading: false });
         }
       },
 
-      /**
-       * Logout and clear authentication
-       */
-      logout: () => {
-        const auth = new GitHubAuth();
-        auth.clearToken();
+      // Login
+      login: async (token: string) => {
+        set({ isLoading: true, error: null });
+        try {
+          const auth = new GitHubAuth(token);
+          const user = await auth.getUser();
+          set({ isAuthenticated: true, user, token });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Authentication failed';
+          set({ error: message });
+          throw error;
+        } finally {
+          set({ isLoading: false });
+        }
+      },
 
+      // Logout
+      logout: async () => {
         set({
           isAuthenticated: false,
           user: null,
+          token: null,
           currentRepo: null,
+          currentBranch: 'main',
           branches: [],
+          status: { modified: [], added: [], deleted: [], staged: [] },
           commits: [],
-          status: {
-            modified: [],
-            added: [],
-            deleted: [],
-            staged: []
-          }
+          stagedFiles: []
         });
       },
 
-      /**
-       * Clone repository
-       */
+      // Clone repository
       cloneRepo: async (repoUrl: string) => {
+        const { token } = get();
+        if (!token) throw new Error('Not authenticated');
+
+        set({ isLoading: true, error: null, cloneProgress: 0 });
         try {
-          const { user } = get();
-          if (!user) throw new Error('Not authenticated');
-
-          set({ isLoading: true, error: null, cloneProgress: 0 });
-
           // Parse repository URL
-          const urlParts = repoUrl.replace('https://github.com/', '').split('/');
-          const owner = urlParts[0];
-          const repo = urlParts[1]?.replace('.git', '');
+          const match = repoUrl.match(/github\.com[\/:]([^\/]+)\/([^\/\.]+)/);
+          if (!match) throw new Error('Invalid GitHub repository URL');
 
-          if (!owner || !repo) {
-            throw new Error('Invalid repository URL');
-          }
+          const [, owner, repo] = match;
+          const api = new GitHubAPI(token);
 
-          // Get auth token
-          const auth = new GitHubAuth();
-          const token = auth.getToken();
-          if (!token) throw new Error('No authentication token');
+          // Get repository info
+          set({ cloneProgress: 10 });
+          const repoInfo = await api.getRepository(owner, repo);
 
-          // Clone repository
-          const files = await Operations.cloneRepository(
+          // Clone repository files
+          const files = await cloneRepository(
             owner,
             repo,
             token,
-            'main',
-            (progress, message) => {
-              set({ cloneProgress: progress });
-            }
+            (progress) => set({ cloneProgress: 10 + progress * 0.8 })
           );
 
-          // Save to files-store
-          const { useFilesStore } = await import('./files-store');
+          // Save to files store
+          set({ cloneProgress: 95 });
           const filesStore = useFilesStore.getState();
+          for (const file of files) {
+            if (file.type === 'file') {
+              await filesStore.createFile(
+                file.name,
+                file.parentId,
+                file.content,
+                file.language
+              );
+            } else {
+              await filesStore.createFolder(file.name, file.parentId);
+            }
+          }
 
-          // Create root folder
-          const rootFolder: FileNode = {
-            id: repo,
-            name: repo,
-            type: 'folder',
-            path: '/',
-            children: files
-          };
-
-          filesStore.setFiles([rootFolder]);
-
-          // Get repository info
-          const api = new GitHubAPI(token);
-          const repoInfo = await api.getRepository(owner, repo);
-
-          // Save repository to DB
-          const repoRecord: RepositoryRecord = {
+          // Save repository metadata
+          const repository: GitRepository = {
             id: `${owner}/${repo}`,
             name: repo,
-            fullName: repoInfo.full_name,
+            fullName: `${owner}/${repo}`,
             owner,
             cloneUrl: repoInfo.clone_url,
             defaultBranch: repoInfo.default_branch,
@@ -252,571 +240,414 @@ export const useGitStore = create<GitState>()()
             description: repoInfo.description,
             isPrivate: repoInfo.private
           };
+          await saveRepository(repository);
 
-          await GitDB.saveRepository(repoRecord);
-
-          // Save main branch
-          const mainBranch: BranchRecord = {
-            id: `${repoRecord.id}:main`,
-            name: 'main',
-            repoId: repoRecord.id,
+          // Save default branch
+          const branch: GitBranch = {
+            name: repoInfo.default_branch,
+            repoId: repository.id,
             commitSha: '', // Will be updated on first commit
             isRemote: true,
-            isActive: true,
-            lastUpdated: Date.now()
+            isActive: true
           };
-
-          await GitDB.saveBranch(mainBranch);
-
-          // Save origin remote
-          const originRemote: RemoteRecord = {
-            id: `${repoRecord.id}:origin`,
-            name: 'origin',
-            repoId: repoRecord.id,
-            url: repoInfo.clone_url,
-            type: 'both'
-          };
-
-          await GitDB.saveRemote(originRemote);
+          await saveBranch(branch);
 
           set({
-            currentRepo: repoRecord,
-            currentBranch: 'main',
-            branches: [{
-              name: 'main',
-              commitSha: '',
-              isRemote: true,
-              isActive: true
-            }],
-            isLoading: false,
+            currentRepo: repository,
+            currentBranch: repoInfo.default_branch,
+            branches: [branch],
             cloneProgress: 100
           });
 
-          // Refresh status
+          // Refresh commits and status
+          await get().refreshCommits();
           await get().refreshStatus();
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Clone failed';
-          set({
-            error: message,
-            isLoading: false,
-            cloneProgress: 0
-          });
+          const message = error instanceof Error ? error.message : 'Failed to clone repository';
+          set({ error: message, cloneProgress: 0 });
           throw error;
+        } finally {
+          set({ isLoading: false });
         }
       },
 
-      /**
-       * Commit staged changes
-       */
-      commitChanges: async (message: string) => {
+      // Open existing repository
+      openRepo: async (repoId: string) => {
+        set({ isLoading: true, error: null });
         try {
-          const { currentRepo, user, status } = get();
-          if (!currentRepo || !user) throw new Error('Not authenticated or no repository');
+          const repo = await getRepository(repoId);
+          if (!repo) throw new Error('Repository not found');
 
-          // Validate message
-          const validation = Operations.validateCommitMessage(message);
-          if (!validation.valid) {
-            throw new Error(validation.error);
+          const branches = await getBranchesByRepo(repoId);
+          const activeBranch = await getActiveBranch(repoId);
+
+          set({
+            currentRepo: repo,
+            currentBranch: activeBranch?.name || repo.defaultBranch,
+            branches
+          });
+
+          await get().refreshCommits();
+          await get().refreshStatus();
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Failed to open repository';
+          set({ error: message });
+          throw error;
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      // Close repository
+      closeRepo: () => {
+        set({
+          currentRepo: null,
+          currentBranch: 'main',
+          branches: [],
+          status: { modified: [], added: [], deleted: [], staged: [] },
+          commits: [],
+          stagedFiles: []
+        });
+      },
+
+      // Delete repository
+      deleteRepo: async (repoId: string) => {
+        set({ isLoading: true, error: null });
+        try {
+          await deleteRepository(repoId);
+          if (get().currentRepo?.id === repoId) {
+            get().closeRepo();
           }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Failed to delete repository';
+          set({ error: message });
+          throw error;
+        } finally {
+          set({ isLoading: false });
+        }
+      },
 
-          set({ isLoading: true, error: null });
+      // Commit changes
+      commitChanges: async (message: string) => {
+        const { currentRepo, token, stagedFiles } = get();
+        if (!currentRepo || !token) throw new Error('No repository open or not authenticated');
+        if (stagedFiles.length === 0) throw new Error('No files staged for commit');
 
-          // Get staged files
-          const stagedFiles = status.staged;
-          if (stagedFiles.length === 0) {
-            throw new Error('No files staged for commit');
-          }
-
-          // Get files from files-store
-          const { useFilesStore } = await import('./files-store');
-          const filesStore = useFilesStore.getState();
-          const allFiles = filesStore.getAllFiles();
-
-          // Filter to staged files only
-          const changedFiles = allFiles.filter(f => 
-            stagedFiles.some(sf => sf.path === f.path)
-          );
-
-          // Get auth token
-          const auth = new GitHubAuth();
-          const token = auth.getToken();
-          if (!token) throw new Error('No authentication token');
-
-          // Parse repo info
-          const [owner, repo] = currentRepo.id.split('/');
-
-          // Get current branch HEAD
+        set({ isLoading: true, error: null });
+        try {
+          const [owner, repo] = currentRepo.fullName.split('/');
           const api = new GitHubAPI(token);
-          const ref = await api.getRef(owner, repo, `heads/${get().currentBranch}`);
-          const parentSha = ref.object.sha;
 
-          // Get parent commit to get tree SHA
-          const parentCommit = await api.getCommit(owner, repo, parentSha);
+          // Get base tree from last commit
+          const commits = await getCommitsByRepo(currentRepo.id);
+          const lastCommit = commits[0];
+          const baseTreeSha = lastCommit?.treeSha || null;
 
-          // Create tree
-          const treeSha = await Operations.createCommitTree(
-            changedFiles,
-            parentCommit.tree.sha,
-            owner,
-            repo,
-            token
-          );
+          // Prepare file changes
+          const changes: FileChange[] = stagedFiles.map(entry => ({
+            path: entry.filePath,
+            content: entry.modifiedContent || '',
+            status: entry.status
+          }));
+
+          // Create commit tree
+          const treeSha = await createCommitTree(changes, baseTreeSha, token, owner, repo);
 
           // Create commit
-          const commitSha = await Operations.createCommit(
+          const commitSha = await createCommit(
             message,
             treeSha,
-            parentSha,
+            lastCommit?.sha || null,
+            token,
             owner,
-            repo,
-            token
+            repo
           );
 
-          // Save commit to DB
-          const commitRecord: CommitRecord = {
+          // Save commit to database
+          const commit: GitCommit = {
             sha: commitSha,
             repoId: currentRepo.id,
             message,
-            author: {
-              name: user.login,
-              email: user.email || `${user.login}@users.noreply.github.com`,
-              date: new Date().toISOString()
-            },
-            date: new Date().toISOString(),
-            parentShas: [parentSha],
-            tree: treeSha
+            author: get().user?.login || 'Unknown',
+            authorEmail: get().user?.email,
+            date: Date.now(),
+            parentShas: lastCommit ? [lastCommit.sha] : [],
+            treeSha
           };
+          await saveCommit(commit);
 
-          await GitDB.saveCommit(commitRecord);
+          // Clear staging area
+          await clearStagingArea(currentRepo.id);
 
-          // Clear staging
-          await GitDB.clearStaging(currentRepo.id);
-
-          // Update local branch
-          await Operations.pushToRemote(owner, repo, get().currentBranch, commitSha, token);
-
-          set({ isLoading: false });
-
-          // Refresh status and commits
+          set({ stagedFiles: [] });
+          await get().refreshCommits();
           await get().refreshStatus();
-          const commits = await GitDB.getCommitsByRepo(currentRepo.id);
-          set({ commits });
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Commit failed';
-          set({ error: message, isLoading: false });
+          const message = error instanceof Error ? error.message : 'Failed to commit changes';
+          set({ error: message });
           throw error;
+        } finally {
+          set({ isLoading: false });
         }
       },
 
-      /**
-       * Push changes to remote
-       */
+      // Push changes
       pushChanges: async () => {
+        const { currentRepo, currentBranch, token } = get();
+        if (!currentRepo || !token) throw new Error('No repository open or not authenticated');
+
+        set({ isLoading: true, error: null });
         try {
-          const { currentRepo, currentBranch } = get();
-          if (!currentRepo) throw new Error('No repository');
+          const [owner, repo] = currentRepo.fullName.split('/');
+          const commits = await getCommitsByRepo(currentRepo.id);
+          const lastCommit = commits[0];
 
-          set({ isLoading: true, error: null });
+          if (!lastCommit) throw new Error('No commits to push');
 
-          // Get token
-          const auth = new GitHubAuth();
-          const token = auth.getToken();
-          if (!token) throw new Error('No authentication token');
+          await pushToRemote(owner, repo, currentBranch, lastCommit.sha, token);
 
-          // Get latest local commit
-          const commits = await GitDB.getCommitsByRepo(currentRepo.id);
-          if (commits.length === 0) {
-            throw new Error('No commits to push');
-          }
-
-          const latestCommit = commits[0];
-          const [owner, repo] = currentRepo.id.split('/');
-
-          // Push
-          await Operations.pushToRemote(
-            owner,
-            repo,
-            currentBranch,
-            latestCommit.sha,
-            token
-          );
-
-          set({ isLoading: false });
+          // Update repository last synced
+          const updatedRepo = { ...currentRepo, lastSynced: Date.now() };
+          await saveRepository(updatedRepo);
+          set({ currentRepo: updatedRepo });
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Push failed';
-          set({ error: message, isLoading: false });
+          const message = error instanceof Error ? error.message : 'Failed to push changes';
+          set({ error: message });
           throw error;
+        } finally {
+          set({ isLoading: false });
         }
       },
 
-      /**
-       * Pull changes from remote
-       */
+      // Pull changes
       pullChanges: async () => {
+        const { currentRepo, currentBranch, token } = get();
+        if (!currentRepo || !token) throw new Error('No repository open or not authenticated');
+
+        set({ isLoading: true, error: null });
         try {
-          const { currentRepo, currentBranch } = get();
-          if (!currentRepo) throw new Error('No repository');
+          const [owner, repo] = currentRepo.fullName.split('/');
+          const updatedFiles = await pullFromRemote(owner, repo, currentBranch, token);
 
-          set({ isLoading: true, error: null });
-
-          // Get token
-          const auth = new GitHubAuth();
-          const token = auth.getToken();
-          if (!token) throw new Error('No authentication token');
-
-          const [owner, repo] = currentRepo.id.split('/');
-
-          // Pull files
-          const files = await Operations.pullFromRemote(
-            owner,
-            repo,
-            currentBranch,
-            token
-          );
-
-          // Update files-store
-          const { useFilesStore } = await import('./files-store');
+          // Update files in files store
           const filesStore = useFilesStore.getState();
-
-          const rootFolder: FileNode = {
-            id: repo,
-            name: repo,
-            type: 'folder',
-            path: '/',
-            children: files
-          };
-
-          filesStore.setFiles([rootFolder]);
-
-          set({ isLoading: false });
-
-          // Refresh status
-          await get().refreshStatus();
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Pull failed';
-          set({ error: message, isLoading: false });
-          throw error;
-        }
-      },
-
-      /**
-       * Switch to different branch
-       */
-      switchBranch: async (branchName: string) => {
-        try {
-          const { currentRepo } = get();
-          if (!currentRepo) throw new Error('No repository');
-
-          set({ isLoading: true, error: null });
-
-          // Update active branch in DB
-          await GitDB.setActiveBranch(currentRepo.id, branchName);
-
-          // Get updated branches
-          const branchRecords = await GitDB.getBranchesByRepo(currentRepo.id);
-          const branches = branchRecords.map(b => ({
-            name: b.name,
-            commitSha: b.commitSha,
-            isRemote: b.isRemote,
-            isActive: b.isActive
-          }));
-
-          set({
-            currentBranch: branchName,
-            branches,
-            isLoading: false
-          });
-
-          // Refresh status
-          await get().refreshStatus();
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Branch switch failed';
-          set({ error: message, isLoading: false });
-          throw error;
-        }
-      },
-
-      /**
-       * Create new branch
-       */
-      createBranch: async (name: string, fromBranch?: string) => {
-        try {
-          const { currentRepo, currentBranch } = get();
-          if (!currentRepo) throw new Error('No repository');
-
-          // Validate name
-          const validation = Operations.validateBranchName(name);
-          if (!validation.valid) {
-            throw new Error(validation.error);
-          }
-
-          set({ isLoading: true, error: null });
-
-          // Get token
-          const auth = new GitHubAuth();
-          const token = auth.getToken();
-          if (!token) throw new Error('No authentication token');
-
-          const [owner, repo] = currentRepo.id.split('/');
-          const sourceBranch = fromBranch || currentBranch;
-
-          // Get source branch SHA
-          const api = new GitHubAPI(token);
-          const ref = await api.getRef(owner, repo, `heads/${sourceBranch}`);
-
-          // Create branch
-          await Operations.createBranch(owner, repo, name, ref.object.sha, token);
-
-          // Save to DB
-          const newBranch: BranchRecord = {
-            id: `${currentRepo.id}:${name}`,
-            name,
-            repoId: currentRepo.id,
-            commitSha: ref.object.sha,
-            isRemote: true,
-            isActive: false,
-            lastUpdated: Date.now()
-          };
-
-          await GitDB.saveBranch(newBranch);
-
-          // Refresh branches
-          const branchRecords = await GitDB.getBranchesByRepo(currentRepo.id);
-          const branches = branchRecords.map(b => ({
-            name: b.name,
-            commitSha: b.commitSha,
-            isRemote: b.isRemote,
-            isActive: b.isActive
-          }));
-
-          set({ branches, isLoading: false });
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Branch creation failed';
-          set({ error: message, isLoading: false });
-          throw error;
-        }
-      },
-
-      /**
-       * Delete branch
-       */
-      deleteBranch: async (name: string) => {
-        try {
-          const { currentRepo, currentBranch } = get();
-          if (!currentRepo) throw new Error('No repository');
-          if (name === currentBranch) {
-            throw new Error('Cannot delete active branch');
-          }
-
-          set({ isLoading: true, error: null });
-
-          // Get token
-          const auth = new GitHubAuth();
-          const token = auth.getToken();
-          if (!token) throw new Error('No authentication token');
-
-          const [owner, repo] = currentRepo.id.split('/');
-
-          // Delete from remote
-          await Operations.deleteBranch(owner, repo, name, token);
-
-          // Delete from DB
-          await GitDB.deleteBranch(`${currentRepo.id}:${name}`);
-
-          // Refresh branches
-          const branchRecords = await GitDB.getBranchesByRepo(currentRepo.id);
-          const branches = branchRecords.map(b => ({
-            name: b.name,
-            commitSha: b.commitSha,
-            isRemote: b.isRemote,
-            isActive: b.isActive
-          }));
-
-          set({ branches, isLoading: false });
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Branch deletion failed';
-          set({ error: message, isLoading: false });
-          throw error;
-        }
-      },
-
-      /**
-       * Stage file for commit
-       */
-      stageFile: async (path: string) => {
-        try {
-          const { currentRepo } = get();
-          if (!currentRepo) throw new Error('No repository');
-
-          // Get file from files-store
-          const { useFilesStore } = await import('./files-store');
-          const filesStore = useFilesStore.getState();
-          const file = filesStore.getFileByPath(path);
-
-          if (!file) throw new Error('File not found');
-
-          // Create staging record
-          const stagingRecord: StagingRecord = {
-            id: `${currentRepo.id}:${path}`,
-            repoId: currentRepo.id,
-            filePath: path,
-            status: 'modified', // Simplified for now
-            modifiedContent: file.content,
-            stagedAt: Date.now()
-          };
-
-          await GitDB.stageFile(stagingRecord);
-
-          // Refresh status
-          await get().refreshStatus();
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Stage failed';
-          set({ error: message });
-          throw error;
-        }
-      },
-
-      /**
-       * Unstage file
-       */
-      unstageFile: async (path: string) => {
-        try {
-          const { currentRepo } = get();
-          if (!currentRepo) throw new Error('No repository');
-
-          await GitDB.unstageFile(`${currentRepo.id}:${path}`);
-
-          // Refresh status
-          await get().refreshStatus();
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unstage failed';
-          set({ error: message });
-          throw error;
-        }
-      },
-
-      /**
-       * Stage all changed files
-       */
-      stageAll: async () => {
-        try {
-          const { status } = get();
-          const allChanges = [
-            ...status.modified,
-            ...status.added,
-            ...status.deleted
-          ];
-
-          for (const file of allChanges) {
-            if (!file.staged) {
-              await get().stageFile(file.path);
+          for (const file of updatedFiles) {
+            const existingNode = filesStore.nodes.find(n => n.path === file.path);
+            if (existingNode) {
+              await filesStore.updateFile(existingNode.id, { content: file.content });
+            } else if (file.type === 'file') {
+              await filesStore.createFile(
+                file.name,
+                file.parentId,
+                file.content,
+                file.language
+              );
             }
           }
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Stage all failed';
-          set({ error: message });
-          throw error;
-        }
-      },
 
-      /**
-       * Unstage all files
-       */
-      unstageAll: async () => {
-        try {
-          const { currentRepo } = get();
-          if (!currentRepo) throw new Error('No repository');
+          // Update repository last synced
+          const updatedRepo = { ...currentRepo, lastSynced: Date.now() };
+          await saveRepository(updatedRepo);
+          set({ currentRepo: updatedRepo });
 
-          await GitDB.clearStaging(currentRepo.id);
+          await get().refreshCommits();
           await get().refreshStatus();
         } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unstage all failed';
+          const message = error instanceof Error ? error.message : 'Failed to pull changes';
+          set({ error: message });
+          throw error;
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      // Refresh commits
+      refreshCommits: async () => {
+        const { currentRepo } = get();
+        if (!currentRepo) return;
+
+        try {
+          const commits = await getCommitsByRepo(currentRepo.id);
+          set({ commits });
+        } catch (error) {
+          console.error('Failed to refresh commits:', error);
+        }
+      },
+
+      // Switch branch
+      switchBranch: async (branchName: string) => {
+        const { currentRepo } = get();
+        if (!currentRepo) throw new Error('No repository open');
+
+        set({ isLoading: true, error: null });
+        try {
+          await setActiveBranch(currentRepo.id, branchName);
+          set({ currentBranch: branchName });
+          await get().refreshBranches();
+          await get().refreshStatus();
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Failed to switch branch';
+          set({ error: message });
+          throw error;
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      // Create branch
+      createBranch: async (name: string, fromBranch?: string) => {
+        const { currentRepo, currentBranch } = get();
+        if (!currentRepo) throw new Error('No repository open');
+
+        set({ isLoading: true, error: null });
+        try {
+          const sourceBranch = fromBranch || currentBranch;
+          const sourceData = await getActiveBranch(currentRepo.id);
+
+          const branch: GitBranch = {
+            name,
+            repoId: currentRepo.id,
+            commitSha: sourceData?.commitSha || '',
+            isRemote: false,
+            isActive: false
+          };
+          await saveBranch(branch);
+          await get().refreshBranches();
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Failed to create branch';
+          set({ error: message });
+          throw error;
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      // Remove branch
+      removeBranch: async (name: string) => {
+        const { currentRepo, currentBranch } = get();
+        if (!currentRepo) throw new Error('No repository open');
+        if (name === currentBranch) throw new Error('Cannot delete active branch');
+
+        set({ isLoading: true, error: null });
+        try {
+          await dbDeleteBranch(currentRepo.id, name);
+          await get().refreshBranches();
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Failed to delete branch';
+          set({ error: message });
+          throw error;
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      // Refresh branches
+      refreshBranches: async () => {
+        const { currentRepo } = get();
+        if (!currentRepo) return;
+
+        try {
+          const branches = await getBranchesByRepo(currentRepo.id);
+          set({ branches });
+        } catch (error) {
+          console.error('Failed to refresh branches:', error);
+        }
+      },
+
+      // Add to staging
+      addToStaging: async (path: string) => {
+        const { currentRepo } = get();
+        if (!currentRepo) throw new Error('No repository open');
+
+        try {
+          // Get file content from files store
+          const filesStore = useFilesStore.getState();
+          const node = filesStore.nodes.find(n => n.path === path);
+          if (!node || node.type !== 'file') throw new Error('File not found');
+
+          const entry: GitStagingEntry = {
+            repoId: currentRepo.id,
+            filePath: path,
+            status: 'modified', // Will be calculated properly in getStatus
+            modifiedContent: node.content
+          };
+          await dbStageFile(entry);
+
+          const stagedFiles = await getStagedFiles(currentRepo.id);
+          set({ stagedFiles });
+          await get().refreshStatus();
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Failed to stage file';
           set({ error: message });
           throw error;
         }
       },
 
-      /**
-       * Get Git status
-       */
-      getStatus: async () => {
-        await get().refreshStatus();
-      },
+      // Remove from staging
+      removeFromStaging: async (path: string) => {
+        const { currentRepo } = get();
+        if (!currentRepo) throw new Error('No repository open');
 
-      /**
-       * Refresh Git status
-       */
-      refreshStatus: async () => {
         try {
-          const { currentRepo } = get();
-          if (!currentRepo) return;
-
-          // Get current files
-          const { useFilesStore } = await import('./files-store');
-          const filesStore = useFilesStore.getState();
-          const currentFiles = filesStore.getAllFiles();
-
-          // Get last commit files (stub for now)
-          const lastCommitFiles: FileNode[] = [];
-
-          // Calculate status
-          const gitStatus = Operations.calculateStatus(currentFiles, lastCommitFiles);
-
-          // Get staged files
-          const stagedRecords = await GitDB.getStagedFiles(currentRepo.id);
-          const stagedPaths = new Set(stagedRecords.map(r => r.filePath));
-
-          // Build status
-          const status: GitStatus = {
-            modified: gitStatus.modified.map(path => ({
-              path,
-              status: 'modified' as FileStatus,
-              staged: stagedPaths.has(path)
-            })),
-            added: gitStatus.added.map(path => ({
-              path,
-              status: 'added' as FileStatus,
-              staged: stagedPaths.has(path)
-            })),
-            deleted: gitStatus.deleted.map(path => ({
-              path,
-              status: 'deleted' as FileStatus,
-              staged: stagedPaths.has(path)
-            })),
-            staged: [...stagedRecords].map(r => ({
-              path: r.filePath,
-              status: r.status as FileStatus,
-              staged: true
-            }))
-          };
-
-          set({ status });
+          await dbUnstageFile(currentRepo.id, path);
+          const stagedFiles = await getStagedFiles(currentRepo.id);
+          set({ stagedFiles });
+          await get().refreshStatus();
         } catch (error) {
-          console.error('Error refreshing status:', error);
+          const message = error instanceof Error ? error.message : 'Failed to unstage file';
+          set({ error: message });
+          throw error;
         }
       },
 
-      /**
-       * Clear error message
-       */
-      clearError: () => {
-        set({ error: null });
+      // Get status
+      getStatus: async () => {
+        const { currentRepo } = get();
+        if (!currentRepo) return;
+
+        try {
+          // Get local files from files store
+          const filesStore = useFilesStore.getState();
+          const localFiles = filesStore.nodes
+            .filter(n => n.type === 'file')
+            .map(n => ({
+              path: n.path,
+              content: n.content || '',
+              name: n.name,
+              parentId: n.parentId
+            }));
+
+          // Get last commit files (simplified - in real implementation would fetch from commit tree)
+          const commits = await getCommitsByRepo(currentRepo.id);
+          const lastCommitFiles = []; // TODO: Fetch from commit tree
+
+          // Calculate status
+          const status = calculateStatus(localFiles, lastCommitFiles);
+
+          // Get staged files
+          const stagedFiles = await getStagedFiles(currentRepo.id);
+
+          set({ status, stagedFiles });
+        } catch (error) {
+          console.error('Failed to get status:', error);
+        }
       },
 
-      /**
-       * Set current repository
-       */
-      setCurrentRepo: (repo: RepositoryRecord | null) => {
-        set({ currentRepo: repo });
-      }
+      // Refresh status
+      refreshStatus: async () => {
+        await get().getStatus();
+      },
+
+      // Clear error
+      clearError: () => set({ error: null })
     }),
     {
-      name: 'git-store',
+      name: 'git-storage',
       partialize: (state) => ({
         isAuthenticated: state.isAuthenticated,
         user: state.user,
-        currentRepo: state.currentRepo,
-        currentBranch: state.currentBranch
+        token: state.token
       })
     }
-  );
+  )
+);

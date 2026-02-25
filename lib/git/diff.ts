@@ -1,40 +1,33 @@
 /**
- * Git Diff Engine
+ * CodeForge IDE - Diff Engine
+ * Agent 5: Phase 2 - Task 4
  * 
- * Provides line-by-line diff calculation for comparing file versions.
- * Uses a simple line-by-line algorithm (not Myers algorithm).
- * 
- * @module lib/git/diff
+ * Line-by-line diff calculator
  */
 
 /**
- * Type of diff line
+ * Diff line type
  */
 export type DiffLineType = 'add' | 'delete' | 'context';
 
 /**
- * Single line in a diff
+ * Single line in diff
  */
 export interface DiffLine {
   type: DiffLineType;
   content: string;
-  oldLineNumber?: number;
-  newLineNumber?: number;
+  oldLineNumber?: number; // Line number in old file
+  newLineNumber?: number; // Line number in new file
 }
 
 /**
- * A hunk of changes (contiguous block of changed lines)
+ * Diff hunk (contiguous block of changes)
  */
 export interface DiffHunk {
-  /** Starting line number in old file */
-  oldStart: number;
-  /** Number of lines in old file */
-  oldLines: number;
-  /** Starting line number in new file */
-  newStart: number;
-  /** Number of lines in new file */
-  newLines: number;
-  /** Lines in this hunk */
+  oldStart: number; // Starting line in old file
+  oldLines: number; // Number of lines in old file
+  newStart: number; // Starting line in new file
+  newLines: number; // Number of lines in new file
   lines: DiffLine[];
 }
 
@@ -42,115 +35,48 @@ export interface DiffHunk {
  * Complete diff result
  */
 export interface DiffResult {
-  /** Number of lines added */
-  additions: number;
-  /** Number of lines deleted */
-  deletions: number;
-  /** Hunks of changes */
+  additions: number; // Total added lines
+  deletions: number; // Total deleted lines
   hunks: DiffHunk[];
-  /** True if there are any changes */
-  hasChanges: boolean;
 }
 
 /**
- * Calculate diff between two file versions
+ * Calculate diff between old and new content
  * 
- * @param oldContent - Original file content
- * @param newContent - Modified file content
- * @param contextLines - Number of context lines around changes (default: 3)
- * @returns DiffResult
+ * Simple line-by-line algorithm (not Myers algorithm)
+ * Good enough for most use cases
  * 
- * @example
- * ```ts
- * const oldFile = 'line 1\nline 2\nline 3';
- * const newFile = 'line 1\nmodified line 2\nline 3';
- * const diff = calculateDiff(oldFile, newFile);
- * // Returns: { additions: 1, deletions: 1, hunks: [...] }
- * ```
+ * @param oldContent - Original content
+ * @param newContent - Modified content
+ * @returns Diff result with hunks
  */
 export function calculateDiff(
   oldContent: string,
-  newContent: string,
-  contextLines: number = 3
+  newContent: string
 ): DiffResult {
-  try {
-    // Split into lines
-    const oldLines = oldContent.split('\n');
-    const newLines = newContent.split('\n');
+  const oldLines = oldContent.split('\n');
+  const newLines = newContent.split('\n');
 
-    // Calculate simple diff
-    const diffLines = simpleDiff(oldLines, newLines);
-
-    // Group into hunks
-    const hunks = groupIntoHunks(diffLines, contextLines);
-
-    // Count additions and deletions
-    const additions = diffLines.filter(l => l.type === 'add').length;
-    const deletions = diffLines.filter(l => l.type === 'delete').length;
-
-    return {
-      additions,
-      deletions,
-      hunks,
-      hasChanges: additions > 0 || deletions > 0
-    };
-  } catch (error) {
-    console.error('Error calculating diff:', error);
-    return {
-      additions: 0,
-      deletions: 0,
-      hunks: [],
-      hasChanges: false
-    };
-  }
-}
-
-/**
- * Simple line-by-line diff algorithm
- * 
- * @param oldLines - Lines from old file
- * @param newLines - Lines from new file
- * @returns Array of DiffLine
- */
-function simpleDiff(oldLines: string[], newLines: string[]): DiffLine[] {
-  const result: DiffLine[] = [];
+  // Calculate LCS (Longest Common Subsequence) for better diff
+  const lcs = calculateLCS(oldLines, newLines);
+  
+  // Build diff lines
+  const diffLines: DiffLine[] = [];
   let oldIndex = 0;
   let newIndex = 0;
+  let lcsIndex = 0;
+
+  let additions = 0;
+  let deletions = 0;
 
   while (oldIndex < oldLines.length || newIndex < newLines.length) {
     const oldLine = oldLines[oldIndex];
     const newLine = newLines[newIndex];
+    const lcsLine = lcs[lcsIndex];
 
-    // Both files ended
-    if (oldIndex >= oldLines.length && newIndex >= newLines.length) {
-      break;
-    }
-
-    // Old file ended - remaining are additions
-    if (oldIndex >= oldLines.length) {
-      result.push({
-        type: 'add',
-        content: newLine,
-        newLineNumber: newIndex + 1
-      });
-      newIndex++;
-      continue;
-    }
-
-    // New file ended - remaining are deletions
-    if (newIndex >= newLines.length) {
-      result.push({
-        type: 'delete',
-        content: oldLine,
-        oldLineNumber: oldIndex + 1
-      });
-      oldIndex++;
-      continue;
-    }
-
-    // Lines match - context line
-    if (oldLine === newLine) {
-      result.push({
+    if (oldLine === lcsLine && newLine === lcsLine) {
+      // Context line (unchanged)
+      diffLines.push({
         type: 'context',
         content: oldLine,
         oldLineNumber: oldIndex + 1,
@@ -158,171 +84,239 @@ function simpleDiff(oldLines: string[], newLines: string[]): DiffLine[] {
       });
       oldIndex++;
       newIndex++;
-      continue;
-    }
-
-    // Lines don't match - check if line was modified or deleted/added
-    const oldLineFoundAhead = newLines.slice(newIndex + 1, newIndex + 5).indexOf(oldLine);
-    const newLineFoundAhead = oldLines.slice(oldIndex + 1, oldIndex + 5).indexOf(newLine);
-
-    // Line appears ahead in new file - old line was deleted
-    if (oldLineFoundAhead !== -1) {
-      result.push({
-        type: 'delete',
-        content: oldLine,
-        oldLineNumber: oldIndex + 1
-      });
-      oldIndex++;
-      continue;
-    }
-
-    // Line appears ahead in old file - new line was added
-    if (newLineFoundAhead !== -1) {
-      result.push({
+      lcsIndex++;
+    } else if (oldLine === lcsLine) {
+      // Line added in new
+      diffLines.push({
         type: 'add',
         content: newLine,
         newLineNumber: newIndex + 1
       });
+      additions++;
       newIndex++;
-      continue;
+    } else if (newLine === lcsLine) {
+      // Line deleted from old
+      diffLines.push({
+        type: 'delete',
+        content: oldLine,
+        oldLineNumber: oldIndex + 1
+      });
+      deletions++;
+      oldIndex++;
+    } else {
+      // Lines differ - mark as delete + add
+      if (oldIndex < oldLines.length) {
+        diffLines.push({
+          type: 'delete',
+          content: oldLine,
+          oldLineNumber: oldIndex + 1
+        });
+        deletions++;
+        oldIndex++;
+      }
+      if (newIndex < newLines.length) {
+        diffLines.push({
+          type: 'add',
+          content: newLine,
+          newLineNumber: newIndex + 1
+        });
+        additions++;
+        newIndex++;
+      }
     }
-
-    // Lines are different - treat as delete + add
-    result.push({
-      type: 'delete',
-      content: oldLine,
-      oldLineNumber: oldIndex + 1
-    });
-    result.push({
-      type: 'add',
-      content: newLine,
-      newLineNumber: newIndex + 1
-    });
-    oldIndex++;
-    newIndex++;
   }
 
-  return result;
+  // Group diff lines into hunks
+  const hunks = groupIntoHunks(diffLines, 3); // 3 context lines
+
+  return {
+    additions,
+    deletions,
+    hunks
+  };
+}
+
+/**
+ * Calculate Longest Common Subsequence
+ * 
+ * Used to find unchanged lines between old and new content
+ */
+function calculateLCS(oldLines: string[], newLines: string[]): string[] {
+  const m = oldLines.length;
+  const n = newLines.length;
+  
+  // DP table
+  const dp: number[][] = Array(m + 1)
+    .fill(0)
+    .map(() => Array(n + 1).fill(0));
+
+  // Fill DP table
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (oldLines[i - 1] === newLines[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1] + 1;
+      } else {
+        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+      }
+    }
+  }
+
+  // Backtrack to find LCS
+  const lcs: string[] = [];
+  let i = m;
+  let j = n;
+
+  while (i > 0 && j > 0) {
+    if (oldLines[i - 1] === newLines[j - 1]) {
+      lcs.unshift(oldLines[i - 1]);
+      i--;
+      j--;
+    } else if (dp[i - 1][j] > dp[i][j - 1]) {
+      i--;
+    } else {
+      j--;
+    }
+  }
+
+  return lcs;
 }
 
 /**
  * Group diff lines into hunks
  * 
- * @param diffLines - Array of diff lines
- * @param contextLines - Number of context lines around changes
- * @returns Array of DiffHunk
+ * Hunks are contiguous blocks of changes with context lines
+ * 
+ * @param diffLines - All diff lines
+ * @param contextLines - Number of context lines to include
+ * @returns Array of hunks
  */
 function groupIntoHunks(diffLines: DiffLine[], contextLines: number): DiffHunk[] {
+  if (diffLines.length === 0) return [];
+
   const hunks: DiffHunk[] = [];
-  let currentHunk: DiffLine[] | null = null;
-  let consecutiveContextLines = 0;
+  let currentHunk: DiffLine[] = [];
+  let contextCount = 0;
+  let oldStart = 1;
+  let newStart = 1;
+  let oldLines = 0;
+  let newLines = 0;
 
   for (let i = 0; i < diffLines.length; i++) {
     const line = diffLines[i];
 
-    // Found a change - start or continue hunk
-    if (line.type !== 'context') {
-      if (!currentHunk) {
-        // Start new hunk with preceding context
-        currentHunk = [];
+    if (line.type === 'context') {
+      contextCount++;
+      
+      if (currentHunk.length === 0) {
+        // Start of potential new hunk
+        oldStart = line.oldLineNumber || 1;
+        newStart = line.newLineNumber || 1;
+      }
+
+      currentHunk.push(line);
+      oldLines++;
+      newLines++;
+
+      // Check if we should close this hunk
+      if (contextCount >= contextLines * 2 && i < diffLines.length - 1) {
+        // Enough context, close hunk
+        hunks.push({
+          oldStart,
+          oldLines,
+          newStart,
+          newLines,
+          lines: currentHunk.slice(0, -contextLines)
+        });
+
+        // Reset for next hunk
+        currentHunk = currentHunk.slice(-contextLines);
+        oldLines = contextLines;
+        newLines = contextLines;
+        contextCount = contextLines;
+        oldStart = line.oldLineNumber || 1;
+        newStart = line.newLineNumber || 1;
+      }
+    } else {
+      // Change line (add or delete)
+      contextCount = 0;
+      
+      if (currentHunk.length === 0) {
+        // Include previous context lines
         const contextStart = Math.max(0, i - contextLines);
         for (let j = contextStart; j < i; j++) {
           currentHunk.push(diffLines[j]);
         }
+        oldStart = diffLines[contextStart]?.oldLineNumber || 1;
+        newStart = diffLines[contextStart]?.newLineNumber || 1;
+        oldLines = currentHunk.filter(l => l.type !== 'add').length;
+        newLines = currentHunk.filter(l => l.type !== 'delete').length;
       }
-      currentHunk.push(line);
-      consecutiveContextLines = 0;
-    } else {
-      // Context line
-      if (currentHunk) {
-        currentHunk.push(line);
-        consecutiveContextLines++;
 
-        // If we have enough context lines, close the hunk
-        if (consecutiveContextLines > contextLines * 2) {
-          // Remove excess context from end
-          const excessContext = consecutiveContextLines - contextLines;
-          const finalHunk = currentHunk.slice(0, -excessContext);
-          hunks.push(createHunk(finalHunk));
-          currentHunk = null;
-          consecutiveContextLines = 0;
-        }
+      currentHunk.push(line);
+      
+      if (line.type === 'delete') {
+        oldLines++;
+      } else if (line.type === 'add') {
+        newLines++;
       }
     }
   }
 
-  // Close final hunk if exists
-  if (currentHunk && currentHunk.length > 0) {
-    hunks.push(createHunk(currentHunk));
+  // Close final hunk
+  if (currentHunk.length > 0) {
+    hunks.push({
+      oldStart,
+      oldLines,
+      newStart,
+      newLines,
+      lines: currentHunk
+    });
   }
 
   return hunks;
 }
 
 /**
- * Create a hunk from array of lines
+ * Format diff hunk as unified diff string
  * 
- * @param lines - Lines in the hunk
- * @returns DiffHunk
+ * @param hunk - Diff hunk
+ * @returns Formatted string
  */
-function createHunk(lines: DiffLine[]): DiffHunk {
-  const firstOldLine = lines.find(l => l.oldLineNumber)?.oldLineNumber || 1;
-  const firstNewLine = lines.find(l => l.newLineNumber)?.newLineNumber || 1;
-
-  const oldLines = lines.filter(l => l.type === 'delete' || l.type === 'context').length;
-  const newLines = lines.filter(l => l.type === 'add' || l.type === 'context').length;
-
-  return {
-    oldStart: firstOldLine,
-    oldLines,
-    newStart: firstNewLine,
-    newLines,
-    lines
-  };
+export function formatHunk(hunk: DiffHunk): string {
+  const header = `@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@`;
+  const lines = hunk.lines.map(line => {
+    switch (line.type) {
+      case 'add':
+        return `+${line.content}`;
+      case 'delete':
+        return `-${line.content}`;
+      case 'context':
+        return ` ${line.content}`;
+    }
+  });
+  
+  return [header, ...lines].join('\n');
 }
 
 /**
- * Format diff as unified diff string
+ * Format complete diff as unified diff string
  * 
- * @param diff - DiffResult
+ * @param result - Diff result
  * @param oldPath - Path to old file
  * @param newPath - Path to new file
- * @returns Unified diff string
- * 
- * @example
- * ```ts
- * const diffStr = formatUnifiedDiff(diff, 'a/file.ts', 'b/file.ts');
- * console.log(diffStr);
- * // Output:
- * // --- a/file.ts
- * // +++ b/file.ts
- * // @@ -1,3 +1,3 @@
- * //  line 1
- * // -line 2
- * // +modified line 2
- * //  line 3
- * ```
+ * @returns Formatted unified diff
  */
-export function formatUnifiedDiff(
-  diff: DiffResult,
+export function formatDiff(
+  result: DiffResult,
   oldPath: string,
   newPath: string
 ): string {
-  const lines: string[] = [];
+  const header = [
+    `--- ${oldPath}`,
+    `+++ ${newPath}`
+  ];
 
-  lines.push(`--- ${oldPath}`);
-  lines.push(`+++ ${newPath}`);
+  const hunks = result.hunks.map(formatHunk);
 
-  for (const hunk of diff.hunks) {
-    lines.push(
-      `@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@`
-    );
-
-    for (const line of hunk.lines) {
-      const prefix = line.type === 'add' ? '+' : line.type === 'delete' ? '-' : ' ';
-      lines.push(`${prefix}${line.content}`);
-    }
-  }
-
-  return lines.join('\n');
+  return [...header, ...hunks].join('\n');
 }

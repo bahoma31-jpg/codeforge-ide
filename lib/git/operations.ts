@@ -1,36 +1,39 @@
 /**
- * Git Core Operations
+ * CodeForge IDE - Git Operations
+ * Agent 5: Phase 2 - Task 3
  * 
- * Pure functions for Git operations without UI or state management.
- * 
- * @module lib/git/operations
+ * Core Git logic (pure functions)
  */
 
-import { GitHubAPI } from './github';
-import { calculateDiff } from './diff';
-import { getFileStatus, type FileStatus } from './status';
-import type { FileNode } from '../stores/files-store';
-import type {
-  GitHubUser,
-  GitHubRepository,
-  GitTreeItem,
-  GitCommit,
-  GitBlob
-} from './github-types';
+import { GitHubAPI } from '../api/github';
+import type { FileNode } from '../db/schema';
 
 /**
- * Progress callback for clone operations
+ * File change for commit
  */
-export type ProgressCallback = (progress: number, message: string) => void;
+export interface FileChange {
+  path: string;
+  content: string;
+  status: 'modified' | 'added' | 'deleted' | 'renamed';
+  previousPath?: string; // For renamed files
+}
 
 /**
- * Status of changed files
+ * Git status result
  */
 export interface GitStatus {
   modified: string[];
   added: string[];
   deleted: string[];
-  unchanged: string[];
+  staged: string[];
+}
+
+/**
+ * File comparison result
+ */
+interface FileComparison {
+  path: string;
+  status: 'modified' | 'added' | 'deleted' | 'unchanged';
 }
 
 /**
@@ -38,251 +41,238 @@ export interface GitStatus {
  * 
  * @param owner - Repository owner
  * @param repo - Repository name
- * @param token - GitHub token
- * @param branch - Branch to clone (default: main)
- * @param onProgress - Progress callback
- * @returns Array of FileNode ready for files-store
- * 
- * @example
- * ```ts
- * const files = await cloneRepository(
- *   'facebook',
- *   'react',
- *   token,
- *   'main',
- *   (progress, msg) => console.log(`${progress}%: ${msg}`)
- * );
- * ```
+ * @param token - GitHub authentication token
+ * @param onProgress - Progress callback (0-1)
+ * @returns Array of FileNode objects ready for files-store
  */
 export async function cloneRepository(
   owner: string,
   repo: string,
   token: string,
-  branch: string = 'main',
-  onProgress?: ProgressCallback
+  onProgress?: (progress: number) => void
 ): Promise<FileNode[]> {
+  const api = new GitHubAPI(token);
+  const files: FileNode[] = [];
+
   try {
-    const api = new GitHubAPI(token);
+    // Get repository info
+    onProgress?.(0.1);
+    const repoInfo = await api.getRepository(owner, repo);
+    const defaultBranch = repoInfo.default_branch;
 
-    onProgress?.(10, 'Fetching repository tree...');
+    // Get file tree (recursive)
+    onProgress?.(0.2);
+    const tree = await api.getTree(owner, repo, defaultBranch, true);
 
-    // Get repository tree (recursive)
-    const tree = await api.getTree(owner, repo, branch, true);
+    // Filter files and directories
+    const items = tree.tree.filter(item => 
+      item.type === 'blob' || item.type === 'tree'
+    );
 
-    onProgress?.(30, `Found ${tree.tree.length} items`);
+    // Process each item
+    const totalItems = items.length;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const progress = 0.2 + (i / totalItems) * 0.7;
+      onProgress?.(progress);
 
-    // Filter out directories, get only files
-    const files = tree.tree.filter(item => item.type === 'blob');
+      // Parse path to get name and parent
+      const pathParts = item.path!.split('/');
+      const name = pathParts[pathParts.length - 1];
+      const parentPath = pathParts.slice(0, -1).join('/');
 
-    onProgress?.(40, `Downloading ${files.length} files...`);
-
-    // Download file contents
-    const fileNodes: FileNode[] = [];
-    const totalFiles = files.length;
-
-    for (let i = 0; i < files.length; i++) {
-      const item = files[i];
-      try {
-        // Get file content
-        const content = await api.getFileContent(owner, repo, item.path!, branch);
-
-        // Create FileNode
-        const pathParts = item.path!.split('/');
-        const name = pathParts[pathParts.length - 1];
-
-        fileNodes.push({
-          id: item.path!,
+      if (item.type === 'tree') {
+        // Directory
+        files.push({
+          id: `dir-${item.path}`,
           name,
-          type: 'file',
           path: item.path!,
-          content,
-          language: detectLanguage(name),
-          size: item.size
+          type: 'folder',
+          parentId: parentPath ? `dir-${parentPath}` : null,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
         });
+      } else if (item.type === 'blob') {
+        // File - fetch content
+        try {
+          const content = await api.getFileContent(owner, repo, item.path!);
+          
+          // Determine language from extension
+          const ext = name.split('.').pop()?.toLowerCase();
+          const language = getLanguageFromExtension(ext || '');
 
-        // Update progress
-        const progress = 40 + Math.floor((i / totalFiles) * 50);
-        onProgress?.(progress, `Downloaded ${i + 1}/${totalFiles} files`);
-      } catch (error) {
-        console.warn(`Failed to download ${item.path}:`, error);
+          files.push({
+            id: `file-${item.path}`,
+            name,
+            path: item.path!,
+            type: 'file',
+            content: content.content,
+            language,
+            size: item.size,
+            parentId: parentPath ? `dir-${parentPath}` : null,
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+          });
+        } catch (error) {
+          console.warn(`Failed to fetch content for ${item.path}:`, error);
+          // Create file node without content
+          files.push({
+            id: `file-${item.path}`,
+            name,
+            path: item.path!,
+            type: 'file',
+            content: '',
+            size: item.size,
+            parentId: parentPath ? `dir-${parentPath}` : null,
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+          });
+        }
       }
     }
 
-    onProgress?.(100, 'Clone complete!');
-
-    return fileNodes;
+    onProgress?.(1);
+    return files;
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    throw new Error(`Failed to clone repository: ${message}`);
+    throw new Error(`Failed to clone repository: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
 /**
- * Calculate status by comparing local files with last commit
+ * Calculate repository status by comparing local files with last commit
  * 
  * @param localFiles - Current local files
  * @param lastCommitFiles - Files from last commit
- * @returns GitStatus
- * 
- * @example
- * ```ts
- * const status = calculateStatus(localFiles, commitFiles);
- * console.log(`Modified: ${status.modified.length}`);
- * ```
+ * @returns Git status object
  */
 export function calculateStatus(
-  localFiles: FileNode[],
-  lastCommitFiles: FileNode[]
+  localFiles: Array<{ path: string; content: string }>,
+  lastCommitFiles: Array<{ path: string; content: string }>
 ): GitStatus {
-  try {
-    const status: GitStatus = {
-      modified: [],
-      added: [],
-      deleted: [],
-      unchanged: []
-    };
+  const modified: string[] = [];
+  const added: string[] = [];
+  const deleted: string[] = [];
 
-    // Create maps for quick lookup
-    const localMap = new Map(localFiles.map(f => [f.path, f]));
-    const commitMap = new Map(lastCommitFiles.map(f => [f.path, f]));
+  // Create maps for quick lookup
+  const localMap = new Map(localFiles.map(f => [f.path, f.content]));
+  const commitMap = new Map(lastCommitFiles.map(f => [f.path, f.content]));
 
-    // Check each local file
-    for (const localFile of localFiles) {
-      const commitFile = commitMap.get(localFile.path);
-
-      if (!commitFile) {
-        // File doesn't exist in commit = added
-        status.added.push(localFile.path);
-      } else if (localFile.content !== commitFile.content) {
-        // Content differs = modified
-        status.modified.push(localFile.path);
-      } else {
-        // Content same = unchanged
-        status.unchanged.push(localFile.path);
-      }
+  // Check local files
+  for (const file of localFiles) {
+    const commitContent = commitMap.get(file.path);
+    if (commitContent === undefined) {
+      // File doesn't exist in commit - added
+      added.push(file.path);
+    } else if (commitContent !== file.content) {
+      // File exists but content differs - modified
+      modified.push(file.path);
     }
-
-    // Check for deleted files
-    for (const commitFile of lastCommitFiles) {
-      if (!localMap.has(commitFile.path)) {
-        status.deleted.push(commitFile.path);
-      }
-    }
-
-    return status;
-  } catch (error) {
-    console.error('Error calculating status:', error);
-    return {
-      modified: [],
-      added: [],
-      deleted: [],
-      unchanged: []
-    };
   }
+
+  // Check for deleted files
+  for (const file of lastCommitFiles) {
+    if (!localMap.has(file.path)) {
+      deleted.push(file.path);
+    }
+  }
+
+  return {
+    modified,
+    added,
+    deleted,
+    staged: [] // Staged files handled separately
+  };
 }
 
 /**
- * Create Git tree from changed files
+ * Create Git tree from file changes
  * 
- * @param changedFiles - Files that changed
- * @param baseTree - Base tree SHA to build upon
+ * @param changes - Array of file changes
+ * @param baseTreeSha - Base tree SHA (from parent commit)
+ * @param token - GitHub authentication token
  * @param owner - Repository owner
  * @param repo - Repository name
- * @param token - GitHub token
  * @returns Tree SHA
- * 
- * @example
- * ```ts
- * const treeSha = await createCommitTree(
- *   changedFiles,
- *   baseTreeSha,
- *   'facebook',
- *   'react',
- *   token
- * );
- * ```
  */
 export async function createCommitTree(
-  changedFiles: FileNode[],
-  baseTree: string,
+  changes: FileChange[],
+  baseTreeSha: string | null,
+  token: string,
   owner: string,
-  repo: string,
-  token: string
+  repo: string
 ): Promise<string> {
+  const api = new GitHubAPI(token);
+
   try {
-    const api = new GitHubAPI(token);
+    // Prepare tree items
+    const tree: Array<{
+      path: string;
+      mode: '100644' | '100755' | '040000' | '160000' | '120000';
+      type: 'blob' | 'tree' | 'commit';
+      sha?: string;
+      content?: string;
+    }> = [];
 
-    // Create blobs for changed files
-    const treeItems: GitTreeItem[] = [];
+    for (const change of changes) {
+      if (change.status === 'deleted') {
+        // Deleted files handled by not including them in new tree
+        continue;
+      }
 
-    for (const file of changedFiles) {
-      // Create blob
-      const blob = await api.createBlob(owner, repo, file.content, 'utf-8');
-
-      treeItems.push({
-        path: file.path,
-        mode: '100644', // Regular file
-        type: 'blob',
-        sha: blob.sha
-      });
+      if (change.status === 'renamed' && change.previousPath) {
+        // Renamed: remove old, add new
+        tree.push({
+          path: change.path,
+          mode: '100644',
+          type: 'blob',
+          content: change.content
+        });
+      } else {
+        // Added or modified
+        tree.push({
+          path: change.path,
+          mode: '100644',
+          type: 'blob',
+          content: change.content
+        });
+      }
     }
 
-    // Create tree
-    const tree = await api.createTree(owner, repo, treeItems, baseTree);
-
-    return tree.sha;
+    // Create tree via API
+    const response = await api.createTree(owner, repo, tree, baseTreeSha || undefined);
+    return response.sha;
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    throw new Error(`Failed to create commit tree: ${message}`);
+    throw new Error(`Failed to create commit tree: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
 /**
- * Create a commit
+ * Create Git commit
  * 
  * @param message - Commit message
  * @param treeSha - Tree SHA
- * @param parentSha - Parent commit SHA
+ * @param parentSha - Parent commit SHA (null for initial commit)
+ * @param token - GitHub authentication token
  * @param owner - Repository owner
  * @param repo - Repository name
- * @param token - GitHub token
  * @returns Commit SHA
- * 
- * @example
- * ```ts
- * const commitSha = await createCommit(
- *   'Fix bug',
- *   treeSha,
- *   parentSha,
- *   'facebook',
- *   'react',
- *   token
- * );
- * ```
  */
 export async function createCommit(
   message: string,
   treeSha: string,
-  parentSha: string,
+  parentSha: string | null,
+  token: string,
   owner: string,
-  repo: string,
-  token: string
+  repo: string
 ): Promise<string> {
+  const api = new GitHubAPI(token);
+
   try {
-    const api = new GitHubAPI(token);
-
-    const commit = await api.createCommit(
-      owner,
-      repo,
-      message,
-      treeSha,
-      [parentSha]
-    );
-
-    return commit.sha;
+    const parents = parentSha ? [parentSha] : [];
+    const response = await api.createCommit(owner, repo, message, treeSha, parents);
+    return response.sha;
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    throw new Error(`Failed to create commit: ${message}`);
+    throw new Error(`Failed to create commit: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
@@ -293,44 +283,21 @@ export async function createCommit(
  * @param repo - Repository name
  * @param branch - Branch name
  * @param commitSha - Commit SHA to push
- * @param token - GitHub token
- * @param force - Force push (default: false)
- * @returns Updated reference
- * 
- * @example
- * ```ts
- * await pushToRemote(
- *   'facebook',
- *   'react',
- *   'main',
- *   commitSha,
- *   token,
- *   false
- * );
- * ```
+ * @param token - GitHub authentication token
  */
 export async function pushToRemote(
   owner: string,
   repo: string,
   branch: string,
   commitSha: string,
-  token: string,
-  force: boolean = false
+  token: string
 ): Promise<void> {
-  try {
-    const api = new GitHubAPI(token);
+  const api = new GitHubAPI(token);
 
-    // Update branch reference
-    await api.updateRef(
-      owner,
-      repo,
-      `heads/${branch}`,
-      commitSha,
-      force
-    );
+  try {
+    await api.updateReference(owner, repo, `heads/${branch}`, commitSha, false);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    throw new Error(`Failed to push to remote: ${message}`);
+    throw new Error(`Failed to push to remote: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
@@ -340,18 +307,8 @@ export async function pushToRemote(
  * @param owner - Repository owner
  * @param repo - Repository name
  * @param branch - Branch name
- * @param token - GitHub token
- * @returns Updated files
- * 
- * @example
- * ```ts
- * const updatedFiles = await pullFromRemote(
- *   'facebook',
- *   'react',
- *   'main',
- *   token
- * );
- * ```
+ * @param token - GitHub authentication token
+ * @returns Array of updated files
  */
 export async function pullFromRemote(
   owner: string,
@@ -359,48 +316,54 @@ export async function pullFromRemote(
   branch: string,
   token: string
 ): Promise<FileNode[]> {
+  const api = new GitHubAPI(token);
+  const files: FileNode[] = [];
+
   try {
-    const api = new GitHubAPI(token);
-
     // Get latest commit
-    const ref = await api.getRef(owner, repo, `heads/${branch}`);
-    const commitSha = ref.object.sha;
+    const commits = await api.getCommits(owner, repo, branch, 1);
+    if (commits.length === 0) {
+      throw new Error('No commits found on remote branch');
+    }
 
-    // Get commit details
-    const commit = await api.getCommit(owner, repo, commitSha);
+    const latestCommit = commits[0];
 
-    // Get tree
-    const tree = await api.getTree(owner, repo, commit.tree.sha, true);
+    // Get tree from commit
+    const tree = await api.getTree(owner, repo, latestCommit.sha, true);
 
-    // Download files
-    const files = tree.tree.filter(item => item.type === 'blob');
-    const fileNodes: FileNode[] = [];
+    // Process files
+    for (const item of tree.tree) {
+      if (item.type === 'blob' && item.path) {
+        try {
+          const content = await api.getFileContent(owner, repo, item.path, branch);
+          
+          const pathParts = item.path.split('/');
+          const name = pathParts[pathParts.length - 1];
+          const parentPath = pathParts.slice(0, -1).join('/');
+          const ext = name.split('.').pop()?.toLowerCase();
+          const language = getLanguageFromExtension(ext || '');
 
-    for (const item of files) {
-      try {
-        const content = await api.getFileContent(owner, repo, item.path!, branch);
-
-        const pathParts = item.path!.split('/');
-        const name = pathParts[pathParts.length - 1];
-
-        fileNodes.push({
-          id: item.path!,
-          name,
-          type: 'file',
-          path: item.path!,
-          content,
-          language: detectLanguage(name),
-          size: item.size
-        });
-      } catch (error) {
-        console.warn(`Failed to download ${item.path}:`, error);
+          files.push({
+            id: `file-${item.path}`,
+            name,
+            path: item.path,
+            type: 'file',
+            content: content.content,
+            language,
+            size: item.size,
+            parentId: parentPath ? `dir-${parentPath}` : null,
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+          });
+        } catch (error) {
+          console.warn(`Failed to fetch content for ${item.path}:`, error);
+        }
       }
     }
 
-    return fileNodes;
+    return files;
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    throw new Error(`Failed to pull from remote: ${message}`);
+    throw new Error(`Failed to pull from remote: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
@@ -409,317 +372,88 @@ export async function pullFromRemote(
  * 
  * @param owner - Repository owner
  * @param repo - Repository name
- * @param base - Base branch
- * @param head - Head branch to merge
- * @param token - GitHub token
- * @param commitMessage - Optional merge commit message
- * @returns Merge result with conflicts if any
- * 
- * @example
- * ```ts
- * const result = await mergeBranches(
- *   'facebook',
- *   'react',
- *   'main',
- *   'feature-branch',
- *   token,
- *   'Merge feature'
- * );
- * ```
+ * @param base - Base branch name
+ * @param head - Head branch name (branch to merge)
+ * @param token - GitHub authentication token
+ * @returns Merge result with conflict detection
  */
 export async function mergeBranches(
   owner: string,
   repo: string,
   base: string,
   head: string,
-  token: string,
-  commitMessage?: string
+  token: string
 ): Promise<{
   success: boolean;
   sha?: string;
   conflicts?: string[];
-  message: string;
+  message?: string;
 }> {
+  const api = new GitHubAPI(token);
+
   try {
-    const api = new GitHubAPI(token);
-
-    // Attempt merge
-    const result = await api.mergeBranches(
-      owner,
-      repo,
-      base,
-      head,
-      commitMessage
-    );
-
-    return {
-      success: true,
-      sha: result.sha,
-      message: 'Merge successful'
-    };
-  } catch (error: any) {
-    // Check if it's a merge conflict
-    if (error?.response?.status === 409) {
+    const result = await api.mergeBranches(owner, repo, base, head);
+    
+    if (result.sha) {
+      return {
+        success: true,
+        sha: result.sha,
+        message: result.message
+      };
+    } else {
       return {
         success: false,
-        conflicts: ['Merge conflicts detected'],
-        message: 'Merge conflicts must be resolved manually'
+        message: result.message
       };
     }
-
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    throw new Error(`Failed to merge branches: ${message}`);
-  }
-}
-
-/**
- * Get file diff between two versions
- * 
- * @param oldContent - Old file content
- * @param newContent - New file content
- * @returns Diff result
- * 
- * @example
- * ```ts
- * const diff = getFileDiff(oldContent, newContent);
- * console.log(`+${diff.additions} -${diff.deletions}`);
- * ```
- */
-export function getFileDiff(oldContent: string, newContent: string) {
-  return calculateDiff(oldContent, newContent);
-}
-
-/**
- * Compare two file trees and get changes
- * 
- * @param oldFiles - Old file tree
- * @param newFiles - New file tree
- * @returns Object with changed, added, deleted files
- * 
- * @example
- * ```ts
- * const changes = compareFileTrees(oldFiles, newFiles);
- * console.log(`${changes.changed.length} files changed`);
- * ```
- */
-export function compareFileTrees(
-  oldFiles: FileNode[],
-  newFiles: FileNode[]
-): {
-  changed: FileNode[];
-  added: FileNode[];
-  deleted: FileNode[];
-} {
-  try {
-    const oldMap = new Map(oldFiles.map(f => [f.path, f]));
-    const newMap = new Map(newFiles.map(f => [f.path, f]));
-
-    const changed: FileNode[] = [];
-    const added: FileNode[] = [];
-    const deleted: FileNode[] = [];
-
-    // Check new files
-    for (const newFile of newFiles) {
-      const oldFile = oldMap.get(newFile.path);
-
-      if (!oldFile) {
-        added.push(newFile);
-      } else if (oldFile.content !== newFile.content) {
-        changed.push(newFile);
-      }
+  } catch (error) {
+    // Check if it's a merge conflict
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    if (errorMessage.toLowerCase().includes('conflict')) {
+      return {
+        success: false,
+        conflicts: [], // GitHub API doesn't provide detailed conflict info
+        message: 'Merge conflict detected'
+      };
     }
-
-    // Check for deleted files
-    for (const oldFile of oldFiles) {
-      if (!newMap.has(oldFile.path)) {
-        deleted.push(oldFile);
-      }
-    }
-
-    return { changed, added, deleted };
-  } catch (error) {
-    console.error('Error comparing file trees:', error);
-    return { changed: [], added: [], deleted: [] };
+    throw new Error(`Failed to merge branches: ${errorMessage}`);
   }
 }
 
 /**
- * Create a new branch
- * 
- * @param owner - Repository owner
- * @param repo - Repository name
- * @param branchName - New branch name
- * @param fromSha - SHA to create branch from
- * @param token - GitHub token
- * @returns Reference to new branch
- * 
- * @example
- * ```ts
- * await createBranch(
- *   'facebook',
- *   'react',
- *   'feature-branch',
- *   commitSha,
- *   token
- * );
- * ```
+ * Get language from file extension
  */
-export async function createBranch(
-  owner: string,
-  repo: string,
-  branchName: string,
-  fromSha: string,
-  token: string
-): Promise<void> {
-  try {
-    const api = new GitHubAPI(token);
-
-    await api.createRef(
-      owner,
-      repo,
-      `heads/${branchName}`,
-      fromSha
-    );
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    throw new Error(`Failed to create branch: ${message}`);
-  }
-}
-
-/**
- * Delete a branch
- * 
- * @param owner - Repository owner
- * @param repo - Repository name
- * @param branchName - Branch name to delete
- * @param token - GitHub token
- * 
- * @example
- * ```ts
- * await deleteBranch('facebook', 'react', 'old-feature', token);
- * ```
- */
-export async function deleteBranch(
-  owner: string,
-  repo: string,
-  branchName: string,
-  token: string
-): Promise<void> {
-  try {
-    const api = new GitHubAPI(token);
-
-    await api.deleteRef(owner, repo, `heads/${branchName}`);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    throw new Error(`Failed to delete branch: ${message}`);
-  }
-}
-
-// ============================================================================
-// UTILITY FUNCTIONS
-// ============================================================================
-
-/**
- * Detect programming language from file name
- * 
- * @param fileName - File name with extension
- * @returns Language identifier
- */
-function detectLanguage(fileName: string): string {
-  const ext = fileName.split('.').pop()?.toLowerCase();
-
+function getLanguageFromExtension(ext: string): string {
   const languageMap: Record<string, string> = {
-    ts: 'typescript',
-    tsx: 'typescript',
     js: 'javascript',
     jsx: 'javascript',
-    py: 'python',
-    java: 'java',
-    cpp: 'cpp',
-    c: 'c',
-    cs: 'csharp',
-    rb: 'ruby',
-    go: 'go',
-    rs: 'rust',
-    php: 'php',
-    swift: 'swift',
-    kt: 'kotlin',
+    ts: 'typescript',
+    tsx: 'typescript',
+    json: 'json',
     html: 'html',
     css: 'css',
     scss: 'scss',
-    json: 'json',
-    xml: 'xml',
-    yaml: 'yaml',
-    yml: 'yaml',
+    sass: 'sass',
     md: 'markdown',
+    py: 'python',
+    rb: 'ruby',
+    java: 'java',
+    c: 'c',
+    cpp: 'cpp',
+    cs: 'csharp',
+    php: 'php',
+    go: 'go',
+    rs: 'rust',
+    swift: 'swift',
+    kt: 'kotlin',
     sql: 'sql',
     sh: 'shell',
-    bash: 'shell'
+    bash: 'shell',
+    yml: 'yaml',
+    yaml: 'yaml',
+    xml: 'xml',
+    txt: 'plaintext'
   };
 
-  return languageMap[ext || ''] || 'plaintext';
-}
-
-/**
- * Validate commit message
- * 
- * @param message - Commit message
- * @returns Validation result
- */
-export function validateCommitMessage(message: string): {
-  valid: boolean;
-  error?: string;
-} {
-  if (!message || message.trim().length === 0) {
-    return {
-      valid: false,
-      error: 'Commit message cannot be empty'
-    };
-  }
-
-  if (message.length > 500) {
-    return {
-      valid: false,
-      error: 'Commit message too long (max 500 characters)'
-    };
-  }
-
-  return { valid: true };
-}
-
-/**
- * Validate branch name
- * 
- * @param branchName - Branch name
- * @returns Validation result
- */
-export function validateBranchName(branchName: string): {
-  valid: boolean;
-  error?: string;
-} {
-  if (!branchName || branchName.trim().length === 0) {
-    return {
-      valid: false,
-      error: 'Branch name cannot be empty'
-    };
-  }
-
-  // Check for invalid characters
-  if (!/^[a-zA-Z0-9_\-\/\.]+$/.test(branchName)) {
-    return {
-      valid: false,
-      error: 'Branch name contains invalid characters'
-    };
-  }
-
-  // Check for reserved names
-  const reserved = ['HEAD', 'master', 'main'];
-  if (reserved.includes(branchName)) {
-    return {
-      valid: false,
-      error: `Cannot use reserved name: ${branchName}`
-    };
-  }
-
-  return { valid: true };
+  return languageMap[ext] || 'plaintext';
 }

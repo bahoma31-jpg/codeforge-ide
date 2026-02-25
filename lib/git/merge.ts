@@ -1,386 +1,370 @@
 /**
- * Git Merge Logic
+ * CodeForge IDE - Merge Logic
+ * Agent 5: Phase 2 - Task 6
  * 
- * Handles merging of file contents and conflict detection/resolution.
- * 
- * @module lib/git/merge
+ * Merge and conflict detection
  */
 
 import { calculateDiff, type DiffLine } from './diff';
 
 /**
- * Conflict block in merged content
+ * Conflict block in merge result
  */
 export interface ConflictBlock {
-  /** Starting line number of conflict */
-  start: number;
-  /** Ending line number of conflict */
-  end: number;
-  /** Local version lines */
-  local: string[];
-  /** Remote version lines */
-  remote: string[];
+  start: number; // Starting line number
+  end: number; // Ending line number
+  local: string[]; // Lines from local version
+  remote: string[]; // Lines from remote version
 }
 
 /**
- * Result of conflict detection
+ * Merge result
  */
 export interface ConflictResult {
-  /** True if conflicts were detected */
   hasConflicts: boolean;
-  /** Merged content (with conflict markers if conflicts exist) */
   mergedContent: string;
-  /** Array of detected conflicts */
   conflicts: ConflictBlock[];
 }
 
 /**
- * Merge resolution strategy
+ * Conflict resolution strategy
  */
-export type MergeResolution = 'local' | 'remote' | 'both';
+export type ResolutionStrategy = 'local' | 'remote' | 'both';
 
 /**
- * Detect conflicts between local and remote versions
+ * Detect conflicts between local and remote content
+ * 
+ * Simple 3-way merge simulation
  * 
  * @param localContent - Local file content
  * @param remoteContent - Remote file content
  * @param baseContent - Common ancestor content (optional)
- * @returns ConflictResult
- * 
- * @example
- * ```ts
- * const result = detectConflicts(
- *   'line 1\nlocal change\nline 3',
- *   'line 1\nremote change\nline 3'
- * );
- * // Returns: { hasConflicts: true, mergedContent: '...', conflicts: [...] }
- * ```
+ * @returns Conflict result
  */
 export function detectConflicts(
   localContent: string,
   remoteContent: string,
   baseContent?: string
 ): ConflictResult {
-  try {
-    // If contents are identical, no conflict
-    if (localContent === remoteContent) {
-      return {
-        hasConflicts: false,
-        mergedContent: localContent,
-        conflicts: []
-      };
-    }
+  const localLines = localContent.split('\n');
+  const remoteLines = remoteContent.split('\n');
+  const baseLines = baseContent ? baseContent.split('\n') : [];
 
-    // If no base provided, use simple 3-way comparison
-    if (!baseContent) {
-      return simpleConflictDetection(localContent, remoteContent);
-    }
-
-    // Perform 3-way merge
-    return threeWayMerge(baseContent, localContent, remoteContent);
-  } catch (error) {
-    console.error('Error detecting conflicts:', error);
-    // Return conflict result on error
-    return {
-      hasConflicts: true,
-      mergedContent: formatConflictMarkers(localContent, remoteContent),
-      conflicts: [{
-        start: 0,
-        end: localContent.split('\n').length,
-        local: localContent.split('\n'),
-        remote: remoteContent.split('\n')
-      }]
-    };
+  // If no base, do simple 2-way comparison
+  if (!baseContent) {
+    return detectTwoWayConflicts(localLines, remoteLines);
   }
+
+  // 3-way merge
+  return detectThreeWayConflicts(localLines, remoteLines, baseLines);
 }
 
 /**
- * Simple conflict detection (no base content)
- * 
- * @param localContent - Local content
- * @param remoteContent - Remote content
- * @returns ConflictResult
+ * Detect conflicts using 2-way comparison
  */
-function simpleConflictDetection(
-  localContent: string,
-  remoteContent: string
+function detectTwoWayConflicts(
+  localLines: string[],
+  remoteLines: string[]
 ): ConflictResult {
-  const localLines = localContent.split('\n');
-  const remoteLines = remoteContent.split('\n');
   const conflicts: ConflictBlock[] = [];
   const mergedLines: string[] = [];
+  let hasConflicts = false;
 
-  let localIdx = 0;
-  let remoteIdx = 0;
+  const diff = calculateDiff(localLines.join('\n'), remoteLines.join('\n'));
 
-  while (localIdx < localLines.length || remoteIdx < remoteLines.length) {
-    const localLine = localLines[localIdx];
-    const remoteLine = remoteLines[remoteIdx];
+  let localIndex = 0;
+  let remoteIndex = 0;
+  let lineNumber = 0;
 
-    // Both ended
-    if (localIdx >= localLines.length && remoteIdx >= remoteLines.length) {
-      break;
+  for (const hunk of diff.hunks) {
+    // Add unchanged lines before hunk
+    while (localIndex < hunk.oldStart - 1) {
+      mergedLines.push(localLines[localIndex]);
+      localIndex++;
+      remoteIndex++;
+      lineNumber++;
     }
 
-    // Lines match
-    if (localLine === remoteLine) {
-      mergedLines.push(localLine);
-      localIdx++;
-      remoteIdx++;
-      continue;
-    }
+    // Check if hunk has conflicts
+    const hasAdds = hunk.lines.some(l => l.type === 'add');
+    const hasDeletes = hunk.lines.some(l => l.type === 'delete');
 
-    // Lines differ - mark as conflict
-    const conflictStart = mergedLines.length;
-    const localConflict: string[] = [];
-    const remoteConflict: string[] = [];
+    if (hasAdds && hasDeletes) {
+      // Conflict detected
+      hasConflicts = true;
 
-    // Collect conflicting lines until we find matching lines again
-    let foundMatch = false;
-    while (!foundMatch && (localIdx < localLines.length || remoteIdx < remoteLines.length)) {
-      if (localIdx < localLines.length) {
-        localConflict.push(localLines[localIdx]);
-      }
-      if (remoteIdx < remoteLines.length) {
-        remoteConflict.push(remoteLines[remoteIdx]);
-      }
+      const localChanges: string[] = [];
+      const remoteChanges: string[] = [];
 
-      localIdx++;
-      remoteIdx++;
-
-      // Check if next lines match
-      if (localIdx < localLines.length && remoteIdx < remoteLines.length) {
-        if (localLines[localIdx] === remoteLines[remoteIdx]) {
-          foundMatch = true;
+      for (const line of hunk.lines) {
+        if (line.type === 'delete') {
+          localChanges.push(line.content);
+        } else if (line.type === 'add') {
+          remoteChanges.push(line.content);
         }
       }
 
-      // Limit conflict block size
-      if (localConflict.length > 50) break;
+      conflicts.push({
+        start: lineNumber,
+        end: lineNumber + Math.max(localChanges.length, remoteChanges.length),
+        local: localChanges,
+        remote: remoteChanges
+      });
+
+      // Add conflict markers
+      mergedLines.push('<<<<<<< LOCAL');
+      mergedLines.push(...localChanges);
+      mergedLines.push('=======');
+      mergedLines.push(...remoteChanges);
+      mergedLines.push('>>>>>>> REMOTE');
+
+      lineNumber += localChanges.length + remoteChanges.length + 3;
+      localIndex += localChanges.length;
+      remoteIndex += remoteChanges.length;
+    } else if (hasDeletes) {
+      // Only local changes - use local
+      for (const line of hunk.lines) {
+        if (line.type !== 'add') {
+          mergedLines.push(line.content);
+          lineNumber++;
+        }
+      }
+      localIndex += hunk.oldLines;
+    } else if (hasAdds) {
+      // Only remote changes - use remote
+      for (const line of hunk.lines) {
+        if (line.type !== 'delete') {
+          mergedLines.push(line.content);
+          lineNumber++;
+        }
+      }
+      remoteIndex += hunk.newLines;
     }
+  }
 
-    // Add conflict markers
-    mergedLines.push('<<<<<<< LOCAL');
-    mergedLines.push(...localConflict);
-    mergedLines.push('=======');
-    mergedLines.push(...remoteConflict);
-    mergedLines.push('>>>>>>> REMOTE');
-
-    conflicts.push({
-      start: conflictStart,
-      end: mergedLines.length - 1,
-      local: localConflict,
-      remote: remoteConflict
-    });
+  // Add remaining unchanged lines
+  while (localIndex < localLines.length) {
+    mergedLines.push(localLines[localIndex]);
+    localIndex++;
   }
 
   return {
-    hasConflicts: conflicts.length > 0,
+    hasConflicts,
     mergedContent: mergedLines.join('\n'),
     conflicts
   };
 }
 
 /**
- * Three-way merge using base content
- * 
- * @param baseContent - Common ancestor
- * @param localContent - Local changes
- * @param remoteContent - Remote changes
- * @returns ConflictResult
+ * Detect conflicts using 3-way merge
  */
-function threeWayMerge(
-  baseContent: string,
-  localContent: string,
-  remoteContent: string
+function detectThreeWayConflicts(
+  localLines: string[],
+  remoteLines: string[],
+  baseLines: string[]
 ): ConflictResult {
-  const baseLines = baseContent.split('\n');
-  const localLines = localContent.split('\n');
-  const remoteLines = remoteContent.split('\n');
+  const conflicts: ConflictBlock[] = [];
+  const mergedLines: string[] = [];
+  let hasConflicts = false;
 
-  const localDiff = calculateDiff(baseContent, localContent);
-  const remoteDiff = calculateDiff(baseContent, remoteContent);
+  // Compare local and base
+  const localDiff = calculateDiff(baseLines.join('\n'), localLines.join('\n'));
+  
+  // Compare remote and base
+  const remoteDiff = calculateDiff(baseLines.join('\n'), remoteLines.join('\n'));
 
-  // If no changes in local, accept remote
-  if (!localDiff.hasChanges) {
-    return {
-      hasConflicts: false,
-      mergedContent: remoteContent,
-      conflicts: []
-    };
+  // Find overlapping changes (conflicts)
+  const localChanges = new Map<number, string[]>();
+  const remoteChanges = new Map<number, string[]>();
+
+  // Extract local changes
+  for (const hunk of localDiff.hunks) {
+    const changes: string[] = [];
+    for (const line of hunk.lines) {
+      if (line.type === 'add') {
+        changes.push(line.content);
+      }
+    }
+    if (changes.length > 0) {
+      localChanges.set(hunk.oldStart, changes);
+    }
   }
 
-  // If no changes in remote, accept local
-  if (!remoteDiff.hasChanges) {
-    return {
-      hasConflicts: false,
-      mergedContent: localContent,
-      conflicts: []
-    };
+  // Extract remote changes
+  for (const hunk of remoteDiff.hunks) {
+    const changes: string[] = [];
+    for (const line of hunk.lines) {
+      if (line.type === 'add') {
+        changes.push(line.content);
+      }
+    }
+    if (changes.length > 0) {
+      remoteChanges.set(hunk.oldStart, changes);
+    }
   }
 
-  // Both have changes - detect conflicts
-  // For simplicity, if both changed, mark as conflict
-  const conflicts: ConflictBlock[] = [{
-    start: 0,
-    end: Math.max(localLines.length, remoteLines.length),
-    local: localLines,
-    remote: remoteLines
-  }];
+  // Merge line by line
+  let lineNumber = 0;
+  for (let i = 0; i < Math.max(baseLines.length, localLines.length, remoteLines.length); i++) {
+    const baseLine = baseLines[i];
+    const localLine = localLines[i];
+    const remoteLine = remoteLines[i];
+
+    // Check for conflicts at this line
+    const hasLocalChange = localChanges.has(i);
+    const hasRemoteChange = remoteChanges.has(i);
+
+    if (hasLocalChange && hasRemoteChange) {
+      // Conflict detected
+      const local = localChanges.get(i)!;
+      const remote = remoteChanges.get(i)!;
+
+      // Check if changes are identical
+      if (local.join('\n') === remote.join('\n')) {
+        // Same changes, no conflict
+        mergedLines.push(...local);
+        lineNumber += local.length;
+      } else {
+        // Different changes, conflict
+        hasConflicts = true;
+        conflicts.push({
+          start: lineNumber,
+          end: lineNumber + Math.max(local.length, remote.length),
+          local,
+          remote
+        });
+
+        // Add conflict markers
+        mergedLines.push('<<<<<<< LOCAL');
+        mergedLines.push(...local);
+        mergedLines.push('=======');
+        mergedLines.push(...remote);
+        mergedLines.push('>>>>>>> REMOTE');
+        lineNumber += local.length + remote.length + 3;
+      }
+    } else if (hasLocalChange) {
+      // Only local changed
+      const local = localChanges.get(i)!;
+      mergedLines.push(...local);
+      lineNumber += local.length;
+    } else if (hasRemoteChange) {
+      // Only remote changed
+      const remote = remoteChanges.get(i)!;
+      mergedLines.push(...remote);
+      lineNumber += remote.length;
+    } else if (baseLine !== undefined) {
+      // No changes
+      mergedLines.push(baseLine);
+      lineNumber++;
+    }
+  }
 
   return {
-    hasConflicts: true,
-    mergedContent: formatConflictMarkers(localContent, remoteContent),
+    hasConflicts,
+    mergedContent: mergedLines.join('\n'),
     conflicts
   };
 }
 
 /**
- * Format content with conflict markers
- * 
- * @param localContent - Local content
- * @param remoteContent - Remote content
- * @returns Content with conflict markers
- */
-function formatConflictMarkers(localContent: string, remoteContent: string): string {
-  return [
-    '<<<<<<< LOCAL',
-    localContent,
-    '=======',
-    remoteContent,
-    '>>>>>>> REMOTE'
-  ].join('\n');
-}
-
-/**
  * Resolve a conflict using specified strategy
  * 
- * @param conflict - ConflictBlock to resolve
+ * @param conflict - Conflict block
  * @param resolution - Resolution strategy
  * @returns Resolved content
- * 
- * @example
- * ```ts
- * const resolved = resolveConflict(conflict, 'local');
- * // Returns content from local version
- * ```
  */
 export function resolveConflict(
   conflict: ConflictBlock,
-  resolution: MergeResolution
+  resolution: ResolutionStrategy
 ): string {
-  try {
-    switch (resolution) {
-      case 'local':
-        return conflict.local.join('\n');
-
-      case 'remote':
-        return conflict.remote.join('\n');
-
-      case 'both':
-        // Combine both versions
-        return [...conflict.local, ...conflict.remote].join('\n');
-
-      default:
-        return conflict.local.join('\n');
-    }
-  } catch (error) {
-    console.error('Error resolving conflict:', error);
-    return conflict.local.join('\n');
+  switch (resolution) {
+    case 'local':
+      return conflict.local.join('\n');
+    case 'remote':
+      return conflict.remote.join('\n');
+    case 'both':
+      return [...conflict.local, ...conflict.remote].join('\n');
+    default:
+      return conflict.local.join('\n');
   }
 }
 
 /**
- * Resolve all conflicts in merged content
+ * Apply conflict resolutions to merged content
  * 
  * @param mergedContent - Content with conflict markers
- * @param resolution - Resolution strategy
- * @returns Fully resolved content
- * 
- * @example
- * ```ts
- * const resolved = resolveAllConflicts(conflictedContent, 'local');
- * // Returns content with all conflicts resolved to local version
- * ```
+ * @param resolutions - Map of conflict start line to resolution strategy
+ * @returns Resolved content
  */
-export function resolveAllConflicts(
+export function applyResolutions(
   mergedContent: string,
-  resolution: MergeResolution
+  resolutions: Map<number, ResolutionStrategy>
 ): string {
-  try {
-    const lines = mergedContent.split('\n');
-    const resolved: string[] = [];
-    let i = 0;
+  const lines = mergedContent.split('\n');
+  const resolvedLines: string[] = [];
+  let i = 0;
 
-    while (i < lines.length) {
-      const line = lines[i];
+  while (i < lines.length) {
+    const line = lines[i];
 
+    if (line === '<<<<<<< LOCAL') {
       // Found conflict marker
-      if (line.startsWith('<<<<<<< ')) {
-        const localLines: string[] = [];
-        const remoteLines: string[] = [];
-        i++;
+      const conflictStart = i;
+      const localLines: string[] = [];
+      const remoteLines: string[] = [];
+      let inLocal = true;
 
-        // Collect local lines
-        while (i < lines.length && !lines[i].startsWith('=======')) {
-          localLines.push(lines[i]);
-          i++;
-        }
-        i++; // Skip =======
+      i++; // Skip marker
 
-        // Collect remote lines
-        while (i < lines.length && !lines[i].startsWith('>>>>>>> ')) {
-          remoteLines.push(lines[i]);
-          i++;
-        }
-        i++; // Skip >>>>>>>
-
-        // Resolve conflict
-        const conflict: ConflictBlock = {
-          start: resolved.length,
-          end: resolved.length,
-          local: localLines,
-          remote: remoteLines
-        };
-
-        const resolvedContent = resolveConflict(conflict, resolution);
-        resolved.push(resolvedContent);
-      } else {
-        resolved.push(line);
+      // Read local changes
+      while (i < lines.length && lines[i] !== '=======') {
+        localLines.push(lines[i]);
         i++;
       }
+
+      i++; // Skip separator
+
+      // Read remote changes
+      while (i < lines.length && lines[i] !== '>>>>>>> REMOTE') {
+        remoteLines.push(lines[i]);
+        i++;
+      }
+
+      i++; // Skip marker
+
+      // Apply resolution
+      const resolution = resolutions.get(conflictStart) || 'local';
+      const resolved = resolveConflict(
+        { start: conflictStart, end: i, local: localLines, remote: remoteLines },
+        resolution
+      );
+      resolvedLines.push(resolved);
+    } else {
+      resolvedLines.push(line);
+      i++;
     }
-
-    return resolved.join('\n');
-  } catch (error) {
-    console.error('Error resolving all conflicts:', error);
-    return mergedContent;
   }
+
+  return resolvedLines.join('\n');
 }
 
 /**
- * Check if content has conflict markers
+ * Check if content has unresolved conflicts
  * 
- * @param content - Content to check
- * @returns True if conflict markers found
- * 
- * @example
- * ```ts
- * hasConflictMarkers('normal content'); // false
- * hasConflictMarkers('<<<<<<< LOCAL\nconflict\n>>>>>> REMOTE'); // true
- * ```
+ * @param content - File content
+ * @returns True if conflicts exist
  */
-export function hasConflictMarkers(content: string): boolean {
-  return /^<{7} |^={7}$|^>{7} /m.test(content);
+export function hasUnresolvedConflicts(content: string): boolean {
+  return content.includes('<<<<<<< LOCAL');
 }
 
 /**
- * Count number of conflicts in content
+ * Count conflicts in content
  * 
- * @param content - Content with conflict markers
+ * @param content - File content
  * @returns Number of conflicts
  */
 export function countConflicts(content: string): number {
-  const matches = content.match(/^<{7} /gm);
+  const matches = content.match(/<<<<<<< LOCAL/g);
   return matches ? matches.length : 0;
 }
