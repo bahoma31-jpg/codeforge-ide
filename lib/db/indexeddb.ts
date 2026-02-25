@@ -237,7 +237,11 @@ export class IndexedDBManager {
     if (!indexedDB.databases) {
       // Fallback for browsers that don't support databases()
       try {
-        const db = await indexedDB.open(DB_NAME);
+        const db = await new Promise<IDBDatabase>((resolve, reject) => {
+          const request = indexedDB.open(DB_NAME);
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
         const exists = db.objectStoreNames.length > 0;
         db.close();
         return exists;
