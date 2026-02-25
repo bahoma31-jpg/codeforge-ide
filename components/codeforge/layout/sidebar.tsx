@@ -6,6 +6,8 @@ import { useEditorStore } from '@/lib/stores/editor-store';
 import { ChevronRight, File, Folder } from 'lucide-react';
 import SourceControlView from '../source-control/source-control-view';
 import SearchView from '../search/search-view';
+import ExtensionsView from '../extensions/extensions-view';
+import SettingsView from '../settings/settings-view';
 
 type SidebarProps = { width: number };
 
@@ -120,17 +122,9 @@ export default function Sidebar({ width }: SidebarProps) {
 
         {activityBarView === 'git' && <SourceControlView />}
 
-        {activityBarView === 'extensions' && (
-          <p className="text-sm text-muted-foreground">
-            Extensions view placeholder.
-          </p>
-        )}
+        {activityBarView === 'extensions' && <ExtensionsView />}
 
-        {activityBarView === 'settings' && (
-          <p className="text-sm text-muted-foreground">
-            Settings view placeholder.
-          </p>
-        )}
+        {activityBarView === 'settings' && <SettingsView />}
       </div>
     </aside>
   );
