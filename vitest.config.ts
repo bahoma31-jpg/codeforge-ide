@@ -6,12 +6,28 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'jsdom',
+    setupFiles: ['./vitest.setup.ts'],
     globals: true,
-    setupFiles: ['./tests/setup.ts'],
+    css: true,
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
-      exclude: ['node_modules/', 'tests/', '**/*.config.{js,ts}', '**/types/'],
+      reporter: ['text', 'html', 'lcov', 'json'],
+      exclude: [
+        'node_modules/',
+        '**/*.config.*',
+        '**/__tests__/**',
+        '**/types/**',
+        '**/*.d.ts',
+        '**/dist/**',
+        '**/.next/**',
+        '**/coverage/**',
+      ],
+      thresholds: {
+        lines: 80,
+        functions: 80,
+        branches: 75,
+        statements: 80,
+      },
     },
   },
   resolve: {
