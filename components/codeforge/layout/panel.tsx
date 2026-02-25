@@ -46,11 +46,17 @@ export default function Panel({ height }: { height: number }) {
   };
 
   return (
-    <div
+    <section
+      role="region"
+      aria-label="Bottom panel"
       style={{ height }}
       className="flex h-full flex-col border-t border-border bg-[hsl(var(--cf-panel))]"
     >
-      <div className="flex items-center justify-between border-b border-border">
+      <div 
+        role="tablist" 
+        aria-label="Panel sections"
+        className="flex items-center justify-between border-b border-border"
+      >
         <div className="flex">
           {sections.map((s) => {
             const Icon = s.icon;
@@ -58,15 +64,20 @@ export default function Panel({ height }: { height: number }) {
             return (
               <button
                 key={s.id}
+                role="tab"
+                aria-selected={isActive}
+                aria-controls={`panel-${s.id}`}
+                id={`tab-${s.id}`}
                 onClick={() => setActive(s.id)}
                 className={[
                   'flex items-center gap-2 border-r border-border px-4 py-2 text-sm transition-colors',
+                  'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                   isActive
                     ? 'bg-secondary text-primary'
                     : 'text-muted-foreground hover:bg-secondary',
                 ].join(' ')}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-4 w-4" aria-hidden="true" />
                 {s.label}
               </button>
             );
@@ -75,14 +86,20 @@ export default function Panel({ height }: { height: number }) {
 
         <button
           onClick={togglePanel}
-          className="p-2 text-muted-foreground hover:text-foreground"
+          className="p-2 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
           title="Close Panel"
+          aria-label="Close panel"
         >
-          <X className="h-4 w-4" />
+          <X className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
 
-      <div className={`min-h-0 flex-1 overflow-y-auto ${active === 'git' ? '' : 'p-4'}`}>
+      <div 
+        role="tabpanel"
+        id={`panel-${active}`}
+        aria-labelledby={`tab-${active}`}
+        className={`min-h-0 flex-1 overflow-y-auto ${active === 'git' ? '' : 'p-4'}`}
+      >
         {active === 'terminal' && (
           <div className="rounded border-2 border-dashed border-muted-foreground/30 p-4">
             <p className="text-sm text-muted-foreground">
@@ -100,11 +117,20 @@ export default function Panel({ height }: { height: number }) {
         {active === 'git' && (
           <div className="flex flex-col h-full">
             {/* Sub-tabs: Output | History */}
-            <div className="flex border-b border-border">
+            <div 
+              className="flex border-b border-border"
+              role="tablist"
+              aria-label="Git panel sections"
+            >
               <button
+                role="tab"
+                aria-selected={gitSubTab === 'output'}
+                aria-controls="git-output-panel"
+                id="git-tab-output"
                 onClick={() => setGitSubTab('output')}
                 className={[
                   'px-3 py-1.5 text-xs font-medium transition-colors',
+                  'focus-visible:ring-2 focus-visible:ring-ring',
                   gitSubTab === 'output'
                     ? 'text-primary border-b-2 border-primary'
                     : 'text-muted-foreground hover:text-foreground',
@@ -113,9 +139,14 @@ export default function Panel({ height }: { height: number }) {
                 Output
               </button>
               <button
+                role="tab"
+                aria-selected={gitSubTab === 'history'}
+                aria-controls="git-history-panel"
+                id="git-tab-history"
                 onClick={() => setGitSubTab('history')}
                 className={[
                   'px-3 py-1.5 text-xs font-medium transition-colors',
+                  'focus-visible:ring-2 focus-visible:ring-ring',
                   gitSubTab === 'history'
                     ? 'text-primary border-b-2 border-primary'
                     : 'text-muted-foreground hover:text-foreground',
@@ -128,9 +159,23 @@ export default function Panel({ height }: { height: number }) {
             {/* Sub-tab Content */}
             <div className="flex-1 min-h-0 overflow-hidden">
               {gitSubTab === 'output' && (
-                <GitOutputPanel entries={logEntries} onClear={handleClearLogs} />
+                <div 
+                  role="tabpanel"
+                  id="git-output-panel"
+                  aria-labelledby="git-tab-output"
+                >
+                  <GitOutputPanel entries={logEntries} onClear={handleClearLogs} />
+                </div>
               )}
-              {gitSubTab === 'history' && <GitHistoryPanel />}
+              {gitSubTab === 'history' && (
+                <div 
+                  role="tabpanel"
+                  id="git-history-panel"
+                  aria-labelledby="git-tab-history"
+                >
+                  <GitHistoryPanel />
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -147,6 +192,6 @@ export default function Panel({ height }: { height: number }) {
           </p>
         )}
       </div>
-    </div>
+    </section>
   );
 }
