@@ -4,16 +4,15 @@ import { useState, useRef, useEffect } from 'react';
 import { useGitStore } from '@/lib/stores/git-store';
 import { RefreshCw, ArrowDown, ArrowUp, MoreHorizontal, FolderGit2 } from 'lucide-react';
 
-type GitActionsBarProps = {
-  onClone: () => void;
-};
+interface GitActionsBarProps {
+  onCloneClick: () => void;
+}
 
-export default function GitActionsBar({ onClone }: GitActionsBarProps) {
-  const { refreshStatus, pullChanges, pushChanges, isLoading } = useGitStore();
+export default function GitActionsBar({ onCloneClick }: GitActionsBarProps) {
+  const { isLoading, refreshStatus, pullChanges, pushChanges } = useGitStore();
   const [showMore, setShowMore] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
 
-  // Close more menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (moreRef.current && !moreRef.current.contains(event.target as Node)) {
@@ -26,81 +25,67 @@ export default function GitActionsBar({ onClone }: GitActionsBarProps) {
   }, []);
 
   const handleRefresh = async () => {
-    try {
-      await refreshStatus();
-    } catch (err) {
-      // Error handled by store
-    }
+    await refreshStatus();
   };
 
   const handlePull = async () => {
-    try {
-      await pullChanges();
-    } catch (err) {
-      // Error handled by store
-    }
+    await pullChanges();
   };
 
   const handlePush = async () => {
-    try {
-      await pushChanges();
-    } catch (err) {
-      // Error handled by store
-    }
+    await pushChanges();
   };
 
   return (
-    <div className="flex items-center justify-between border-b border-border px-2 py-1">
-      <div className="flex items-center gap-1">
-        <button
-          onClick={handleRefresh}
-          disabled={isLoading}
-          className="rounded p-1 text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-50"
-          title="Refresh"
-        >
-          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-        </button>
+    <div className="flex items-center gap-1 p-2 border-b border-border">
+      <button
+        onClick={handleRefresh}
+        disabled={isLoading}
+        className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+        title="Refresh"
+      >
+        <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+      </button>
 
-        <button
-          onClick={handlePull}
-          disabled={isLoading}
-          className="rounded p-1 text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-50"
-          title="Pull from remote"
-        >
-          <ArrowDown className="h-4 w-4" />
-        </button>
+      <button
+        onClick={handlePull}
+        disabled={isLoading}
+        className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+        title="Pull"
+      >
+        <ArrowDown className="w-4 h-4" />
+      </button>
 
-        <button
-          onClick={handlePush}
-          disabled={isLoading}
-          className="rounded p-1 text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-50"
-          title="Push to remote"
-        >
-          <ArrowUp className="h-4 w-4" />
-        </button>
-      </div>
+      <button
+        onClick={handlePush}
+        disabled={isLoading}
+        className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+        title="Push"
+      >
+        <ArrowUp className="w-4 h-4" />
+      </button>
 
-      <div ref={moreRef} className="relative">
+      <div className="relative" ref={moreRef}>
         <button
           onClick={() => setShowMore(!showMore)}
           disabled={isLoading}
-          className="rounded p-1 text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-50"
-          title="More actions"
+          className="p-1.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+          title="More"
         >
-          <MoreHorizontal className="h-4 w-4" />
+          <MoreHorizontal className="w-4 h-4" />
         </button>
 
         {showMore && (
-          <div className="absolute right-0 top-full z-50 mt-1 min-w-[180px] rounded border border-border bg-[hsl(var(--cf-sidebar))] py-1 shadow-lg">
+          <div className="absolute top-full left-0 mt-1 bg-[hsl(var(--cf-sidebar))] border border-border rounded shadow-lg z-50 min-w-[160px]">
             <button
               onClick={() => {
-                onClone();
+                onCloneClick();
                 setShowMore(false);
               }}
-              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-secondary"
+              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-secondary text-sm text-left"
             >
-              <FolderGit2 className="h-4 w-4 text-muted-foreground" />
-              Clone Repository
+              <FolderGit2 className="w-4 h-4" />
+              <span>Clone Repository</span>
             </button>
           </div>
         )}
