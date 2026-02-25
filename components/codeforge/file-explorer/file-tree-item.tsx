@@ -1,130 +1,169 @@
-/**
- * CodeForge IDE - File Tree Item Component
- * Agent 4: File System Manager
- * 
- * Represents a single file or folder node in the tree
- */
-
 'use client';
 
-import { useEffect, useState } from 'react';
-import { ChevronRight, ChevronDown } from 'lucide-react';
+import { useState, useRef, useEffect, KeyboardEvent } from 'react';
+import { ChevronRight, File, Folder, FolderOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useFilesStore, getChildrenFromState } from '@/lib/stores/files-store';
-import { useEditorStore } from '@/lib/stores/editor-store';
-import type { FileNode } from '@/lib/db/schema';
-import { getFileTypeConfig, getFolderTypeConfig } from '@/lib/utils/file-icons';
-import { FileContextMenu } from './file-context-menu';
 
 interface FileTreeItemProps {
-  node: FileNode;
+  name: string;
+  path: string;
+  type: 'file' | 'folder';
   level: number;
+  isExpanded?: boolean;
+  isSelected?: boolean;
+  children?: React.ReactNode;
+  onToggle?: () => void;
+  onSelect?: () => void;
+  onOpen?: () => void;
+  onFocus?: () => void;
+  isFocused?: boolean;
+  index: number;
+  totalItems: number;
+  onNavigate?: (direction: 'up' | 'down' | 'left' | 'right' | 'home' | 'end') => void;
 }
 
-export function FileTreeItem({ node, level }: FileTreeItemProps) {
-  const { expandedFolders, toggleFolder, setSelectedFile, selectedFileId, getChildren } = useFilesStore();
-  const { openFile, activeTabId } = useEditorStore();
-  const [children, setChildren] = useState<FileNode[]>([]);
-  
-  const isExpanded = expandedFolders.has(node.id);
-  const isSelected = selectedFileId === node.id;
-  const isActive = activeTabId === node.id;
-  const isFolder = node.type === 'folder';
+export function FileTreeItem({
+  name,
+  path,
+  type,
+  level,
+  isExpanded = false,
+  isSelected = false,
+  children,
+  onToggle,
+  onSelect,
+  onOpen,
+  onFocus,
+  isFocused = false,
+  index,
+  totalItems,
+  onNavigate,
+}: FileTreeItemProps) {
+  const itemRef = useRef<HTMLDivElement>(null);
+  const isFolder = type === 'folder';
 
-  // Load children when expanded
+  // Auto-focus when this item becomes focused
   useEffect(() => {
-    if (isFolder && isExpanded) {
-      // First try to get from state (faster)
-      const stateChildren = getChildrenFromState(node.id);
-      if (stateChildren.length > 0) {
-        setChildren(stateChildren);
-      } else {
-        // Fallback to database query
-        getChildren(node.id).then(setChildren).catch(console.error);
-      }
+    if (isFocused && itemRef.current) {
+      itemRef.current.focus();
     }
-  }, [isExpanded, isFolder, node.id, getChildren]);
+  }, [isFocused]);
 
-  // Handle click
-  const handleClick = async () => {
-    setSelectedFile(node.id);
+  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        onNavigate?.('down');
+        break;
 
-    if (isFolder) {
-      // Toggle folder
-      toggleFolder(node.id);
-    } else {
-      // Open file in editor
-      try {
-        openFile({
-          id: node.id,
-          name: node.name,
-          content: node.content || '',
-          language: node.language,
-          path: node.path
-        });
-      } catch (error) {
-        console.error('Failed to open file:', error);
-      }
+      case 'ArrowUp':
+        e.preventDefault();
+        onNavigate?.('up');
+        break;
+
+      case 'ArrowRight':
+        e.preventDefault();
+        if (isFolder) {
+          if (!isExpanded) {
+            onToggle?.();
+          } else {
+            // Move to first child
+            onNavigate?.('down');
+          }
+        }
+        break;
+
+      case 'ArrowLeft':
+        e.preventDefault();
+        if (isFolder && isExpanded) {
+          onToggle?.();
+        } else {
+          // Move to parent
+          onNavigate?.('up');
+        }
+        break;
+
+      case 'Enter':
+        e.preventDefault();
+        if (isFolder) {
+          onToggle?.();
+        } else {
+          onOpen?.();
+        }
+        break;
+
+      case ' ':
+        e.preventDefault();
+        onSelect?.();
+        break;
+
+      case 'Home':
+        e.preventDefault();
+        onNavigate?.('home');
+        break;
+
+      case 'End':
+        e.preventDefault();
+        onNavigate?.('end');
+        break;
+
+      default:
+        break;
     }
   };
 
-  // Get icon config
-  const iconConfig = isFolder 
-    ? getFolderTypeConfig(isExpanded)
-    : getFileTypeConfig(node.name);
-  
-  const Icon = iconConfig.icon;
-  const iconColor = iconConfig.color;
-
-  // Calculate indent
-  const indent = level * 16;
+  const handleClick = () => {
+    onFocus?.();
+    if (isFolder) {
+      onToggle?.();
+    } else {
+      onOpen?.();
+    }
+  };
 
   return (
-    <div>
-      <FileContextMenu node={node}>
-        <div
-          onClick={handleClick}
-          className={cn(
-            'flex items-center gap-1 px-2 py-1 cursor-pointer hover:bg-accent/50 group',
-            'transition-colors duration-150',
-            isSelected && 'bg-accent',
-            isActive && 'bg-accent/70 border-l-2 border-primary'
-          )}
-          style={{ paddingLeft: `${indent + 8}px` }}
-        >
-          {/* Expand/collapse chevron for folders */}
-          {isFolder && (
-            <div className="flex-shrink-0 w-4 h-4">
-              {isExpanded ? (
-                <ChevronDown className="w-4 h-4 text-muted-foreground" />
-              ) : (
-                <ChevronRight className="w-4 h-4 text-muted-foreground" />
-              )}
-            </div>
-          )}
-          
-          {/* Icon */}
-          <div className="flex-shrink-0">
-            <Icon className={cn('w-4 h-4', iconConfig.color)} />
-          </div>
-          
-          {/* Name */}
-          <span className={cn(
-            'text-sm truncate flex-1',
-            isActive ? 'font-medium' : 'font-normal'
-          )}>
-            {node.name}
-          </span>
-        </div>
-      </FileContextMenu>
-
-      {/* Children */}
-      {isFolder && isExpanded && children.length > 0 && (
-        <div>
-          {children.map((child) => (
-            <FileTreeItem key={child.id} node={child} level={level + 1} />
-          ))}
-        </div>
+    <div role="group" aria-label={`${type === 'folder' ? 'Folder' : 'File'}: ${name}`}>
+      <div
+        ref={itemRef}
+        role="treeitem"
+        aria-expanded={isFolder ? isExpanded : undefined}
+        aria-selected={isSelected}
+        aria-level={level}
+        aria-posinset={index + 1}
+        aria-setsize={totalItems}
+        tabIndex={isFocused ? 0 : -1}
+        onKeyDown={handleKeyDown}
+        onClick={handleClick}
+        className={cn(
+          'flex items-center gap-1 px-2 py-1 cursor-pointer hover:bg-accent rounded-sm',
+          'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+          isSelected && 'bg-accent',
+          isFocused && 'ring-2 ring-ring'
+        )}
+        style={{ paddingLeft: `${level * 12 + 8}px` }}
+      >
+        {isFolder && (
+          <ChevronRight
+            className={cn(
+              'h-4 w-4 transition-transform',
+              isExpanded && 'transform rotate-90'
+            )}
+            aria-hidden="true"
+          />
+        )}
+        {isFolder ? (
+          isExpanded ? (
+            <FolderOpen className="h-4 w-4" aria-hidden="true" />
+          ) : (
+            <Folder className="h-4 w-4" aria-hidden="true" />
+          )
+        ) : (
+          <File className="h-4 w-4" aria-hidden="true" />
+        )}
+        <span className="flex-1 truncate text-sm">{name}</span>
+      </div>
+      {isFolder && isExpanded && children && (
+        <div role="group">{children}</div>
       )}
     </div>
   );

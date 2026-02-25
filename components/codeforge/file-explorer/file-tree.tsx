@@ -1,89 +1,134 @@
-/**
- * CodeForge IDE - File Tree Component
- * Agent 4: File System Manager
- * 
- * Displays the file/folder hierarchy
- */
-
 'use client';
 
-import { useEffect } from 'react';
-import { useFilesStore } from '@/lib/stores/files-store';
+import { useState } from 'react';
 import { FileTreeItem } from './file-tree-item';
-import { Loader2 } from 'lucide-react';
-import { initializeSampleFiles } from '@/lib/utils/initial-files';
 
-export default function FileTree() {
-  const {
-    rootNodes,
-    isLoading,
-    error,
-    isInitialized,
-    initialize,
-    loadFileTree
-  } = useFilesStore();
+interface FileNode {
+  name: string;
+  path: string;
+  type: 'file' | 'folder';
+  children?: FileNode[];
+}
 
-  // Initialize on mount
-  useEffect(() => {
-    const init = async () => {
-      if (!isInitialized) {
-        await initialize();
-        
-        // Create sample files if database is empty
-        try {
-          await initializeSampleFiles();
-          await loadFileTree();
-        } catch (error) {
-          console.error('Failed to initialize sample files:', error);
-        }
+interface FileTreeProps {
+  files: FileNode[];
+  onFileOpen?: (path: string) => void;
+}
+
+export function FileTree({ files, onFileOpen }: FileTreeProps) {
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [focusedIndex, setFocusedIndex] = useState(0);
+
+  // Flatten tree for navigation
+  const flattenTree = (nodes: FileNode[], level = 0): Array<FileNode & { level: number }> => {
+    let result: Array<FileNode & { level: number }> = [];
+    
+    for (const node of nodes) {
+      result.push({ ...node, level });
+      
+      if (node.type === 'folder' && expandedFolders.has(node.path) && node.children) {
+        result = result.concat(flattenTree(node.children, level + 1));
       }
-    };
+    }
+    
+    return result;
+  };
 
-    init();
-  }, [isInitialized, initialize, loadFileTree]);
+  const flatFiles = flattenTree(files);
 
-  // Loading state
-  if (isLoading && !isInitialized) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="flex flex-col items-center gap-2 text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <span className="text-sm">Loading file system...</span>
-        </div>
-      </div>
-    );
-  }
+  const handleToggle = (path: string) => {
+    setExpandedFolders((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) {
+        next.delete(path);
+      } else {
+        next.add(path);
+      }
+      return next;
+    });
+  };
 
-  // Error state
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-full p-4">
-        <div className="text-center">
-          <p className="text-sm text-destructive mb-2">Error loading files</p>
-          <p className="text-xs text-muted-foreground">{error}</p>
-        </div>
-      </div>
-    );
-  }
+  const handleNavigate = (direction: 'up' | 'down' | 'left' | 'right' | 'home' | 'end') => {
+    let newIndex = focusedIndex;
 
-  // Empty state
-  if (!isLoading && rootNodes.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full p-4">
-        <div className="text-center text-muted-foreground">
-          <p className="text-sm mb-2">No files yet</p>
-          <p className="text-xs">Create a new file to get started</p>
-        </div>
-      </div>
-    );
-  }
+    switch (direction) {
+      case 'up':
+        newIndex = Math.max(0, focusedIndex - 1);
+        break;
+      case 'down':
+        newIndex = Math.min(flatFiles.length - 1, focusedIndex + 1);
+        break;
+      case 'home':
+        newIndex = 0;
+        break;
+      case 'end':
+        newIndex = flatFiles.length - 1;
+        break;
+      default:
+        break;
+    }
 
-  // File tree
+    setFocusedIndex(newIndex);
+  };
+
+  const renderTree = (nodes: FileNode[], level = 0, startIndex = 0): { elements: React.ReactNode[], nextIndex: number } => {
+    let currentIndex = startIndex;
+    const elements: React.ReactNode[] = [];
+
+    for (const node of nodes) {
+      const isExpanded = expandedFolders.has(node.path);
+      const isSelected = selectedPath === node.path;
+      const isFocused = focusedIndex === currentIndex;
+      const nodeIndex = currentIndex;
+      
+      currentIndex++;
+
+      elements.push(
+        <FileTreeItem
+          key={node.path}
+          name={node.name}
+          path={node.path}
+          type={node.type}
+          level={level}
+          isExpanded={isExpanded}
+          isSelected={isSelected}
+          isFocused={isFocused}
+          index={nodeIndex}
+          totalItems={flatFiles.length}
+          onToggle={() => handleToggle(node.path)}
+          onSelect={() => setSelectedPath(node.path)}
+          onOpen={() => {
+            if (node.type === 'file') {
+              onFileOpen?.(node.path);
+            }
+          }}
+          onFocus={() => setFocusedIndex(nodeIndex)}
+          onNavigate={handleNavigate}
+        >
+          {node.type === 'folder' && isExpanded && node.children ? (
+            renderTree(node.children, level + 1, currentIndex).elements
+          ) : null}
+        </FileTreeItem>
+      );
+
+      if (node.type === 'folder' && isExpanded && node.children) {
+        const result = renderTree(node.children, level + 1, currentIndex);
+        currentIndex = result.nextIndex;
+      }
+    }
+
+    return { elements, nextIndex: currentIndex };
+  };
+
   return (
-    <div className="py-2">
-      {rootNodes.map((node) => (
-        <FileTreeItem key={node.id} node={node} level={0} />
-      ))}
+    <div
+      role="tree"
+      aria-label="File Explorer"
+      aria-multiselectable="false"
+      className="py-2"
+    >
+      {renderTree(files, 0, 0).elements}
     </div>
   );
 }
