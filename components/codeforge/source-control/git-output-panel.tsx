@@ -47,9 +47,7 @@ export default function GitOutputPanel({
             <span className="text-muted-foreground">
               [{new Date(entry.timestamp).toLocaleTimeString()}]
             </span>{' '}
-            <span className={typeColors[entry.type]}>
-              $ {entry.command}
-            </span>
+            <span className={typeColors[entry.type]}>$ {entry.command}</span>
             {entry.output && (
               <pre className="ml-4 whitespace-pre-wrap text-muted-foreground">
                 {entry.output}

@@ -25,7 +25,7 @@ export const defaultMonacoOptions: editor.IStandaloneEditorConstructionOptions =
     tabCompletion: 'on',
 
     // Code Actions
-    lightbulb: { enabled: 'on' },
+    lightbulb: { enabled: 'on' as editor.ShowLightbulbIconMode },
     codeLens: true,
 
     // Formatting
@@ -72,7 +72,7 @@ export const supportedLanguages = [
 export function detectLanguage(filePath: string): string {
   const ext = filePath.slice(filePath.lastIndexOf('.'));
   const lang = supportedLanguages.find((l) =>
-    l.extensions.includes(ext as any)
+    (l.extensions as readonly string[]).includes(ext)
   );
   return lang?.id ?? 'plaintext';
 }

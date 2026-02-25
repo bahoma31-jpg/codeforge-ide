@@ -15,6 +15,7 @@ export function registerCodeActions() {
               edits: [
                 {
                   resource: model.uri,
+                  versionId: undefined,
                   textEdit: {
                     range: {
                       startLineNumber: range.endLineNumber,

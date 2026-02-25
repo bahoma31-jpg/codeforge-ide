@@ -1,21 +1,17 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import { cn } from "@/lib/utils";
+import * as React from 'react';
+import { cn } from '@/lib/utils';
 
 const ScrollArea = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, children, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("relative overflow-auto", className)}
-    {...props}
-  >
+  <div ref={ref} className={cn('relative overflow-auto', className)} {...props}>
     {children}
   </div>
 ));
-ScrollArea.displayName = "ScrollArea";
+ScrollArea.displayName = 'ScrollArea';
 
 const ScrollBar = React.forwardRef<
   HTMLDivElement,
@@ -23,13 +19,10 @@ const ScrollBar = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn(
-      "flex touch-none select-none transition-colors",
-      className,
-    )}
+    className={cn('flex touch-none select-none transition-colors', className)}
     {...props}
   />
 ));
-ScrollBar.displayName = "ScrollBar";
+ScrollBar.displayName = 'ScrollBar';
 
 export { ScrollArea, ScrollBar };

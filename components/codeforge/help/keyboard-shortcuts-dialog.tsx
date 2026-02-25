@@ -142,7 +142,7 @@ export function KeyboardShortcutsDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        ref={dialogRef as any}
+        ref={dialogRef as React.Ref<HTMLDivElement>}
         className="max-w-3xl h-[600px]"
         role="dialog"
         aria-labelledby="shortcuts-dialog-title"

@@ -396,7 +396,7 @@ export async function getChildren(
   const db = getDBManager();
   try {
     if (parentId === null) {
-      // IndexedDB does not support indexing null values. 
+      // IndexedDB does not support indexing null values.
       // For root nodes, we have to perform a full scan and filter.
       const allNodes = await db.getAll<FileNode>();
       return allNodes.filter((node) => node.parentId === null);

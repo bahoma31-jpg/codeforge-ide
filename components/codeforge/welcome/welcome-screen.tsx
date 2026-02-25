@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import { useEditorStore } from '@/lib/stores/editor-store';
 
-
 export function WelcomeScreen() {
   const { openFile } = useEditorStore();
 
@@ -96,7 +95,15 @@ export function WelcomeScreen() {
               <Button
                 variant="outline"
                 className="w-full justify-start"
-                onClick={() => openFile(null)}
+                onClick={() =>
+                  openFile({
+                    id: crypto.randomUUID(),
+                    name: 'untitled',
+                    content: '',
+                    language: 'plaintext',
+                    path: '/untitled',
+                  })
+                }
               >
                 <FileText className="w-4 h-4 mr-2" />
                 New File

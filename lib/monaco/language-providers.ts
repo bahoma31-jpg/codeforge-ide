@@ -1,33 +1,42 @@
 ﻿import * as monaco from 'monaco-editor';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const tsLanguages = (monaco.languages as any).typescript as any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const htmlLanguages = (monaco.languages as any).html as any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const cssLanguages = (monaco.languages as any).css as any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const jsonLanguages = (monaco.languages as any).json as any;
+
 // TypeScript/JavaScript IntelliSense
 export function configureTypeScriptDefaults() {
-  monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
-    target: monaco.languages.typescript.ScriptTarget.ES2020,
+  tsLanguages.typescriptDefaults.setCompilerOptions({
+    target: tsLanguages.ScriptTarget.ES2020,
     allowNonTsExtensions: true,
-    moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
-    module: monaco.languages.typescript.ModuleKind.ES2015,
+    moduleResolution: tsLanguages.ModuleResolutionKind.NodeJs,
+    module: tsLanguages.ModuleKind.ES2015,
     noEmit: true,
     esModuleInterop: true,
-    jsx: monaco.languages.typescript.JsxEmit.React,
+    jsx: tsLanguages.JsxEmit.React,
     reactNamespace: 'React',
     allowJs: true,
     typeRoots: ['node_modules/@types'],
   });
 
-  monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
+  tsLanguages.typescriptDefaults.setDiagnosticsOptions({
     noSemanticValidation: false,
     noSyntaxValidation: false,
   });
 
   // JavaScript
-  monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
-    target: monaco.languages.typescript.ScriptTarget.ES2020,
+  tsLanguages.javascriptDefaults.setCompilerOptions({
+    target: tsLanguages.ScriptTarget.ES2020,
     allowNonTsExtensions: true,
     allowJs: true,
   });
 
-  monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
+  tsLanguages.javascriptDefaults.setDiagnosticsOptions({
     noSemanticValidation: false,
     noSyntaxValidation: false,
   });
@@ -35,7 +44,7 @@ export function configureTypeScriptDefaults() {
 
 // HTML IntelliSense
 export function configureHTMLDefaults() {
-  monaco.languages.html.htmlDefaults.setOptions({
+  htmlLanguages.htmlDefaults.setOptions({
     format: {
       tabSize: 2,
       insertSpaces: true,
@@ -56,7 +65,7 @@ export function configureHTMLDefaults() {
 
 // CSS IntelliSense
 export function configureCSSDefaults() {
-  monaco.languages.css.cssDefaults.setOptions({
+  cssLanguages.cssDefaults.setOptions({
     validate: true,
     lint: {
       compatibleVendorPrefixes: 'warning',
@@ -83,7 +92,7 @@ export function configureCSSDefaults() {
 
 // JSON Schema Validation
 export function configureJSONDefaults() {
-  monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
+  jsonLanguages.jsonDefaults.setDiagnosticsOptions({
     validate: true,
     allowComments: true,
     schemas: [
@@ -112,7 +121,7 @@ export function addExtraLibraries() {
       export function useEffect(effect: () => void | (() => void), deps?: any[]): void;
     }
   `;
-  monaco.languages.typescript.typescriptDefaults.addExtraLib(
+  tsLanguages.typescriptDefaults.addExtraLib(
     reactTypes,
     'file:///node_modules/@types/react/index.d.ts'
   );
@@ -122,7 +131,7 @@ export function addExtraLibraries() {
 export function registerCustomSnippets() {
   monaco.languages.registerCompletionItemProvider('typescript', {
     provideCompletionItems: () => {
-      const suggestions: monaco.languages.CompletionItem[] = [
+      const suggestions = [
         {
           label: 'rfc',
           kind: monaco.languages.CompletionItemKind.Snippet,
@@ -140,7 +149,7 @@ export function registerCustomSnippets() {
           documentation: 'React Functional Component',
         },
       ];
-      return { suggestions };
+      return { suggestions: suggestions as monaco.languages.CompletionItem[] };
     },
   });
 }
