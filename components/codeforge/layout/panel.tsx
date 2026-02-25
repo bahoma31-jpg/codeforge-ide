@@ -5,6 +5,7 @@ import { useUIStore } from '@/lib/stores/ui-store';
 import { AlertCircle, Bug, FileText, GitBranch, Terminal, X } from 'lucide-react';
 import GitOutputPanel from '../source-control/git-output-panel';
 import GitHistoryPanel from '../source-control/git-history-panel';
+import TerminalWrapper from '../terminal/terminal-wrapper';
 import { getGitLogs, clearGitLogs, subscribeToGitLogs } from '@/lib/utils/git-log';
 import type { GitLogEntry } from '@/lib/utils/git-log';
 
@@ -82,14 +83,8 @@ export default function Panel({ height }: { height: number }) {
         </button>
       </div>
 
-      <div className={`min-h-0 flex-1 overflow-y-auto ${active === 'git' ? '' : 'p-4'}`}>
-        {active === 'terminal' && (
-          <div className="rounded border-2 border-dashed border-muted-foreground/30 p-4">
-            <p className="text-sm text-muted-foreground">
-              xterm.js Terminal will be integrated here by Agent 6.
-            </p>
-          </div>
-        )}
+      <div className={`min-h-0 flex-1 overflow-y-auto ${active === 'git' || active === 'terminal' ? '' : 'p-4'}`}>
+        {active === 'terminal' && <TerminalWrapper />}
 
         {active === 'output' && (
           <p className="text-sm text-muted-foreground">
