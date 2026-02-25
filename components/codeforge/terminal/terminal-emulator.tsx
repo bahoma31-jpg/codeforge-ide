@@ -4,7 +4,7 @@
  * Agent 6: Terminal Emulator Engineer
  *
  * Core terminal component wrapping xterm.js with simulated shell commands.
- * Supports command history, ANSI colors, and git integration.
+ * Supports command history, ANSI colors, git integration, and tab completion.
  */
 
 'use client';
@@ -187,6 +187,78 @@ export default function TerminalEmulator({
   };
 
   /**
+   * Handles Tab key press for command and path auto-completion
+   */
+  const handleTabCompletion = () => {
+    const term = terminalRef.current;
+    if (!term) return;
+
+    const input = currentLineRef.current;
+    const parts = input.split(/\s+/);
+
+    // If completing a command name (first word)
+    if (parts.length <= 1) {
+      const commands = [
+        'help',
+        'clear',
+        'cls',
+        'echo',
+        'date',
+        'whoami',
+        'pwd',
+        'ls',
+        'cd',
+        'cat',
+        'mkdir',
+        'touch',
+        'rm',
+        'rmdir',
+        'history',
+        'git',
+      ];
+      const matches = commands.filter((cmd) => cmd.startsWith(parts[0] || ''));
+
+      if (matches.length === 1) {
+        // Single match — complete it
+        const completion = matches[0].slice((parts[0] || '').length) + ' ';
+        currentLineRef.current += completion;
+        cursorPositionRef.current += completion.length;
+        term.write(completion);
+      } else if (matches.length > 1) {
+        // Multiple matches — show options
+        term.write(`\r\n${matches.join('  ')}\r\n`);
+        writePrompt();
+        term.write(currentLineRef.current);
+      }
+      return;
+    }
+
+    // If completing a path (second word onwards)
+    const partial = parts[parts.length - 1] || '';
+    const currentDir = fileSystemRef.current[currentDirectoryRef.current];
+    if (!currentDir || !currentDir.children) return;
+
+    const matches = currentDir.children.filter((child) =>
+      child.startsWith(partial)
+    );
+
+    if (matches.length === 1) {
+      const completion = matches[0].slice(partial.length);
+      const childPath = `${currentDirectoryRef.current}/${matches[0]}`;
+      const isDir = fileSystemRef.current[childPath]?.type === 'directory';
+      const suffix = isDir ? '/' : ' ';
+
+      currentLineRef.current += completion + suffix;
+      cursorPositionRef.current += completion.length + suffix.length;
+      term.write(completion + suffix);
+    } else if (matches.length > 1) {
+      term.write(`\r\n${matches.join('  ')}\r\n`);
+      writePrompt();
+      term.write(currentLineRef.current);
+    }
+  };
+
+  /**
    * Handles command execution
    */
   const executeCommand = (command: string) => {
@@ -231,8 +303,14 @@ export default function TerminalEmulator({
             `  ${COLORS.cyan}mkdir <name>${COLORS.reset}  Create directory\r\n` +
             `  ${COLORS.cyan}touch <name>${COLORS.reset}  Create file\r\n` +
             `  ${COLORS.cyan}rm <name>${COLORS.reset}     Remove file or empty directory\r\n` +
+            `  ${COLORS.cyan}rmdir <name>${COLORS.reset}  Remove empty directory\r\n` +
             `  ${COLORS.cyan}history${COLORS.reset}       Show command history\r\n` +
             `  ${COLORS.cyan}git status${COLORS.reset}    Show git status\r\n` +
+            `  ${COLORS.cyan}git add${COLORS.reset}       Stage changes\r\n` +
+            `  ${COLORS.cyan}git commit${COLORS.reset}    Commit staged changes\r\n` +
+            `  ${COLORS.cyan}git push${COLORS.reset}      Push to remote\r\n` +
+            `  ${COLORS.cyan}git pull${COLORS.reset}      Pull from remote\r\n` +
+            `  ${COLORS.cyan}git log${COLORS.reset}       Show commit history\r\n` +
             `  ${COLORS.cyan}git branch${COLORS.reset}    Show current branch\r\n`
         );
         break;
@@ -280,6 +358,10 @@ export default function TerminalEmulator({
 
       case 'rm':
         handleRm(args[0]);
+        break;
+
+      case 'rmdir':
+        handleRmdir(args[0]);
         break;
 
       case 'history':
@@ -503,12 +585,16 @@ export default function TerminalEmulator({
 
     const node = fileSystemRef.current[targetPath];
     if (!node) {
-      term.write(`${COLORS.red}rm: ${target}: No such file or directory${COLORS.reset}\r\n`);
+      term.write(
+        `${COLORS.red}rm: ${target}: No such file or directory${COLORS.reset}\r\n`
+      );
       return;
     }
 
     if (node.type === 'directory' && node.children && node.children.length > 0) {
-      term.write(`${COLORS.red}rm: ${target}: Is a non-empty directory (use rm -r)${COLORS.reset}\r\n`);
+      term.write(
+        `${COLORS.red}rm: ${target}: Is a non-empty directory (use rm -r)${COLORS.reset}\r\n`
+      );
       return;
     }
 
@@ -518,10 +604,66 @@ export default function TerminalEmulator({
     // Remove from parent directory children
     const parentDir = fileSystemRef.current[currentDirectoryRef.current];
     if (parentDir && parentDir.children) {
-      parentDir.children = parentDir.children.filter((child) => child !== target);
+      parentDir.children = parentDir.children.filter(
+        (child) => child !== target
+      );
     }
 
     term.write(`${COLORS.green}Removed: ${target}${COLORS.reset}\r\n`);
+  };
+
+  /**
+   * Handles 'rmdir' command — removes an empty directory only
+   */
+  const handleRmdir = (dirname: string) => {
+    const term = terminalRef.current;
+    if (!term) return;
+
+    if (!dirname) {
+      term.write(`${COLORS.red}rmdir: missing operand${COLORS.reset}\r\n`);
+      return;
+    }
+
+    const targetPath = dirname.startsWith('/')
+      ? dirname
+      : `${currentDirectoryRef.current}/${dirname}`;
+
+    const node = fileSystemRef.current[targetPath];
+    if (!node) {
+      term.write(
+        `${COLORS.red}rmdir: ${dirname}: No such file or directory${COLORS.reset}\r\n`
+      );
+      return;
+    }
+
+    if (node.type !== 'directory') {
+      term.write(
+        `${COLORS.red}rmdir: ${dirname}: Not a directory${COLORS.reset}\r\n`
+      );
+      return;
+    }
+
+    if (node.children && node.children.length > 0) {
+      term.write(
+        `${COLORS.red}rmdir: ${dirname}: Directory not empty${COLORS.reset}\r\n`
+      );
+      return;
+    }
+
+    // Remove from file system
+    delete fileSystemRef.current[targetPath];
+
+    // Remove from parent directory children
+    const parentDir = fileSystemRef.current[currentDirectoryRef.current];
+    if (parentDir && parentDir.children) {
+      parentDir.children = parentDir.children.filter(
+        (child) => child !== dirname
+      );
+    }
+
+    term.write(
+      `${COLORS.green}Removed directory: ${dirname}${COLORS.reset}\r\n`
+    );
   };
 
   /**
@@ -566,6 +708,26 @@ export default function TerminalEmulator({
 
       case 'branch':
         handleGitBranch();
+        break;
+
+      case 'add':
+        handleGitAdd(args.slice(1));
+        break;
+
+      case 'commit':
+        handleGitCommit(args.slice(1));
+        break;
+
+      case 'push':
+        handleGitPush();
+        break;
+
+      case 'pull':
+        handleGitPull();
+        break;
+
+      case 'log':
+        handleGitLog();
         break;
 
       default:
@@ -645,6 +807,155 @@ export default function TerminalEmulator({
   };
 
   /**
+   * Handles 'git add' command — stages changes for commit
+   */
+  const handleGitAdd = (args: string[]) => {
+    const term = terminalRef.current;
+    if (!term) return;
+
+    const { currentRepo } = useGitStore.getState();
+
+    if (!currentRepo) {
+      term.write(
+        `${COLORS.red}fatal: not a git repository${COLORS.reset}\r\n`
+      );
+      return;
+    }
+
+    if (args.length === 0) {
+      term.write(
+        `${COLORS.red}Nothing specified, nothing added.${COLORS.reset}\r\n`
+      );
+      return;
+    }
+
+    const target = args[0];
+
+    if (target === '.') {
+      term.write(
+        `${COLORS.green}Added all changes to staging area${COLORS.reset}\r\n`
+      );
+    } else {
+      term.write(
+        `${COLORS.green}Added '${target}' to staging area${COLORS.reset}\r\n`
+      );
+    }
+  };
+
+  /**
+   * Handles 'git commit' command — creates a commit with staged changes
+   */
+  const handleGitCommit = (args: string[]) => {
+    const term = terminalRef.current;
+    if (!term) return;
+
+    const { currentRepo, currentBranch } = useGitStore.getState();
+
+    if (!currentRepo) {
+      term.write(
+        `${COLORS.red}fatal: not a git repository${COLORS.reset}\r\n`
+      );
+      return;
+    }
+
+    const msgFlag = args.indexOf('-m');
+    if (msgFlag === -1 || !args[msgFlag + 1]) {
+      term.write(
+        `${COLORS.red}error: switch 'm' requires a value${COLORS.reset}\r\n`
+      );
+      return;
+    }
+
+    const message = args
+      .slice(msgFlag + 1)
+      .join(' ')
+      .replace(/^["']|["']$/g, '');
+    term.write(
+      `${COLORS.green}[${currentBranch}] ${message}${COLORS.reset}\r\n`
+    );
+    term.write(`${COLORS.gray} 1 file changed${COLORS.reset}\r\n`);
+  };
+
+  /**
+   * Handles 'git push' command — pushes commits to remote
+   */
+  const handleGitPush = () => {
+    const term = terminalRef.current;
+    if (!term) return;
+
+    const { currentRepo, currentBranch } = useGitStore.getState();
+
+    if (!currentRepo) {
+      term.write(
+        `${COLORS.red}fatal: not a git repository${COLORS.reset}\r\n`
+      );
+      return;
+    }
+
+    term.write(
+      `${COLORS.cyan}Pushing to origin/${currentBranch}...${COLORS.reset}\r\n`
+    );
+    term.write(`${COLORS.green}Everything up-to-date${COLORS.reset}\r\n`);
+  };
+
+  /**
+   * Handles 'git pull' command — pulls changes from remote
+   */
+  const handleGitPull = () => {
+    const term = terminalRef.current;
+    if (!term) return;
+
+    const { currentRepo, currentBranch } = useGitStore.getState();
+
+    if (!currentRepo) {
+      term.write(
+        `${COLORS.red}fatal: not a git repository${COLORS.reset}\r\n`
+      );
+      return;
+    }
+
+    term.write(
+      `${COLORS.cyan}Pulling from origin/${currentBranch}...${COLORS.reset}\r\n`
+    );
+    term.write(`${COLORS.green}Already up to date.${COLORS.reset}\r\n`);
+  };
+
+  /**
+   * Handles 'git log' command — shows recent commit history
+   */
+  const handleGitLog = () => {
+    const term = terminalRef.current;
+    if (!term) return;
+
+    const { currentRepo, commits } = useGitStore.getState();
+
+    if (!currentRepo) {
+      term.write(
+        `${COLORS.red}fatal: not a git repository${COLORS.reset}\r\n`
+      );
+      return;
+    }
+
+    if (!commits || commits.length === 0) {
+      term.write(`${COLORS.gray}No commits yet${COLORS.reset}\r\n`);
+      return;
+    }
+
+    const recentCommits = commits.slice(0, 10);
+    recentCommits.forEach((commit) => {
+      term.write(
+        `${COLORS.yellow}commit ${commit.sha}${COLORS.reset}\r\n`
+      );
+      term.write(
+        `${COLORS.gray}Author: ${commit.author}${COLORS.reset}\r\n`
+      );
+      const date = new Date(commit.date).toISOString();
+      term.write(`${COLORS.gray}Date: ${date}${COLORS.reset}\r\n`);
+      term.write(`\r\n    ${commit.message}\r\n\r\n`);
+    });
+  };
+
+  /**
    * Handles key input
    */
   const handleKeyInput = (key: string, ev: KeyboardEvent) => {
@@ -652,6 +963,30 @@ export default function TerminalEmulator({
     if (!term) return;
 
     const isPrintable = !ev.altKey && !ev.ctrlKey && !ev.metaKey;
+
+    // Handle Ctrl+Shift+C (Copy)
+    if (ev.ctrlKey && ev.shiftKey && ev.key === 'C') {
+      const selection = term.getSelection();
+      if (selection) {
+        navigator.clipboard.writeText(selection).catch(() => {});
+      }
+      return;
+    }
+
+    // Handle Ctrl+Shift+V (Paste)
+    if (ev.ctrlKey && ev.shiftKey && ev.key === 'V') {
+      navigator.clipboard
+        .readText()
+        .then((text) => {
+          if (text && terminalRef.current) {
+            currentLineRef.current += text;
+            cursorPositionRef.current += text.length;
+            terminalRef.current.write(text);
+          }
+        })
+        .catch(() => {});
+      return;
+    }
 
     // Handle Ctrl+C
     if (ev.ctrlKey && ev.key === 'c') {
@@ -666,6 +1001,13 @@ export default function TerminalEmulator({
     if (ev.ctrlKey && ev.key === 'l') {
       term.clear();
       writePrompt();
+      return;
+    }
+
+    // Handle Tab (auto-completion)
+    if (ev.key === 'Tab') {
+      ev.preventDefault();
+      handleTabCompletion();
       return;
     }
 
