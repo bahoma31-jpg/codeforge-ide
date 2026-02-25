@@ -6,7 +6,7 @@ import { AlertTriangle, RefreshCw } from 'lucide-react';
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
-  onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
+  onReset?: () => void;
 }
 
 interface State {
@@ -16,8 +16,8 @@ interface State {
 }
 
 /**
- * ErrorBoundary component that catches React errors in child components.
- * Displays a fallback UI when an error occurs.
+ * Error Boundary component to catch and handle React errors
+ * Prevents the entire app from crashing due to component errors
  */
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
@@ -30,25 +30,23 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): Partial<State> {
-    return { hasError: true, error };
+    return {
+      hasError: true,
+      error,
+    };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // Log error to console in development
-    if (process.env.NODE_ENV === 'development') {
-      console.error('ErrorBoundary caught an error:', error);
-      console.error('Error info:', errorInfo);
-    }
+    console.error('ErrorBoundary caught error:', error);
+    console.error('Component stack:', errorInfo.componentStack);
 
-    this.setState({ errorInfo });
+    this.setState({
+      error,
+      errorInfo,
+    });
 
-    // Call custom error handler if provided
-    if (this.props.onError) {
-      this.props.onError(error, errorInfo);
-    }
-
-    // TODO: Send error to tracking service (e.g., Sentry, LogRocket)
-    // trackError(error, errorInfo);
+    // TODO: Send to error tracking service (Sentry, LogRocket, etc.)
+    // logErrorToService(error, errorInfo);
   }
 
   handleReset = () => {
@@ -57,66 +55,72 @@ export class ErrorBoundary extends Component<Props, State> {
       error: null,
       errorInfo: null,
     });
+
+    if (this.props.onReset) {
+      this.props.onReset();
+    }
   };
 
   render() {
     if (this.state.hasError) {
-      // Use custom fallback if provided
+      // Custom fallback provided
       if (this.props.fallback) {
         return this.props.fallback;
       }
 
-      // Default fallback UI
+      // Default error UI
       return (
-        <div className="flex h-screen w-full items-center justify-center bg-background p-4">
-          <div className="max-w-md space-y-4 text-center">
-            <div className="flex justify-center">
-              <div className="rounded-full bg-destructive/10 p-3">
-                <AlertTriangle className="h-8 w-8 text-destructive" />
+        <div className="flex min-h-screen items-center justify-center bg-background p-4">
+          <div className="w-full max-w-md space-y-6 rounded-lg border border-destructive/20 bg-card p-6 shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-destructive/10 p-2">
+                <AlertTriangle className="h-6 w-6 text-destructive" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">
+                  Something went wrong
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  An unexpected error occurred
+                </p>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <h2 className="text-2xl font-semibold text-foreground">
-                Something went wrong
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                We're sorry for the inconvenience. An unexpected error occurred.
-              </p>
-            </div>
-
-            {process.env.NODE_ENV === 'development' && this.state.error && (
-              <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-left">
-                <p className="mb-2 text-xs font-semibold text-destructive">
-                  Error Details (Development Only):
+            {this.state.error && (
+              <div className="rounded-md bg-muted p-3">
+                <p className="text-xs font-mono text-muted-foreground break-all">
+                  {this.state.error.message}
                 </p>
-                <pre className="overflow-auto text-xs text-destructive">
-                  {this.state.error.toString()}
-                  {this.state.errorInfo?.componentStack && (
-                    <>
-                      {'\n\nComponent Stack:'}
-                      {this.state.errorInfo.componentStack}
-                    </>
-                  )}
-                </pre>
               </div>
             )}
 
-            <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <div className="flex flex-col gap-2">
               <button
                 onClick={this.handleReset}
-                className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
               >
                 <RefreshCw className="h-4 w-4" />
                 Try Again
               </button>
+              
               <button
                 onClick={() => window.location.reload()}
-                className="inline-flex items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
               >
                 Reload Page
               </button>
             </div>
+
+            {process.env.NODE_ENV === 'development' && this.state.errorInfo && (
+              <details className="text-xs">
+                <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                  Error Details (Dev Only)
+                </summary>
+                <pre className="mt-2 overflow-auto rounded-md bg-muted p-3 text-xs">
+                  {this.state.errorInfo.componentStack}
+                </pre>
+              </details>
+            )}
           </div>
         </div>
       );
@@ -127,7 +131,7 @@ export class ErrorBoundary extends Component<Props, State> {
 }
 
 /**
- * Hook-based ErrorBoundary wrapper for functional components
+ * Hook-based error boundary wrapper for functional components
  */
 export function withErrorBoundary<P extends object>(
   Component: React.ComponentType<P>,
