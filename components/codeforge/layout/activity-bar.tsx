@@ -1,6 +1,7 @@
-﻿'use client';
+'use client';
 
 import { useUIStore } from '@/lib/stores/ui-store';
+import { useGitStore } from '@/lib/stores/git-store';
 import { Files, Search, GitBranch, Package, Settings } from 'lucide-react';
 
 const views = [
@@ -14,6 +15,11 @@ const views = [
 export default function ActivityBar() {
   const { activityBarView, setActivityBarView, sidebarVisible, toggleSidebar } =
     useUIStore();
+  const { status } = useGitStore();
+
+  // Calculate total changes for git badge
+  const changeCount =
+    status.modified.length + status.added.length + status.deleted.length;
 
   const onClick = (id: (typeof views)[number]['id']) => {
     if (activityBarView === id) {
@@ -29,12 +35,15 @@ export default function ActivityBar() {
       {views.map((view) => {
         const ActiveIcon = view.icon;
         const active = activityBarView === view.id;
+        const isGit = view.id === 'git';
+        const showBadge = isGit && changeCount > 0;
+
         return (
           <button
             key={view.id}
             onClick={() => onClick(view.id)}
             className={[
-              'rounded p-2 transition-colors',
+              'relative rounded p-2 transition-colors',
               'hover:bg-secondary',
               active ? 'bg-secondary text-primary' : 'text-muted-foreground',
             ].join(' ')}
@@ -42,6 +51,13 @@ export default function ActivityBar() {
             aria-pressed={active}
           >
             <ActiveIcon className="h-6 w-6" />
+
+            {/* Badge for git icon */}
+            {showBadge && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                {changeCount > 9 ? '9+' : changeCount}
+              </span>
+            )}
           </button>
         );
       })}
