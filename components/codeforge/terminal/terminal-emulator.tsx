@@ -9,7 +9,7 @@
 
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import type { Terminal } from '@xterm/xterm';
 import type { FitAddon } from '@xterm/addon-fit';
 import type { WebLinksAddon } from '@xterm/addon-web-links';
@@ -64,7 +64,6 @@ export default function TerminalEmulator({
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
   // Terminal state
-  const [isReady, setIsReady] = useState(false);
   const currentLineRef = useRef<string>('');
   const cursorPositionRef = useRef<number>(0);
   const commandHistoryRef = useRef<string[]>([]);
@@ -94,9 +93,6 @@ export default function TerminalEmulator({
       content: '{\n  "name": "codeforge-ide",\n  "version": "0.1.0"\n}\n',
     },
   });
-
-  // Git store access
-  const gitStore = useGitStore();
 
   /**
    * Converts HSL color from CSS variable to hex
@@ -234,6 +230,8 @@ export default function TerminalEmulator({
             `  ${COLORS.cyan}cat <file>${COLORS.reset}    Display file contents\r\n` +
             `  ${COLORS.cyan}mkdir <name>${COLORS.reset}  Create directory\r\n` +
             `  ${COLORS.cyan}touch <name>${COLORS.reset}  Create file\r\n` +
+            `  ${COLORS.cyan}rm <name>${COLORS.reset}     Remove file or empty directory\r\n` +
+            `  ${COLORS.cyan}history${COLORS.reset}       Show command history\r\n` +
             `  ${COLORS.cyan}git status${COLORS.reset}    Show git status\r\n` +
             `  ${COLORS.cyan}git branch${COLORS.reset}    Show current branch\r\n`
         );
@@ -278,6 +276,14 @@ export default function TerminalEmulator({
 
       case 'touch':
         handleTouch(args[0]);
+        break;
+
+      case 'rm':
+        handleRm(args[0]);
+        break;
+
+      case 'history':
+        handleHistory();
         break;
 
       case 'git':
@@ -480,6 +486,64 @@ export default function TerminalEmulator({
   };
 
   /**
+   * Handles 'rm' command — removes a file or empty directory
+   */
+  const handleRm = (target: string) => {
+    const term = terminalRef.current;
+    if (!term) return;
+
+    if (!target) {
+      term.write(`${COLORS.red}rm: missing operand${COLORS.reset}\r\n`);
+      return;
+    }
+
+    const targetPath = target.startsWith('/')
+      ? target
+      : `${currentDirectoryRef.current}/${target}`;
+
+    const node = fileSystemRef.current[targetPath];
+    if (!node) {
+      term.write(`${COLORS.red}rm: ${target}: No such file or directory${COLORS.reset}\r\n`);
+      return;
+    }
+
+    if (node.type === 'directory' && node.children && node.children.length > 0) {
+      term.write(`${COLORS.red}rm: ${target}: Is a non-empty directory (use rm -r)${COLORS.reset}\r\n`);
+      return;
+    }
+
+    // Remove from file system
+    delete fileSystemRef.current[targetPath];
+
+    // Remove from parent directory children
+    const parentDir = fileSystemRef.current[currentDirectoryRef.current];
+    if (parentDir && parentDir.children) {
+      parentDir.children = parentDir.children.filter((child) => child !== target);
+    }
+
+    term.write(`${COLORS.green}Removed: ${target}${COLORS.reset}\r\n`);
+  };
+
+  /**
+   * Handles 'history' command — shows command history
+   */
+  const handleHistory = () => {
+    const term = terminalRef.current;
+    if (!term) return;
+
+    const history = commandHistoryRef.current;
+    if (history.length === 0) {
+      term.write(`${COLORS.gray}No commands in history${COLORS.reset}\r\n`);
+      return;
+    }
+
+    history.forEach((cmd, index) => {
+      const lineNum = String(index + 1).padStart(4, ' ');
+      term.write(`${COLORS.gray}${lineNum}${COLORS.reset}  ${cmd}\r\n`);
+    });
+  };
+
+  /**
    * Handles 'git' commands
    */
   const handleGit = (args: string[]) => {
@@ -519,7 +583,7 @@ export default function TerminalEmulator({
     const term = terminalRef.current;
     if (!term) return;
 
-    const { currentRepo, currentBranch, status } = gitStore;
+    const { currentRepo, currentBranch, status } = useGitStore.getState();
 
     if (!currentRepo) {
       term.write(
@@ -558,7 +622,7 @@ export default function TerminalEmulator({
     const term = terminalRef.current;
     if (!term) return;
 
-    const { currentRepo, currentBranch, branches } = gitStore;
+    const { currentRepo, currentBranch, branches } = useGitStore.getState();
 
     if (!currentRepo) {
       term.write(
@@ -680,6 +744,9 @@ export default function TerminalEmulator({
 
     const initTerminal = async () => {
       try {
+        // Import xterm CSS
+        await import('@xterm/xterm/css/xterm.css');
+
         // Dynamic import to avoid SSR issues
         const [{ Terminal }, { FitAddon }, { WebLinksAddon }] =
           await Promise.all([
@@ -745,8 +812,6 @@ export default function TerminalEmulator({
         terminal.writeln('');
         writePrompt();
 
-        setIsReady(true);
-
         // Setup resize observer
         const resizeObserver = new ResizeObserver(() => {
           if (fitAddonRef.current) {
@@ -773,6 +838,7 @@ export default function TerminalEmulator({
         terminalRef.current.dispose();
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [instanceId, isVisible]);
 
   return (
