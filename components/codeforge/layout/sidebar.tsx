@@ -5,6 +5,7 @@ import { useUIStore } from '@/lib/stores/ui-store';
 import { useEditorStore } from '@/lib/stores/editor-store';
 import { ChevronRight, File, Folder } from 'lucide-react';
 import SourceControlView from '../source-control/source-control-view';
+import SearchView from '../search/search-view';
 
 type SidebarProps = { width: number };
 
@@ -115,11 +116,7 @@ export default function Sidebar({ width }: SidebarProps) {
           </div>
         )}
 
-        {activityBarView === 'search' && (
-          <p className="text-sm text-muted-foreground">
-            Search UI will be implemented later.
-          </p>
-        )}
+        {activityBarView === 'search' && <SearchView />}
 
         {activityBarView === 'git' && <SourceControlView />}
 
