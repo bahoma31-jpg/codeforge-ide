@@ -13,7 +13,14 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "test:watch": "vitest --watch",
+    "test:run": "vitest run",
+    "test:stores": "vitest run lib/stores/__tests__",
+    "test:git": "vitest run lib/git/__tests__",
+    "test:components": "vitest run components/codeforge/__tests__",
+    "test:integration": "vitest run __tests__/integration",
+    "test:ci": "vitest run --coverage"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
