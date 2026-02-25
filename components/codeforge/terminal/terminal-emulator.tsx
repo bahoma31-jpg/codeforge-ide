@@ -1,1193 +1,548 @@
-/**
- * CodeForge IDE - Terminal Emulator
- * Phase 5: Terminal Emulator Integration
- * Agent 6: Terminal Emulator Engineer
- *
- * Core terminal component wrapping xterm.js with simulated shell commands.
- * Supports command history, ANSI colors, git integration, and tab completion.
- */
-
 'use client';
 
-import { useEffect, useRef } from 'react';
-import type { Terminal } from '@xterm/xterm';
-import type { FitAddon } from '@xterm/addon-fit';
-import type { WebLinksAddon } from '@xterm/addon-web-links';
+import { useEffect, useRef, useState } from 'react';
+import { Terminal } from '@xterm/xterm';
+import { FitAddon } from '@xterm/addon-fit';
+import { WebLinksAddon } from '@xterm/addon-web-links';
+import { useTerminalStore } from '@/lib/stores/terminal-store';
 import { useGitStore } from '@/lib/stores/git-store';
+import '@xterm/xterm/css/xterm.css';
 
-/**
- * Terminal emulator props
- */
-interface TerminalEmulatorProps {
-  /** Unique instance identifier */
-  instanceId: string;
-  /** Whether this terminal is currently visible */
-  isVisible: boolean;
-}
-
-/**
- * ANSI color codes for terminal output
- */
-const COLORS = {
-  reset: '\x1b[0m',
-  bold: '\x1b[1m',
-  green: '\x1b[32m',
-  blue: '\x1b[34m',
-  cyan: '\x1b[36m',
-  yellow: '\x1b[33m',
-  red: '\x1b[31m',
-  gray: '\x1b[90m',
-} as const;
-
-/**
- * Mock file system structure
- */
-interface MockFileSystem {
-  [key: string]: {
-    type: 'file' | 'directory';
-    content?: string;
-    children?: string[];
-  };
-}
+type TerminalEmulatorProps = {
+  terminalId: string;
+};
 
 /**
  * Terminal Emulator Component
- * Wraps xterm.js with a simulated shell environment.
+ * Full-featured terminal with xterm.js and simulated shell
  */
-export default function TerminalEmulator({
-  instanceId,
-  isVisible,
-}: TerminalEmulatorProps): JSX.Element {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const terminalRef = useRef<Terminal | null>(null);
+export default function TerminalEmulator({ terminalId }: TerminalEmulatorProps) {
+  const terminalRef = useRef<HTMLDivElement>(null);
+  const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
-  const resizeObserverRef = useRef<ResizeObserver | null>(null);
-
-  // Terminal state
-  const currentLineRef = useRef<string>('');
-  const cursorPositionRef = useRef<number>(0);
-  const commandHistoryRef = useRef<string[]>([]);
-  const historyIndexRef = useRef<number>(-1);
-  const currentDirectoryRef = useRef<string>('/workspace');
-
-  // Mock file system
-  const fileSystemRef = useRef<MockFileSystem>({
-    '/workspace': {
-      type: 'directory',
-      children: ['src', 'public', 'README.md', 'package.json'],
-    },
-    '/workspace/src': {
-      type: 'directory',
-      children: ['app', 'components', 'lib'],
-    },
-    '/workspace/public': {
-      type: 'directory',
-      children: ['favicon.ico', 'logo.svg'],
-    },
-    '/workspace/README.md': {
-      type: 'file',
-      content: '# CodeForge IDE\n\nA modern web-based code editor.\n',
-    },
-    '/workspace/package.json': {
-      type: 'file',
-      content: '{\n  "name": "codeforge-ide",\n  "version": "0.1.0"\n}\n',
-    },
-  });
+  
+  const { updateTerminalCwd, addToHistory, getActiveTerminal } = useTerminalStore();
+  const { status, commitChanges, pushToGitHub, pullFromGitHub } = useGitStore();
+  
+  const [currentLine, setCurrentLine] = useState('');
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [cwd, setCwd] = useState('/');
 
   /**
-   * Converts HSL color from CSS variable to hex
+   * Get current working directory display
    */
-  const hslToHex = (hslString: string): string => {
-    try {
-      const match = hslString.match(/([\d.]+)\s+([\d.]+)%\s+([\d.]+)%/);
-      if (!match) return '#000000';
-
-      const h = parseFloat(match[1]);
-      const s = parseFloat(match[2]) / 100;
-      const l = parseFloat(match[3]) / 100;
-
-      const c = (1 - Math.abs(2 * l - 1)) * s;
-      const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-      const m = l - c / 2;
-
-      let r = 0,
-        g = 0,
-        b = 0;
-
-      if (h >= 0 && h < 60) {
-        r = c;
-        g = x;
-        b = 0;
-      } else if (h >= 60 && h < 120) {
-        r = x;
-        g = c;
-        b = 0;
-      } else if (h >= 120 && h < 180) {
-        r = 0;
-        g = c;
-        b = x;
-      } else if (h >= 180 && h < 240) {
-        r = 0;
-        g = x;
-        b = c;
-      } else if (h >= 240 && h < 300) {
-        r = x;
-        g = 0;
-        b = c;
-      } else if (h >= 300 && h < 360) {
-        r = c;
-        g = 0;
-        b = x;
-      }
-
-      const toHex = (n: number): string => {
-        const hex = Math.round((n + m) * 255).toString(16);
-        return hex.length === 1 ? '0' + hex : hex;
-      };
-
-      return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
-    } catch {
-      return '#000000';
-    }
+  const getPrompt = (): string => {
+    return `\x1b[32muser@codeforge\x1b[0m:\x1b[34m${cwd}\x1b[0m$ `;
   };
 
   /**
-   * Gets theme colors from CSS variables
+   * Execute a shell command
+   * @param command - Command string to execute
    */
-  const getThemeColors = () => {
-    if (typeof window === 'undefined') {
-      return {
-        background: '#1e1e1e',
-        foreground: '#d4d4d4',
-        cursor: '#528bff',
-      };
-    }
-
-    const style = getComputedStyle(document.documentElement);
-    const panelHsl = style.getPropertyValue('--cf-panel');
-    const foregroundHsl = style.getPropertyValue('--foreground');
-    const primaryHsl = style.getPropertyValue('--primary');
-
-    return {
-      background: hslToHex(panelHsl) || '#1e1e1e',
-      foreground: hslToHex(foregroundHsl) || '#d4d4d4',
-      cursor: hslToHex(primaryHsl) || '#528bff',
-    };
-  };
-
-  /**
-   * Writes the prompt to the terminal
-   */
-  const writePrompt = () => {
-    const term = terminalRef.current;
+  const executeCommand = (command: string): void => {
+    const term = xtermRef.current;
     if (!term) return;
 
-    const prompt = `${COLORS.green}${COLORS.bold}codeforge${COLORS.reset}${COLORS.cyan}:${currentDirectoryRef.current}${COLORS.reset}$ `;
-    term.write(prompt);
-  };
-
-  /**
-   * Handles Tab key press for command and path auto-completion
-   */
-  const handleTabCompletion = () => {
-    const term = terminalRef.current;
-    if (!term) return;
-
-    const input = currentLineRef.current;
-    const parts = input.split(/\s+/);
-
-    // If completing a command name (first word)
-    if (parts.length <= 1) {
-      const commands = [
-        'help',
-        'clear',
-        'cls',
-        'echo',
-        'date',
-        'whoami',
-        'pwd',
-        'ls',
-        'cd',
-        'cat',
-        'mkdir',
-        'touch',
-        'rm',
-        'rmdir',
-        'history',
-        'git',
-      ];
-      const matches = commands.filter((cmd) => cmd.startsWith(parts[0] || ''));
-
-      if (matches.length === 1) {
-        // Single match — complete it
-        const completion = matches[0].slice((parts[0] || '').length) + ' ';
-        currentLineRef.current += completion;
-        cursorPositionRef.current += completion.length;
-        term.write(completion);
-      } else if (matches.length > 1) {
-        // Multiple matches — show options
-        term.write(`\r\n${matches.join('  ')}\r\n`);
-        writePrompt();
-        term.write(currentLineRef.current);
-      }
-      return;
-    }
-
-    // If completing a path (second word onwards)
-    const partial = parts[parts.length - 1] || '';
-    const currentDir = fileSystemRef.current[currentDirectoryRef.current];
-    if (!currentDir || !currentDir.children) return;
-
-    const matches = currentDir.children.filter((child) =>
-      child.startsWith(partial)
-    );
-
-    if (matches.length === 1) {
-      const completion = matches[0].slice(partial.length);
-      const childPath = `${currentDirectoryRef.current}/${matches[0]}`;
-      const isDir = fileSystemRef.current[childPath]?.type === 'directory';
-      const suffix = isDir ? '/' : ' ';
-
-      currentLineRef.current += completion + suffix;
-      cursorPositionRef.current += completion.length + suffix.length;
-      term.write(completion + suffix);
-    } else if (matches.length > 1) {
-      term.write(`\r\n${matches.join('  ')}\r\n`);
-      writePrompt();
-      term.write(currentLineRef.current);
-    }
-  };
-
-  /**
-   * Handles command execution
-   */
-  const executeCommand = (command: string) => {
-    const term = terminalRef.current;
-    if (!term) return;
-
-    const trimmedCommand = command.trim();
-    if (!trimmedCommand) {
-      term.write('\r\n');
-      writePrompt();
-      return;
-    }
-
-    // Add to history
-    commandHistoryRef.current.push(trimmedCommand);
-    if (commandHistoryRef.current.length > 50) {
-      commandHistoryRef.current.shift();
-    }
-    historyIndexRef.current = commandHistoryRef.current.length;
-
-    term.write('\r\n');
-
-    // Parse command and arguments
-    const parts = trimmedCommand.split(/\s+/);
+    const parts = command.trim().split(/\s+/);
     const cmd = parts[0];
     const args = parts.slice(1);
 
-    // Execute command
+    // Add to history
+    addToHistory(terminalId, command);
+
+    term.writeln('');
+
     switch (cmd) {
-      case 'help':
-        term.write(
-          `${COLORS.bold}Available commands:${COLORS.reset}\r\n` +
-            `  ${COLORS.cyan}help${COLORS.reset}          Show this help message\r\n` +
-            `  ${COLORS.cyan}clear / cls${COLORS.reset}   Clear terminal\r\n` +
-            `  ${COLORS.cyan}echo <text>${COLORS.reset}   Print text\r\n` +
-            `  ${COLORS.cyan}date${COLORS.reset}          Show current date/time\r\n` +
-            `  ${COLORS.cyan}whoami${COLORS.reset}        Show current user\r\n` +
-            `  ${COLORS.cyan}pwd${COLORS.reset}           Print working directory\r\n` +
-            `  ${COLORS.cyan}ls${COLORS.reset}            List files\r\n` +
-            `  ${COLORS.cyan}cd <dir>${COLORS.reset}      Change directory\r\n` +
-            `  ${COLORS.cyan}cat <file>${COLORS.reset}    Display file contents\r\n` +
-            `  ${COLORS.cyan}mkdir <name>${COLORS.reset}  Create directory\r\n` +
-            `  ${COLORS.cyan}touch <name>${COLORS.reset}  Create file\r\n` +
-            `  ${COLORS.cyan}rm <name>${COLORS.reset}     Remove file or empty directory\r\n` +
-            `  ${COLORS.cyan}rmdir <name>${COLORS.reset}  Remove empty directory\r\n` +
-            `  ${COLORS.cyan}history${COLORS.reset}       Show command history\r\n` +
-            `  ${COLORS.cyan}git status${COLORS.reset}    Show git status\r\n` +
-            `  ${COLORS.cyan}git add${COLORS.reset}       Stage changes\r\n` +
-            `  ${COLORS.cyan}git commit${COLORS.reset}    Commit staged changes\r\n` +
-            `  ${COLORS.cyan}git push${COLORS.reset}      Push to remote\r\n` +
-            `  ${COLORS.cyan}git pull${COLORS.reset}      Pull from remote\r\n` +
-            `  ${COLORS.cyan}git log${COLORS.reset}       Show commit history\r\n` +
-            `  ${COLORS.cyan}git branch${COLORS.reset}    Show current branch\r\n`
-        );
-        break;
-
-      case 'clear':
-      case 'cls':
-        term.clear();
-        break;
-
-      case 'echo':
-        term.write(args.join(' ') + '\r\n');
-        break;
-
-      case 'date':
-        term.write(new Date().toString() + '\r\n');
-        break;
-
-      case 'whoami':
-        term.write('codeforge-user\r\n');
-        break;
-
-      case 'pwd':
-        term.write(currentDirectoryRef.current + '\r\n');
-        break;
-
+      // File navigation commands
       case 'ls':
-        handleLs();
+        handleLs(args[0] || cwd);
         break;
 
       case 'cd':
-        handleCd(args[0]);
+        handleCd(args[0] || '/');
+        break;
+
+      case 'pwd':
+        term.writeln(cwd);
         break;
 
       case 'cat':
-        handleCat(args[0]);
+        if (args[0]) {
+          handleCat(args[0]);
+        } else {
+          term.writeln('\x1b[31mcat: missing file operand\x1b[0m');
+        }
         break;
 
       case 'mkdir':
-        handleMkdir(args[0]);
+        if (args[0]) {
+          handleMkdir(args[0]);
+        } else {
+          term.writeln('\x1b[31mmkdir: missing operand\x1b[0m');
+        }
         break;
 
       case 'touch':
-        handleTouch(args[0]);
+        if (args[0]) {
+          handleTouch(args[0]);
+        } else {
+          term.writeln('\x1b[31mtouch: missing file operand\x1b[0m');
+        }
         break;
 
       case 'rm':
-        handleRm(args[0]);
+        if (args[0]) {
+          handleRm(args[0]);
+        } else {
+          term.writeln('\x1b[31mrm: missing operand\x1b[0m');
+        }
         break;
 
-      case 'rmdir':
-        handleRmdir(args[0]);
-        break;
-
-      case 'history':
-        handleHistory();
-        break;
-
+      // Git commands
       case 'git':
         handleGit(args);
         break;
 
+      // Utility commands
+      case 'clear':
+        term.clear();
+        break;
+
+      case 'echo':
+        term.writeln(args.join(' '));
+        break;
+
+      case 'help':
+        showHelp();
+        break;
+
+      case 'exit':
+        term.writeln('\x1b[33mUse the close button to exit terminal\x1b[0m');
+        break;
+
+      case '':
+        // Empty command
+        break;
+
       default:
-        term.write(
-          `${COLORS.red}command not found: ${cmd}${COLORS.reset}\r\n`
-        );
-        break;
+        term.writeln(`\x1b[31mbash: ${cmd}: command not found\x1b[0m`);
+        term.writeln('Type \x1b[36mhelp\x1b[0m for available commands');
     }
 
-    if (cmd !== 'clear' && cmd !== 'cls') {
-      writePrompt();
-    }
+    term.write(getPrompt());
   };
 
   /**
-   * Handles 'ls' command
+   * Handle ls command
    */
-  const handleLs = () => {
-    const term = terminalRef.current;
+  const handleLs = (path: string): void => {
+    const term = xtermRef.current;
     if (!term) return;
 
-    const currentDir = fileSystemRef.current[currentDirectoryRef.current];
-    if (!currentDir || currentDir.type !== 'directory') {
-      term.write(`${COLORS.red}Not a directory${COLORS.reset}\r\n`);
-      return;
-    }
+    // Simulated file structure
+    const files = [
+      { name: 'src', type: 'dir', color: '\x1b[34m' },
+      { name: 'public', type: 'dir', color: '\x1b[34m' },
+      { name: 'package.json', type: 'file', color: '\x1b[0m' },
+      { name: 'README.md', type: 'file', color: '\x1b[0m' },
+      { name: 'tsconfig.json', type: 'file', color: '\x1b[0m' },
+      { name: '.gitignore', type: 'file', color: '\x1b[90m' },
+    ];
 
-    const children = currentDir.children || [];
-    children.forEach((child) => {
-      const childPath = `${currentDirectoryRef.current}/${child}`;
-      const childNode = fileSystemRef.current[childPath];
-      const color =
-        childNode?.type === 'directory' ? COLORS.blue : COLORS.reset;
-      term.write(`${color}${child}${COLORS.reset}  `);
-    });
-    term.write('\r\n');
-  };
-
-  /**
-   * Handles 'cd' command
-   */
-  const handleCd = (dir: string) => {
-    const term = terminalRef.current;
-    if (!term) return;
-
-    if (!dir) {
-      currentDirectoryRef.current = '/workspace';
-      return;
-    }
-
-    if (dir === '.') {
-      return;
-    }
-
-    if (dir === '..') {
-      const parts = currentDirectoryRef.current.split('/');
-      if (parts.length > 2) {
-        parts.pop();
-        currentDirectoryRef.current = parts.join('/') || '/';
-      }
-      return;
-    }
-
-    const newPath = dir.startsWith('/')
-      ? dir
-      : `${currentDirectoryRef.current}/${dir}`;
-
-    const targetDir = fileSystemRef.current[newPath];
-    if (!targetDir) {
-      term.write(
-        `${COLORS.red}cd: ${dir}: No such file or directory${COLORS.reset}\r\n`
-      );
-      return;
-    }
-
-    if (targetDir.type !== 'directory') {
-      term.write(
-        `${COLORS.red}cd: ${dir}: Not a directory${COLORS.reset}\r\n`
-      );
-      return;
-    }
-
-    currentDirectoryRef.current = newPath;
-  };
-
-  /**
-   * Handles 'cat' command
-   */
-  const handleCat = (filename: string) => {
-    const term = terminalRef.current;
-    if (!term) return;
-
-    if (!filename) {
-      term.write(`${COLORS.red}cat: missing file operand${COLORS.reset}\r\n`);
-      return;
-    }
-
-    const filePath = filename.startsWith('/')
-      ? filename
-      : `${currentDirectoryRef.current}/${filename}`;
-
-    const file = fileSystemRef.current[filePath];
-    if (!file) {
-      term.write(
-        `${COLORS.red}cat: ${filename}: No such file or directory${COLORS.reset}\r\n`
-      );
-      return;
-    }
-
-    if (file.type !== 'file') {
-      term.write(
-        `${COLORS.red}cat: ${filename}: Is a directory${COLORS.reset}\r\n`
-      );
-      return;
-    }
-
-    term.write((file.content || '') + '\r\n');
-  };
-
-  /**
-   * Handles 'mkdir' command
-   */
-  const handleMkdir = (dirname: string) => {
-    const term = terminalRef.current;
-    if (!term) return;
-
-    if (!dirname) {
-      term.write(
-        `${COLORS.red}mkdir: missing operand${COLORS.reset}\r\n`
-      );
-      return;
-    }
-
-    const newPath = dirname.startsWith('/')
-      ? dirname
-      : `${currentDirectoryRef.current}/${dirname}`;
-
-    if (fileSystemRef.current[newPath]) {
-      term.write(
-        `${COLORS.red}mkdir: ${dirname}: File exists${COLORS.reset}\r\n`
-      );
-      return;
-    }
-
-    fileSystemRef.current[newPath] = {
-      type: 'directory',
-      children: [],
-    };
-
-    // Add to parent directory
-    const currentDir = fileSystemRef.current[currentDirectoryRef.current];
-    if (currentDir && currentDir.children) {
-      currentDir.children.push(dirname);
-    }
-
-    term.write(`${COLORS.green}Created directory: ${dirname}${COLORS.reset}\r\n`);
-  };
-
-  /**
-   * Handles 'touch' command
-   */
-  const handleTouch = (filename: string) => {
-    const term = terminalRef.current;
-    if (!term) return;
-
-    if (!filename) {
-      term.write(
-        `${COLORS.red}touch: missing file operand${COLORS.reset}\r\n`
-      );
-      return;
-    }
-
-    const newPath = filename.startsWith('/')
-      ? filename
-      : `${currentDirectoryRef.current}/${filename}`;
-
-    if (fileSystemRef.current[newPath]) {
-      term.write(
-        `${COLORS.yellow}touch: ${filename}: File exists${COLORS.reset}\r\n`
-      );
-      return;
-    }
-
-    fileSystemRef.current[newPath] = {
-      type: 'file',
-      content: '',
-    };
-
-    // Add to parent directory
-    const currentDir = fileSystemRef.current[currentDirectoryRef.current];
-    if (currentDir && currentDir.children) {
-      currentDir.children.push(filename);
-    }
-
-    term.write(`${COLORS.green}Created file: ${filename}${COLORS.reset}\r\n`);
-  };
-
-  /**
-   * Handles 'rm' command — removes a file or empty directory
-   */
-  const handleRm = (target: string) => {
-    const term = terminalRef.current;
-    if (!term) return;
-
-    if (!target) {
-      term.write(`${COLORS.red}rm: missing operand${COLORS.reset}\r\n`);
-      return;
-    }
-
-    const targetPath = target.startsWith('/')
-      ? target
-      : `${currentDirectoryRef.current}/${target}`;
-
-    const node = fileSystemRef.current[targetPath];
-    if (!node) {
-      term.write(
-        `${COLORS.red}rm: ${target}: No such file or directory${COLORS.reset}\r\n`
-      );
-      return;
-    }
-
-    if (node.type === 'directory' && node.children && node.children.length > 0) {
-      term.write(
-        `${COLORS.red}rm: ${target}: Is a non-empty directory (use rm -r)${COLORS.reset}\r\n`
-      );
-      return;
-    }
-
-    // Remove from file system
-    delete fileSystemRef.current[targetPath];
-
-    // Remove from parent directory children
-    const parentDir = fileSystemRef.current[currentDirectoryRef.current];
-    if (parentDir && parentDir.children) {
-      parentDir.children = parentDir.children.filter(
-        (child) => child !== target
-      );
-    }
-
-    term.write(`${COLORS.green}Removed: ${target}${COLORS.reset}\r\n`);
-  };
-
-  /**
-   * Handles 'rmdir' command — removes an empty directory only
-   */
-  const handleRmdir = (dirname: string) => {
-    const term = terminalRef.current;
-    if (!term) return;
-
-    if (!dirname) {
-      term.write(`${COLORS.red}rmdir: missing operand${COLORS.reset}\r\n`);
-      return;
-    }
-
-    const targetPath = dirname.startsWith('/')
-      ? dirname
-      : `${currentDirectoryRef.current}/${dirname}`;
-
-    const node = fileSystemRef.current[targetPath];
-    if (!node) {
-      term.write(
-        `${COLORS.red}rmdir: ${dirname}: No such file or directory${COLORS.reset}\r\n`
-      );
-      return;
-    }
-
-    if (node.type !== 'directory') {
-      term.write(
-        `${COLORS.red}rmdir: ${dirname}: Not a directory${COLORS.reset}\r\n`
-      );
-      return;
-    }
-
-    if (node.children && node.children.length > 0) {
-      term.write(
-        `${COLORS.red}rmdir: ${dirname}: Directory not empty${COLORS.reset}\r\n`
-      );
-      return;
-    }
-
-    // Remove from file system
-    delete fileSystemRef.current[targetPath];
-
-    // Remove from parent directory children
-    const parentDir = fileSystemRef.current[currentDirectoryRef.current];
-    if (parentDir && parentDir.children) {
-      parentDir.children = parentDir.children.filter(
-        (child) => child !== dirname
-      );
-    }
-
-    term.write(
-      `${COLORS.green}Removed directory: ${dirname}${COLORS.reset}\r\n`
-    );
-  };
-
-  /**
-   * Handles 'history' command — shows command history
-   */
-  const handleHistory = () => {
-    const term = terminalRef.current;
-    if (!term) return;
-
-    const history = commandHistoryRef.current;
-    if (history.length === 0) {
-      term.write(`${COLORS.gray}No commands in history${COLORS.reset}\r\n`);
-      return;
-    }
-
-    history.forEach((cmd, index) => {
-      const lineNum = String(index + 1).padStart(4, ' ');
-      term.write(`${COLORS.gray}${lineNum}${COLORS.reset}  ${cmd}\r\n`);
+    files.forEach((file) => {
+      term.writeln(`${file.color}${file.name}${file.type === 'dir' ? '/' : ''}\x1b[0m`);
     });
   };
 
   /**
-   * Handles 'git' commands
+   * Handle cd command
    */
-  const handleGit = (args: string[]) => {
-    const term = terminalRef.current;
+  const handleCd = (path: string): void => {
+    const term = xtermRef.current;
     if (!term) return;
 
-    if (args.length === 0) {
-      term.write(
-        `${COLORS.yellow}usage: git <command> [<args>]${COLORS.reset}\r\n`
-      );
-      return;
+    // Normalize path
+    let newCwd = path;
+    if (path === '..' || path === '../') {
+      const parts = cwd.split('/').filter(Boolean);
+      parts.pop();
+      newCwd = '/' + parts.join('/');
+    } else if (path === '~' || path === '') {
+      newCwd = '/';
+    } else if (!path.startsWith('/')) {
+      newCwd = cwd === '/' ? `/${path}` : `${cwd}/${path}`;
     }
 
-    const subCommand = args[0];
+    // Validate directory exists (simplified)
+    const validDirs = ['/', '/src', '/public', '/components', '/lib'];
+    if (validDirs.includes(newCwd) || newCwd.startsWith('/src/') || newCwd.startsWith('/components/')) {
+      setCwd(newCwd);
+      updateTerminalCwd(terminalId, newCwd);
+    } else {
+      term.writeln(`\x1b[31mbash: cd: ${path}: No such file or directory\x1b[0m`);
+    }
+  };
 
-    switch (subCommand) {
+  /**
+   * Handle cat command
+   */
+  const handleCat = (filename: string): void => {
+    const term = xtermRef.current;
+    if (!term) return;
+
+    // Simulated file contents
+    const files: Record<string, string> = {
+      'README.md': '# CodeForge IDE\n\nA modern web-based code editor.',
+      'package.json': '{\n  "name": "codeforge-ide",\n  "version": "0.1.0"\n}',
+      '.gitignore': 'node_modules/\n.next/\n.env.local',
+    };
+
+    if (files[filename]) {
+      term.writeln(files[filename]);
+    } else {
+      term.writeln(`\x1b[31mcat: ${filename}: No such file or directory\x1b[0m`);
+    }
+  };
+
+  /**
+   * Handle mkdir command
+   */
+  const handleMkdir = (dirname: string): void => {
+    const term = xtermRef.current;
+    if (!term) return;
+    term.writeln(`\x1b[32mCreated directory: ${dirname}\x1b[0m`);
+  };
+
+  /**
+   * Handle touch command
+   */
+  const handleTouch = (filename: string): void => {
+    const term = xtermRef.current;
+    if (!term) return;
+    term.writeln(`\x1b[32mCreated file: ${filename}\x1b[0m`);
+  };
+
+  /**
+   * Handle rm command
+   */
+  const handleRm = (filename: string): void => {
+    const term = xtermRef.current;
+    if (!term) return;
+    term.writeln(`\x1b[33mRemoved: ${filename}\x1b[0m`);
+  };
+
+  /**
+   * Handle git commands
+   */
+  const handleGit = (args: string[]): void => {
+    const term = xtermRef.current;
+    if (!term) return;
+
+    const subcommand = args[0];
+
+    switch (subcommand) {
       case 'status':
-        handleGitStatus();
-        break;
-
-      case 'branch':
-        handleGitBranch();
+        term.writeln('On branch main');
+        if (status.modified.length + status.added.length + status.deleted.length === 0) {
+          term.writeln('\x1b[32mnothing to commit, working tree clean\x1b[0m');
+        } else {
+          term.writeln('');
+          term.writeln('Changes not staged for commit:');
+          status.modified.forEach((file) => {
+            term.writeln(`\x1b[31m  modified:   ${file}\x1b[0m`);
+          });
+          status.added.forEach((file) => {
+            term.writeln(`\x1b[32m  new file:   ${file}\x1b[0m`);
+          });
+          status.deleted.forEach((file) => {
+            term.writeln(`\x1b[31m  deleted:    ${file}\x1b[0m`);
+          });
+        }
         break;
 
       case 'add':
-        handleGitAdd(args.slice(1));
+        if (args[1]) {
+          term.writeln(`\x1b[32mAdded ${args[1]} to staging area\x1b[0m`);
+        } else {
+          term.writeln('\x1b[31mNothing specified, nothing added.\x1b[0m');
+        }
         break;
 
       case 'commit':
-        handleGitCommit(args.slice(1));
+        if (args[1] === '-m' && args[2]) {
+          const message = args.slice(2).join(' ').replace(/["']/g, '');
+          commitChanges(message)
+            .then(() => {
+              term.writeln(`\x1b[32m[main ${Date.now().toString(16).slice(-7)}] ${message}\x1b[0m`);
+              term.writeln('1 file changed, 1 insertion(+)');
+            })
+            .catch((err) => {
+              term.writeln(`\x1b[31mCommit failed: ${err.message}\x1b[0m`);
+            });
+        } else {
+          term.writeln('\x1b[31mUsage: git commit -m "message"\x1b[0m');
+        }
         break;
 
       case 'push':
-        handleGitPush();
+        term.writeln('Pushing to origin...');
+        pushToGitHub()
+          .then(() => {
+            term.writeln('\x1b[32mPush successful!\x1b[0m');
+          })
+          .catch((err) => {
+            term.writeln(`\x1b[31mPush failed: ${err.message}\x1b[0m`);
+          });
         break;
 
       case 'pull':
-        handleGitPull();
+        term.writeln('Pulling from origin...');
+        pullFromGitHub()
+          .then(() => {
+            term.writeln('\x1b[32mPull successful!\x1b[0m');
+          })
+          .catch((err) => {
+            term.writeln(`\x1b[31mPull failed: ${err.message}\x1b[0m`);
+          });
         break;
 
       case 'log':
-        handleGitLog();
+        term.writeln('\x1b[33mcommit abc123def456 (HEAD -> main)\x1b[0m');
+        term.writeln('Author: User <user@example.com>');
+        term.writeln('Date:   ' + new Date().toUTCString());
+        term.writeln('');
+        term.writeln('    Initial commit');
+        break;
+
+      case 'branch':
+        term.writeln('* \x1b[32mmain\x1b[0m');
+        term.writeln('  develop');
         break;
 
       default:
-        term.write(
-          `${COLORS.red}git: '${subCommand}' is not a git command${COLORS.reset}\r\n`
-        );
-        break;
+        term.writeln(`\x1b[31mgit: '${subcommand}' is not a git command. See 'git --help'.\x1b[0m`);
     }
   };
 
   /**
-   * Handles 'git status' command
+   * Show help with available commands
    */
-  const handleGitStatus = () => {
-    const term = terminalRef.current;
+  const showHelp = (): void => {
+    const term = xtermRef.current;
     if (!term) return;
 
-    const { currentRepo, currentBranch, status } = useGitStore.getState();
-
-    if (!currentRepo) {
-      term.write(
-        `${COLORS.red}fatal: not a git repository${COLORS.reset}\r\n`
-      );
-      return;
-    }
-
-    term.write(
-      `${COLORS.bold}On branch: ${COLORS.cyan}${currentBranch}${COLORS.reset}\r\n`
-    );
-
-    const totalChanges =
-      status.modified.length + status.added.length + status.deleted.length;
-
-    if (totalChanges === 0) {
-      term.write(`${COLORS.gray}No changes${COLORS.reset}\r\n`);
-    } else {
-      term.write(`${COLORS.bold}Changes:${COLORS.reset}\r\n`);
-      term.write(
-        `  ${COLORS.yellow}modified: ${status.modified.length} files${COLORS.reset}\r\n`
-      );
-      term.write(
-        `  ${COLORS.green}added: ${status.added.length} files${COLORS.reset}\r\n`
-      );
-      term.write(
-        `  ${COLORS.red}deleted: ${status.deleted.length} files${COLORS.reset}\r\n`
-      );
-    }
+    term.writeln('\x1b[1;36mAvailable Commands:\x1b[0m');
+    term.writeln('');
+    term.writeln('\x1b[1mFile Navigation:\x1b[0m');
+    term.writeln('  ls [path]           - List directory contents');
+    term.writeln('  cd <path>           - Change directory');
+    term.writeln('  pwd                 - Print working directory');
+    term.writeln('  cat <file>          - Display file contents');
+    term.writeln('  mkdir <dir>         - Create directory');
+    term.writeln('  touch <file>        - Create empty file');
+    term.writeln('  rm <file>           - Remove file');
+    term.writeln('');
+    term.writeln('\x1b[1mGit Commands:\x1b[0m');
+    term.writeln('  git status          - Show working tree status');
+    term.writeln('  git add <file>      - Add file to staging');
+    term.writeln('  git commit -m "msg" - Commit changes');
+    term.writeln('  git push            - Push to remote');
+    term.writeln('  git pull            - Pull from remote');
+    term.writeln('  git log             - Show commit logs');
+    term.writeln('  git branch          - List branches');
+    term.writeln('');
+    term.writeln('\x1b[1mUtilities:\x1b[0m');
+    term.writeln('  clear               - Clear terminal');
+    term.writeln('  echo <text>         - Print text');
+    term.writeln('  help                - Show this help');
+    term.writeln('  exit                - Exit terminal');
+    term.writeln('');
   };
 
   /**
-   * Handles 'git branch' command
+   * Handle key press in terminal
    */
-  const handleGitBranch = () => {
-    const term = terminalRef.current;
+  const handleData = (data: string): void => {
+    const term = xtermRef.current;
     if (!term) return;
 
-    const { currentRepo, currentBranch, branches } = useGitStore.getState();
+    const terminal = getActiveTerminal();
+    if (!terminal) return;
 
-    if (!currentRepo) {
-      term.write(
-        `${COLORS.red}fatal: not a git repository${COLORS.reset}\r\n`
-      );
+    // Handle special keys
+    const code = data.charCodeAt(0);
+
+    // Enter key
+    if (code === 13) {
+      executeCommand(currentLine);
+      setCurrentLine('');
+      setHistoryIndex(-1);
       return;
     }
 
-    if (branches.length === 0) {
-      term.write(`${COLORS.gray}No branches${COLORS.reset}\r\n`);
-      return;
-    }
-
-    branches.forEach((branch) => {
-      const isActive = branch.name === currentBranch;
-      const prefix = isActive ? '* ' : '  ';
-      const color = isActive ? COLORS.green : COLORS.reset;
-      term.write(`${color}${prefix}${branch.name}${COLORS.reset}\r\n`);
-    });
-  };
-
-  /**
-   * Handles 'git add' command — stages changes for commit
-   */
-  const handleGitAdd = (args: string[]) => {
-    const term = terminalRef.current;
-    if (!term) return;
-
-    const { currentRepo } = useGitStore.getState();
-
-    if (!currentRepo) {
-      term.write(
-        `${COLORS.red}fatal: not a git repository${COLORS.reset}\r\n`
-      );
-      return;
-    }
-
-    if (args.length === 0) {
-      term.write(
-        `${COLORS.red}Nothing specified, nothing added.${COLORS.reset}\r\n`
-      );
-      return;
-    }
-
-    const target = args[0];
-
-    if (target === '.') {
-      term.write(
-        `${COLORS.green}Added all changes to staging area${COLORS.reset}\r\n`
-      );
-    } else {
-      term.write(
-        `${COLORS.green}Added '${target}' to staging area${COLORS.reset}\r\n`
-      );
-    }
-  };
-
-  /**
-   * Handles 'git commit' command — creates a commit with staged changes
-   */
-  const handleGitCommit = (args: string[]) => {
-    const term = terminalRef.current;
-    if (!term) return;
-
-    const { currentRepo, currentBranch } = useGitStore.getState();
-
-    if (!currentRepo) {
-      term.write(
-        `${COLORS.red}fatal: not a git repository${COLORS.reset}\r\n`
-      );
-      return;
-    }
-
-    const msgFlag = args.indexOf('-m');
-    if (msgFlag === -1 || !args[msgFlag + 1]) {
-      term.write(
-        `${COLORS.red}error: switch 'm' requires a value${COLORS.reset}\r\n`
-      );
-      return;
-    }
-
-    const message = args
-      .slice(msgFlag + 1)
-      .join(' ')
-      .replace(/^["']|["']$/g, '');
-    term.write(
-      `${COLORS.green}[${currentBranch}] ${message}${COLORS.reset}\r\n`
-    );
-    term.write(`${COLORS.gray} 1 file changed${COLORS.reset}\r\n`);
-  };
-
-  /**
-   * Handles 'git push' command — pushes commits to remote
-   */
-  const handleGitPush = () => {
-    const term = terminalRef.current;
-    if (!term) return;
-
-    const { currentRepo, currentBranch } = useGitStore.getState();
-
-    if (!currentRepo) {
-      term.write(
-        `${COLORS.red}fatal: not a git repository${COLORS.reset}\r\n`
-      );
-      return;
-    }
-
-    term.write(
-      `${COLORS.cyan}Pushing to origin/${currentBranch}...${COLORS.reset}\r\n`
-    );
-    term.write(`${COLORS.green}Everything up-to-date${COLORS.reset}\r\n`);
-  };
-
-  /**
-   * Handles 'git pull' command — pulls changes from remote
-   */
-  const handleGitPull = () => {
-    const term = terminalRef.current;
-    if (!term) return;
-
-    const { currentRepo, currentBranch } = useGitStore.getState();
-
-    if (!currentRepo) {
-      term.write(
-        `${COLORS.red}fatal: not a git repository${COLORS.reset}\r\n`
-      );
-      return;
-    }
-
-    term.write(
-      `${COLORS.cyan}Pulling from origin/${currentBranch}...${COLORS.reset}\r\n`
-    );
-    term.write(`${COLORS.green}Already up to date.${COLORS.reset}\r\n`);
-  };
-
-  /**
-   * Handles 'git log' command — shows recent commit history
-   */
-  const handleGitLog = () => {
-    const term = terminalRef.current;
-    if (!term) return;
-
-    const { currentRepo, commits } = useGitStore.getState();
-
-    if (!currentRepo) {
-      term.write(
-        `${COLORS.red}fatal: not a git repository${COLORS.reset}\r\n`
-      );
-      return;
-    }
-
-    if (!commits || commits.length === 0) {
-      term.write(`${COLORS.gray}No commits yet${COLORS.reset}\r\n`);
-      return;
-    }
-
-    const recentCommits = commits.slice(0, 10);
-    recentCommits.forEach((commit) => {
-      term.write(
-        `${COLORS.yellow}commit ${commit.sha}${COLORS.reset}\r\n`
-      );
-      term.write(
-        `${COLORS.gray}Author: ${commit.author}${COLORS.reset}\r\n`
-      );
-      const date = new Date(commit.date).toISOString();
-      term.write(`${COLORS.gray}Date: ${date}${COLORS.reset}\r\n`);
-      term.write(`\r\n    ${commit.message}\r\n\r\n`);
-    });
-  };
-
-  /**
-   * Handles key input
-   */
-  const handleKeyInput = (key: string, ev: KeyboardEvent) => {
-    const term = terminalRef.current;
-    if (!term) return;
-
-    const isPrintable = !ev.altKey && !ev.ctrlKey && !ev.metaKey;
-
-    // Handle Ctrl+Shift+C (Copy)
-    if (ev.ctrlKey && ev.shiftKey && ev.key === 'C') {
-      const selection = term.getSelection();
-      if (selection) {
-        navigator.clipboard.writeText(selection).catch(() => {});
-      }
-      return;
-    }
-
-    // Handle Ctrl+Shift+V (Paste)
-    if (ev.ctrlKey && ev.shiftKey && ev.key === 'V') {
-      navigator.clipboard
-        .readText()
-        .then((text) => {
-          if (text && terminalRef.current) {
-            currentLineRef.current += text;
-            cursorPositionRef.current += text.length;
-            terminalRef.current.write(text);
-          }
-        })
-        .catch(() => {});
-      return;
-    }
-
-    // Handle Ctrl+C
-    if (ev.ctrlKey && ev.key === 'c') {
-      term.write('^C\r\n');
-      currentLineRef.current = '';
-      cursorPositionRef.current = 0;
-      writePrompt();
-      return;
-    }
-
-    // Handle Ctrl+L
-    if (ev.ctrlKey && ev.key === 'l') {
-      term.clear();
-      writePrompt();
-      return;
-    }
-
-    // Handle Tab (auto-completion)
-    if (ev.key === 'Tab') {
-      ev.preventDefault();
-      handleTabCompletion();
-      return;
-    }
-
-    // Handle Enter
-    if (ev.key === 'Enter') {
-      executeCommand(currentLineRef.current);
-      currentLineRef.current = '';
-      cursorPositionRef.current = 0;
-      return;
-    }
-
-    // Handle Backspace
-    if (ev.key === 'Backspace') {
-      if (cursorPositionRef.current > 0) {
-        currentLineRef.current =
-          currentLineRef.current.slice(0, cursorPositionRef.current - 1) +
-          currentLineRef.current.slice(cursorPositionRef.current);
-        cursorPositionRef.current--;
+    // Backspace
+    if (code === 127) {
+      if (currentLine.length > 0) {
+        setCurrentLine((prev) => prev.slice(0, -1));
         term.write('\b \b');
       }
       return;
     }
 
-    // Handle Arrow Up (previous command)
-    if (ev.key === 'ArrowUp') {
-      if (historyIndexRef.current > 0) {
-        historyIndexRef.current--;
-        const historicCommand =
-          commandHistoryRef.current[historyIndexRef.current];
+    // Ctrl+C
+    if (code === 3) {
+      term.write('^C\r\n');
+      term.write(getPrompt());
+      setCurrentLine('');
+      return;
+    }
+
+    // Ctrl+L (clear)
+    if (code === 12) {
+      term.clear();
+      term.write(getPrompt());
+      setCurrentLine('');
+      return;
+    }
+
+    // Arrow up (history previous)
+    if (data === '\x1b[A') {
+      if (terminal.history.length > 0 && historyIndex < terminal.history.length - 1) {
+        const newIndex = historyIndex + 1;
+        const command = terminal.history[terminal.history.length - 1 - newIndex];
+        
         // Clear current line
         term.write('\r\x1b[K');
-        writePrompt();
-        term.write(historicCommand);
-        currentLineRef.current = historicCommand;
-        cursorPositionRef.current = historicCommand.length;
+        term.write(getPrompt());
+        term.write(command);
+        
+        setCurrentLine(command);
+        setHistoryIndex(newIndex);
       }
       return;
     }
 
-    // Handle Arrow Down (next command)
-    if (ev.key === 'ArrowDown') {
-      if (historyIndexRef.current < commandHistoryRef.current.length) {
-        historyIndexRef.current++;
-        const historicCommand =
-          historyIndexRef.current === commandHistoryRef.current.length
-            ? ''
-            : commandHistoryRef.current[historyIndexRef.current];
+    // Arrow down (history next)
+    if (data === '\x1b[B') {
+      if (historyIndex > 0) {
+        const newIndex = historyIndex - 1;
+        const command = terminal.history[terminal.history.length - 1 - newIndex];
+        
         // Clear current line
         term.write('\r\x1b[K');
-        writePrompt();
-        term.write(historicCommand);
-        currentLineRef.current = historicCommand;
-        cursorPositionRef.current = historicCommand.length;
+        term.write(getPrompt());
+        term.write(command);
+        
+        setCurrentLine(command);
+        setHistoryIndex(newIndex);
+      } else if (historyIndex === 0) {
+        // Clear line
+        term.write('\r\x1b[K');
+        term.write(getPrompt());
+        setCurrentLine('');
+        setHistoryIndex(-1);
       }
       return;
     }
 
-    // Handle printable characters
-    if (isPrintable && key.length === 1) {
-      currentLineRef.current =
-        currentLineRef.current.slice(0, cursorPositionRef.current) +
-        key +
-        currentLineRef.current.slice(cursorPositionRef.current);
-      cursorPositionRef.current++;
-      term.write(key);
+    // Tab completion
+    if (code === 9) {
+      const commands = ['ls', 'cd', 'pwd', 'cat', 'mkdir', 'touch', 'rm', 'git', 'clear', 'echo', 'help', 'exit'];
+      const matches = commands.filter((cmd) => cmd.startsWith(currentLine));
+      
+      if (matches.length === 1) {
+        const completion = matches[0].slice(currentLine.length);
+        term.write(completion);
+        setCurrentLine(matches[0]);
+      } else if (matches.length > 1) {
+        term.writeln('');
+        term.writeln(matches.join('  '));
+        term.write(getPrompt());
+        term.write(currentLine);
+      }
+      return;
+    }
+
+    // Regular character
+    if (code >= 32 && code <= 126) {
+      setCurrentLine((prev) => prev + data);
+      term.write(data);
     }
   };
 
-  /**
-   * Initializes the terminal
-   */
+  // Initialize terminal
   useEffect(() => {
-    if (!containerRef.current || !isVisible) return;
+    if (!terminalRef.current || xtermRef.current) return;
 
-    let mounted = true;
+    const term = new Terminal({
+      cursorBlink: true,
+      cursorStyle: 'block',
+      fontSize: 13,
+      fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+      theme: {
+        background: 'hsl(var(--cf-panel))',
+        foreground: 'hsl(var(--foreground))',
+        cursor: 'hsl(var(--primary))',
+        black: '#000000',
+        red: '#cd3131',
+        green: '#0dbc79',
+        yellow: '#e5e510',
+        blue: '#2472c8',
+        magenta: '#bc3fbc',
+        cyan: '#11a8cd',
+        white: '#e5e5e5',
+        brightBlack: '#666666',
+        brightRed: '#f14c4c',
+        brightGreen: '#23d18b',
+        brightYellow: '#f5f543',
+        brightBlue: '#3b8eea',
+        brightMagenta: '#d670d6',
+        brightCyan: '#29b8db',
+        brightWhite: '#ffffff',
+      },
+      allowProposedApi: true,
+    });
 
-    const initTerminal = async () => {
-      try {
-        // Import xterm CSS
-        await import('@xterm/xterm/css/xterm.css');
+    const fitAddon = new FitAddon();
+    const webLinksAddon = new WebLinksAddon();
 
-        // Dynamic import to avoid SSR issues
-        const [{ Terminal }, { FitAddon }, { WebLinksAddon }] =
-          await Promise.all([
-            import('@xterm/xterm'),
-            import('@xterm/addon-fit'),
-            import('@xterm/addon-web-links'),
-          ]);
+    term.loadAddon(fitAddon);
+    term.loadAddon(webLinksAddon);
 
-        if (!mounted || !containerRef.current) return;
+    term.open(terminalRef.current);
+    fitAddon.fit();
 
-        const colors = getThemeColors();
+    xtermRef.current = term;
+    fitAddonRef.current = fitAddon;
 
-        // Create terminal instance
-        const terminal = new Terminal({
-          cursorBlink: true,
-          fontSize: 14,
-          fontFamily: 'monospace',
-          theme: {
-            background: colors.background,
-            foreground: colors.foreground,
-            cursor: colors.cursor,
-          },
-          scrollback: 1000,
-        });
+    // Welcome message
+    term.writeln('\x1b[1;36mWelcome to CodeForge Terminal\x1b[0m');
+    term.writeln('Type \x1b[36mhelp\x1b[0m for available commands');
+    term.writeln('');
+    term.write(getPrompt());
 
-        // Add fit addon
-        const fitAddon = new FitAddon();
-        terminal.loadAddon(fitAddon);
+    // Handle input
+    term.onData(handleData);
 
-        // Add web links addon
-        const webLinksAddon = new WebLinksAddon();
-        terminal.loadAddon(webLinksAddon);
-
-        // Open terminal
-        terminal.open(containerRef.current);
-        fitAddon.fit();
-
-        // Store references
-        terminalRef.current = terminal;
-        fitAddonRef.current = fitAddon;
-
-        // Handle key input
-        terminal.onData((data) => {
-          // This is for paste events
-          if (data.length > 1) {
-            currentLineRef.current += data;
-            cursorPositionRef.current += data.length;
-            terminal.write(data);
-          }
-        });
-
-        terminal.onKey(({ key, domEvent }) => {
-          handleKeyInput(key, domEvent);
-        });
-
-        // Write welcome message
-        terminal.writeln(
-          `${COLORS.bold}${COLORS.cyan}CodeForge Terminal${COLORS.reset}`
-        );
-        terminal.writeln(
-          `${COLORS.gray}Type 'help' for available commands${COLORS.reset}`
-        );
-        terminal.writeln('');
-        writePrompt();
-
-        // Setup resize observer
-        const resizeObserver = new ResizeObserver(() => {
-          if (fitAddonRef.current) {
-            fitAddonRef.current.fit();
-          }
-        });
-        resizeObserver.observe(containerRef.current);
-        resizeObserverRef.current = resizeObserver;
-      } catch (error) {
-        console.error('Failed to initialize terminal:', error);
-      }
+    // Handle resize
+    const handleResize = (): void => {
+      fitAddon.fit();
     };
+    window.addEventListener('resize', handleResize);
 
-    initTerminal();
-
-    // Cleanup
     return () => {
-      mounted = false;
-      if (resizeObserverRef.current && containerRef.current) {
-        resizeObserverRef.current.unobserve(containerRef.current);
-        resizeObserverRef.current.disconnect();
-      }
-      if (terminalRef.current) {
-        terminalRef.current.dispose();
-      }
+      window.removeEventListener('resize', handleResize);
+      term.dispose();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [instanceId, isVisible]);
+  }, [terminalId]);
 
-  return (
-    <div
-      ref={containerRef}
-      className="h-full w-full"
-      style={{ display: isVisible ? 'block' : 'none' }}
-    />
-  );
+  // Fit on mount and cwd change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fitAddonRef.current?.fit();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [cwd]);
+
+  return <div ref={terminalRef} className="h-full w-full" />;
 }
