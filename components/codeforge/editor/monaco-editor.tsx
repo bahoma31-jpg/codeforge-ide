@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback, useMemo } from "react";
 import { Editor, OnMount } from "@monaco-editor/react";
 import { editor } from "monaco-editor";
 import { useEditorStore } from "@/lib/stores/editor-store";
@@ -17,8 +17,9 @@ import {
 } from "@/lib/monaco/language-providers";
 import { registerCodeActions } from "@/lib/monaco/code-actions";
 import { useMonacoKeyboardShortcuts } from "@/lib/hooks/useMonacoEditor";
+import { EditorSkeleton } from "@/components/ui/loading-spinner";
 
-export default function MonacoEditor() {
+function MonacoEditor() {
   const { tabs, activeTabId, updateTabContent } = useEditorStore();
   const { theme } = useUIStore();
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
@@ -26,9 +27,20 @@ export default function MonacoEditor() {
   // ✅ تفعيل اختصارات لوحة المفاتيح
   useMonacoKeyboardShortcuts(editorRef.current);
 
-  const activeTab = tabs.find((t) => t.id === activeTabId);
+  // Memoize active tab to avoid unnecessary re-renders
+  const activeTab = useMemo(
+    () => tabs.find((t) => t.id === activeTabId),
+    [tabs, activeTabId]
+  );
 
-  const handleEditorDidMount: OnMount = (editor, monaco) => {
+  // Memoize theme name
+  const monacoTheme = useMemo(
+    () => (theme === "light" ? "codeforge-light" : "codeforge-dark"),
+    [theme]
+  );
+
+  // useCallback for handleEditorDidMount to prevent recreation
+  const handleEditorDidMount: OnMount = useCallback((editor, monaco) => {
     editorRef.current = editor;
 
     // Register custom themes
@@ -49,21 +61,24 @@ export default function MonacoEditor() {
 
     // Focus editor
     editor.focus();
-  };
+  }, [theme]);
 
-  const handleEditorChange = (value: string | undefined) => {
-    if (activeTabId && value !== undefined) {
-      updateTabContent(activeTabId, value);
-    }
-  };
+  // useCallback for handleEditorChange
+  const handleEditorChange = useCallback(
+    (value: string | undefined) => {
+      if (activeTabId && value !== undefined) {
+        updateTabContent(activeTabId, value);
+      }
+    },
+    [activeTabId, updateTabContent]
+  );
 
   // Update theme when it changes
   useEffect(() => {
     if (editorRef.current) {
-      const monacoTheme = theme === "light" ? "codeforge-light" : "codeforge-dark";
       editorRef.current.updateOptions({ theme: monacoTheme });
     }
-  }, [theme]);
+  }, [monacoTheme]);
 
   if (!activeTab) {
     return (
@@ -81,12 +96,11 @@ export default function MonacoEditor() {
       onChange={handleEditorChange}
       onMount={handleEditorDidMount}
       options={defaultMonacoOptions}
-      theme={theme === "light" ? "codeforge-light" : "codeforge-dark"}
-      loading={
-        <div className="flex h-full items-center justify-center">
-          <p className="text-muted-foreground">Loading Monaco Editor...</p>
-        </div>
-      }
+      theme={monacoTheme}
+      loading={<EditorSkeleton />}
     />
   );
 }
+
+// Export memoized version to prevent unnecessary re-renders
+export default MonacoEditor;
