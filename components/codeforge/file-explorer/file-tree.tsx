@@ -2,18 +2,36 @@
  * CodeForge IDE - File Tree Component
  * Agent 4: File System Manager
  * 
- * Displays the file/folder hierarchy
+ * Displays the file/folder hierarchy with virtual scrolling for performance
  */
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo, useCallback, memo } from 'react';
+import { FixedSizeList as List } from 'react-window';
 import { useFilesStore } from '@/lib/stores/files-store';
 import { FileTreeItem } from './file-tree-item';
 import { Loader2 } from 'lucide-react';
 import { initializeSampleFiles } from '@/lib/utils/initial-files';
+import type { FileNode } from '@/lib/types/files';
 
-export default function FileTree() {
+// Flatten tree structure for virtual scrolling
+function flattenTree(nodes: FileNode[], level = 0): Array<{ node: FileNode; level: number }> {
+  const result: Array<{ node: FileNode; level: number }> = [];
+  
+  for (const node of nodes) {
+    result.push({ node, level });
+    
+    // If folder is expanded, add children
+    if (node.type === 'folder' && node.isExpanded && node.children) {
+      result.push(...flattenTree(node.children, level + 1));
+    }
+  }
+  
+  return result;
+}
+
+function FileTree() {
   const {
     rootNodes,
     isLoading,
@@ -41,6 +59,25 @@ export default function FileTree() {
 
     init();
   }, [isInitialized, initialize, loadFileTree]);
+
+  // Memoize flattened tree for virtual scrolling
+  const flattenedNodes = useMemo(
+    () => flattenTree(rootNodes),
+    [rootNodes]
+  );
+
+  // Row renderer for virtual list
+  const Row = useCallback(
+    ({ index, style }: { index: number; style: React.CSSProperties }) => {
+      const { node, level } = flattenedNodes[index];
+      return (
+        <div style={style}>
+          <FileTreeItem node={node} level={level} />
+        </div>
+      );
+    },
+    [flattenedNodes]
+  );
 
   // Loading state
   if (isLoading && !isInitialized) {
@@ -78,7 +115,24 @@ export default function FileTree() {
     );
   }
 
-  // File tree
+  // Use virtual scrolling for large trees (>20 items)
+  if (flattenedNodes.length > 20) {
+    return (
+      <div className="py-2">
+        <List
+          height={600}
+          itemCount={flattenedNodes.length}
+          itemSize={28}
+          width="100%"
+          overscanCount={5}
+        >
+          {Row}
+        </List>
+      </div>
+    );
+  }
+
+  // Regular rendering for small trees
   return (
     <div className="py-2">
       {rootNodes.map((node) => (
@@ -87,3 +141,6 @@ export default function FileTree() {
     </div>
   );
 }
+
+// Export memoized component
+export default memo(FileTree);
