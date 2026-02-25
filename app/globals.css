@@ -24,18 +24,6 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
-
-    /* CodeForge IDE custom variables - Light */
-    --cf-sidebar: 220 14% 96%;
-    --cf-activitybar: 220 14% 92%;
-    --cf-panel: 220 14% 96%;
-    --cf-statusbar: 217 71% 53%;
-    --cf-editor: 0 0% 100%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
   }
 
   .dark {
@@ -58,18 +46,6 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
-
-    /* CodeForge IDE custom variables - Dark (VS Code inspired) */
-    --cf-sidebar: 220 13% 18%;
-    --cf-activitybar: 220 13% 14%;
-    --cf-panel: 220 13% 18%;
-    --cf-statusbar: 217 71% 53%;
-    --cf-editor: 220 13% 12%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
   }
 }
 
@@ -77,27 +53,167 @@
   * {
     @apply border-border;
   }
-
   body {
     @apply bg-background text-foreground;
   }
 }
 
-/* IDE-specific styles */
-.codeforge-scrollbar::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+/* ========================================
+   Accessibility Styles
+   ======================================== */
+
+/* Screen Reader Only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }
 
-.codeforge-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
+.sr-only-focusable:focus,
+.sr-only-focusable:active {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
 }
 
-.codeforge-scrollbar::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.3);
-  border-radius: 5px;
+/* Focus Indicators - WCAG AAA compliant */
+*:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
-.codeforge-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.5);
+/* Enhanced focus for interactive elements */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible {
+  outline: 3px solid hsl(var(--ring));
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px hsl(var(--ring) / 0.2);
+}
+
+/* Skip to Main Content Link */
+.skip-to-main {
+  position: absolute;
+  top: -100px;
+  left: 0;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  padding: 0.75rem 1.5rem;
+  text-decoration: none;
+  z-index: 100;
+  border-radius: 0 0 0.25rem 0;
+  font-weight: 600;
+}
+
+.skip-to-main:focus {
+  top: 0;
+  outline: 3px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* ========================================
+   Reduced Motion Support
+   ======================================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Keep essential animations but make them instant */
+  .animate-spin,
+  .animate-pulse,
+  .animate-bounce {
+    animation: none !important;
+  }
+}
+
+/* ========================================
+   High Contrast Mode Support
+   ======================================== */
+@media (prefers-contrast: high) {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+    --primary: 240 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --border: 0 0% 0%;
+    --ring: 240 100% 50%;
+  }
+
+  .dark {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --primary: 48 100% 50%;
+    --primary-foreground: 0 0% 0%;
+    --border: 0 0% 100%;
+    --ring: 48 100% 50%;
+  }
+
+  /* Ensure all borders are visible */
+  * {
+    border-width: 1px;
+  }
+
+  /* Remove subtle backgrounds */
+  .bg-muted,
+  .bg-secondary,
+  .bg-accent {
+    background-color: transparent !important;
+    border: 2px solid hsl(var(--border)) !important;
+  }
+}
+
+/* ========================================
+   Forced Colors Mode (Windows High Contrast)
+   ======================================== */
+@media (forced-colors: active) {
+  * {
+    forced-color-adjust: auto;
+  }
+
+  /* Ensure focus indicators are visible */
+  *:focus-visible {
+    outline: 2px solid CanvasText;
+    outline-offset: 2px;
+  }
+
+  /* Ensure interactive elements have visible borders */
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    border: 1px solid ButtonText;
+  }
+}
+
+/* ========================================
+   Keyboard Navigation Indicators
+   ======================================== */
+[data-keyboard-nav="true"] *:focus {
+  outline: 3px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* Hide focus for mouse users, show for keyboard users */
+[data-keyboard-nav="false"] *:focus:not(:focus-visible) {
+  outline: none;
 }
