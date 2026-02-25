@@ -1,37 +1,63 @@
 version: 2
 
+registries: {}
+
 updates:
-  # npm dependencies — weekly
+  # ─── NPM Dependencies ───────────────────────────────────
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
-      time: "09:00"
+      time: "06:00"
       timezone: "Africa/Algiers"
     open-pull-requests-limit: 10
-    reviewers:
-      - "bahoma31-jpg"
+    target-branch: "main"
     labels:
       - "dependencies"
       - "npm"
     commit-message:
-      prefix: "deps"
+      prefix: "chore(deps)"
+      prefix-development: "chore(dev-deps)"
       include: "scope"
+    reviewers:
+      - "bahoma31-jpg"
+    versioning-strategy: increase
+    # Group minor and patch updates to reduce PR noise
+    groups:
+      production-minor-patch:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+      dev-minor-patch:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # Ignore major version bumps for critical packages (review manually)
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
 
-  # GitHub Actions — monthly
+  # ─── GitHub Actions ─────────────────────────────────────
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "monthly"
-      time: "09:00"
+      time: "06:00"
       timezone: "Africa/Algiers"
     open-pull-requests-limit: 5
-    reviewers:
-      - "bahoma31-jpg"
+    target-branch: "main"
     labels:
       - "dependencies"
-      - "github-actions"
+      - "ci"
     commit-message:
-      prefix: "ci"
+      prefix: "ci(deps)"
       include: "scope"
+    reviewers:
+      - "bahoma31-jpg"
