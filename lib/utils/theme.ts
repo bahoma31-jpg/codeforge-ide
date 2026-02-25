@@ -1,4 +1,4 @@
-﻿import type { CodeforgeTheme } from '@/lib/stores/ui-store';
+import type { CodeforgeTheme } from '@/lib/stores/ui-store';
 
 const KEY = 'codeforge-theme';
 
