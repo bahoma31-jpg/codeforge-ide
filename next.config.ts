@@ -1,4 +1,9 @@
-﻿import type { NextConfig } from "next";
+import type { NextConfig } from "next";
+
+// Bundle Analyzer
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+});
 
 const nextConfig: NextConfig = {
   webpack: (config) => {
@@ -14,6 +19,13 @@ const nextConfig: NextConfig = {
   },
   // SSR: Monaco is client-side only
   transpilePackages: ["monaco-editor"],
+  // Performance optimizations
+  compress: true,
+  poweredByHeader: false,
+  // Image optimization
+  images: {
+    formats: ['image/avif', 'image/webp'],
+  },
 };
 
-export default nextConfig;
+export default withBundleAnalyzer(nextConfig);
