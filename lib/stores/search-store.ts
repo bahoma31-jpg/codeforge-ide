@@ -35,7 +35,7 @@ export interface SearchStore {
   clearSearch: () => void;
 }
 
-export const useSearchStore = create<SearchStore>((set, _get) => ({
+export const useSearchStore = create<SearchStore>((set) => ({
   query: '',
   replaceText: '',
   isRegex: false,

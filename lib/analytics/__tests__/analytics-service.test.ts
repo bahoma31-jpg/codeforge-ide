@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { AnalyticsService } from '../analytics-service';
-import type { AnalyticsCategory } from '../analytics-service';
 
 describe('AnalyticsService', () => {
   let service: AnalyticsService;

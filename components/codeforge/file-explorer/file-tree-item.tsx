@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, KeyboardEvent } from 'react';
+import { useRef, useEffect, KeyboardEvent } from 'react';
 import { ChevronRight, File, Folder, FolderOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -26,7 +26,8 @@ interface FileTreeItemProps {
 
 export function FileTreeItem({
   name,
-  path,
+  // path is received but unused — keep in interface for future use
+  path: _path,
   type,
   level,
   isExpanded = false,

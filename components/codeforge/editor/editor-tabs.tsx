@@ -29,7 +29,7 @@ export function EditorTabs({
       aria-label="Open files"
       className="flex items-center bg-muted border-b overflow-x-auto"
     >
-      {tabs.map((tab, index) => {
+      {tabs.map((tab) => {
         const isActive = tab.id === activeTabId;
 
         return (

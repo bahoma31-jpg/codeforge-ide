@@ -12,11 +12,10 @@ import {
   Clock,
 } from 'lucide-react';
 import { useEditorStore } from '@/lib/stores/editor-store';
-import { useGitStore } from '@/lib/stores/git-store';
+
 
 export function WelcomeScreen() {
   const { openFile } = useEditorStore();
-  const { clone } = useGitStore();
 
   const recentProjects = [
     {

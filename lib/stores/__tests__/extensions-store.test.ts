@@ -89,14 +89,12 @@ describe('ExtensionsStore', () => {
 
   it('should update enabledCount correctly', () => {
     useExtensionsStore.getState().addExtension(mockExtension);
-    useExtensionsStore
-      .getState()
-      .addExtension({
-        ...mockExtension,
-        id: 'ext-2',
-        name: 'JS',
-        enabled: false,
-      });
+    useExtensionsStore.getState().addExtension({
+      ...mockExtension,
+      id: 'ext-2',
+      name: 'JS',
+      enabled: false,
+    });
     expect(useExtensionsStore.getState().enabledCount).toBe(1);
     useExtensionsStore.getState().enableExtension('ext-2');
     expect(useExtensionsStore.getState().enabledCount).toBe(2);
@@ -109,14 +107,12 @@ describe('ExtensionsStore', () => {
 
   it('should filter extensions by search query', () => {
     useExtensionsStore.getState().addExtension(mockExtension);
-    useExtensionsStore
-      .getState()
-      .addExtension({
-        ...mockExtension,
-        id: 'ext-2',
-        name: 'JavaScript',
-        description: 'JS support',
-      });
+    useExtensionsStore.getState().addExtension({
+      ...mockExtension,
+      id: 'ext-2',
+      name: 'JavaScript',
+      description: 'JS support',
+    });
     useExtensionsStore.getState().setSearchQuery('python');
     const filtered = useExtensionsStore.getState().getFilteredExtensions();
     expect(filtered).toHaveLength(1);
@@ -125,14 +121,12 @@ describe('ExtensionsStore', () => {
 
   it('should filter extensions by category', () => {
     useExtensionsStore.getState().addExtension(mockExtension);
-    useExtensionsStore
-      .getState()
-      .addExtension({
-        ...mockExtension,
-        id: 'ext-2',
-        name: 'Theme',
-        category: 'themes',
-      });
+    useExtensionsStore.getState().addExtension({
+      ...mockExtension,
+      id: 'ext-2',
+      name: 'Theme',
+      category: 'themes',
+    });
     useExtensionsStore.getState().setSelectedCategory('themes');
     const filtered = useExtensionsStore.getState().getFilteredExtensions();
     expect(filtered).toHaveLength(1);

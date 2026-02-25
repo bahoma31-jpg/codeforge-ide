@@ -11,10 +11,10 @@ import type { FileNode } from './schema';
 import {
   validateFileNode,
   isValidPath,
-  getFileName,
   getParentPath,
   joinPath,
 } from './schema';
+import { logger } from '@/lib/monitoring/error-logger';
 
 /**
  * File system error types
@@ -394,7 +394,26 @@ export async function getChildren(
   parentId: string | null
 ): Promise<FileNode[]> {
   const db = getDBManager();
-  return db.getAllByIndex<FileNode>('parentId', parentId);
+  try {
+    if (parentId === null) {
+      // IndexedDB does not support indexing null values. 
+      // For root nodes, we have to perform a full scan and filter.
+      const allNodes = await db.getAll<FileNode>();
+      return allNodes.filter((node) => node.parentId === null);
+    }
+    return await db.getAllByIndex<FileNode>('parentId', parentId);
+  } catch (err) {
+    logger.error(
+      'فشل في جلب قائمة الملفات',
+      err instanceof Error ? err : new Error(String(err)),
+      { parentId }
+    );
+    throw new FileSystemError(
+      'تعذر استرجاع قائمة الملفات التابعة',
+      'GET_CHILDREN_FAILED',
+      { parentId }
+    );
+  }
 }
 
 /**

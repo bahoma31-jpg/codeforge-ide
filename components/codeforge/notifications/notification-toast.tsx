@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   useNotificationStore,
   type Notification,
@@ -37,9 +37,8 @@ function NotificationToastItem({ notification }: NotificationToastItemProps) {
 
   return (
     <div
-      className={`flex items-start gap-3 rounded-md border-l-4 bg-[#252526] p-4 shadow-lg transition-all duration-200 ${
-        typeBgColors[notification.type]
-      } ${isExiting ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'}`}
+      className={`flex items-start gap-3 rounded-md border-l-4 bg-[#252526] p-4 shadow-lg transition-all duration-200 ${typeBgColors[notification.type]
+        } ${isExiting ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'}`}
     >
       <span className="mt-0.5 text-lg">{typeIcons[notification.type]}</span>
       <div className="flex-1 min-w-0">
@@ -70,15 +69,12 @@ function NotificationToastItem({ notification }: NotificationToastItemProps) {
 /** Toast container — renders in the bottom-right corner */
 export function NotificationToast() {
   const { notifications } = useNotificationStore();
-  const [visibleIds, setVisibleIds] = useState<Set<string>>(new Set());
+
 
   // Show only unread, most recent 5 notifications
   const toastNotifications = notifications.filter((n) => !n.read).slice(0, 5);
 
-  useEffect(() => {
-    const newIds = new Set(toastNotifications.map((n) => n.id));
-    setVisibleIds(newIds);
-  }, [toastNotifications]);
+
 
   if (toastNotifications.length === 0) return null;
 
