@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo, memo } from 'react';
 import { ChevronRight, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useFilesStore, getChildrenFromState } from '@/lib/stores/files-store';
@@ -21,7 +21,7 @@ interface FileTreeItemProps {
   level: number;
 }
 
-export function FileTreeItem({ node, level }: FileTreeItemProps) {
+function FileTreeItemComponent({ node, level }: FileTreeItemProps) {
   const { expandedFolders, toggleFolder, setSelectedFile, selectedFileId, getChildren } = useFilesStore();
   const { openFile, activeTabId } = useEditorStore();
   const [children, setChildren] = useState<FileNode[]>([]);
@@ -45,8 +45,8 @@ export function FileTreeItem({ node, level }: FileTreeItemProps) {
     }
   }, [isExpanded, isFolder, node.id, getChildren]);
 
-  // Handle click
-  const handleClick = async () => {
+  // Handle click with useCallback
+  const handleClick = useCallback(async () => {
     setSelectedFile(node.id);
 
     if (isFolder) {
@@ -66,18 +66,20 @@ export function FileTreeItem({ node, level }: FileTreeItemProps) {
         console.error('Failed to open file:', error);
       }
     }
-  };
+  }, [node, isFolder, setSelectedFile, toggleFolder, openFile]);
 
-  // Get icon config
-  const iconConfig = isFolder 
-    ? getFolderTypeConfig(isExpanded)
-    : getFileTypeConfig(node.name);
+  // Memoize icon config
+  const iconConfig = useMemo(
+    () => isFolder 
+      ? getFolderTypeConfig(isExpanded)
+      : getFileTypeConfig(node.name),
+    [isFolder, isExpanded, node.name]
+  );
   
   const Icon = iconConfig.icon;
-  const iconColor = iconConfig.color;
 
   // Calculate indent
-  const indent = level * 16;
+  const indent = useMemo(() => level * 16, [level]);
 
   return (
     <div>
@@ -129,3 +131,13 @@ export function FileTreeItem({ node, level }: FileTreeItemProps) {
     </div>
   );
 }
+
+// Export memoized component with custom comparison
+export const FileTreeItem = memo(FileTreeItemComponent, (prev, next) => {
+  // Only re-render if node id, name, or level changed
+  return (
+    prev.node.id === next.node.id &&
+    prev.node.name === next.node.name &&
+    prev.level === next.level
+  );
+});
