@@ -62,7 +62,7 @@
 قبل البدء، تأكد من تثبيت:
 
 - **Node.js** ≥ 18.x ([تحميل](https://nodejs.org/))
-- **npm** ≥ 9.x (يأتي مع Node.js)
+- **pnpm** ≥ 9.x ([تحميل](https://pnpm.io/installation)) — يمكن تفعيله عبر: `corepack enable pnpm`
 - **Git** (اختياري، للنشر) ([تحميل](https://git-scm.com/))
 
 ### التثبيت
@@ -75,10 +75,10 @@ git clone https://github.com/bahoma31-jpg/codeforge-ide.git
 cd codeforge-ide
 
 # 3. تثبيت المكتبات
-npm install
+pnpm install
 
 # 4. تشغيل في وضع التطوير
-npm run dev
+pnpm dev
 ```
 
 سيعمل التطبيق على `http://localhost:3000`
@@ -87,10 +87,10 @@ npm run dev
 
 ```bash
 # بناء التطبيق
-npm run build
+pnpm build
 
 # تشغيل نسخة الإنتاج
-npm start
+pnpm start
 ```
 
 ---
@@ -145,7 +145,7 @@ CodeForge IDE
 
 | Category | Technology |
 |----------|-----------|
-| **Frontend** | Next.js 15, React 19, TypeScript |
+| **Frontend** | Next.js 14.2, React 18, TypeScript |
 | **Editor** | Monaco Editor |
 | **Terminal** | xterm.js |
 | **UI Library** | shadcn/ui, Tailwind CSS |
@@ -153,6 +153,7 @@ CodeForge IDE
 | **Git Integration** | isomorphic-git |
 | **Storage** | IndexedDB, LightningFS |
 | **Authentication** | NextAuth.js (GitHub OAuth) |
+| **Package Manager** | pnpm |
 
 ---
 
@@ -160,13 +161,13 @@ CodeForge IDE
 
 ```bash
 # تشغيل الاختبارات
-npm run test
+pnpm test
 
 # تشغيل الاختبارات مع التغطية
-npm run test:coverage
+pnpm test:coverage
 
 # تشغيل الاختبارات في وضع المراقبة
-npm run test:watch
+pnpm test:ui
 ```
 
 ### أنواع الاختبارات
@@ -213,6 +214,9 @@ chore: maintain
 - [x] Basic Git Operations
 - [x] Terminal Emulator
 - [x] File System
+- [x] PWA Support
+- [x] Performance Monitoring
+- [x] CI/CD Pipeline
 
 ### Version 1.1 (Next)
 - [ ] Extensions System
