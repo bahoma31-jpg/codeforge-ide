@@ -2,7 +2,7 @@
 
 import { useEditorStore } from '@/lib/stores/editor-store';
 import TabBar from '../editor/tab-bar';
-import MonacoEditor from '../editor/monaco-editor';
+import { MonacoEditor } from '@/lib/utils/monaco-loader';
 
 export default function EditorArea() {
   const { tabs } = useEditorStore();
