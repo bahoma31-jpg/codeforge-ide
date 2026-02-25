@@ -11,16 +11,19 @@
 ### `ls` - List Directory Contents
 
 **الاستخدام**:
+
 ```bash
 ls [options] [path]
 ```
 
 **الخيارات**:
+
 - `-l` : عرض تفصيلي
 - `-a` : إظهار الملفات المخفية
 - `-h` : حجم قابل للقراءة
 
 **أمثلة**:
+
 ```bash
 ls                  # List current directory
 ls -la              # List all files with details
@@ -33,11 +36,13 @@ ls -lh              # List with human-readable sizes
 ### `cd` - Change Directory
 
 **الاستخدام**:
+
 ```bash
 cd [path]
 ```
 
 **أمثلة**:
+
 ```bash
 cd /project         # Absolute path
 cd src              # Relative path
@@ -51,11 +56,13 @@ cd -                # Previous directory
 ### `pwd` - Print Working Directory
 
 **الاستخدام**:
+
 ```bash
 pwd
 ```
 
 **مثال**:
+
 ```bash
 $ pwd
 /project/src/components
@@ -66,14 +73,17 @@ $ pwd
 ### `mkdir` - Make Directory
 
 **الاستخدام**:
+
 ```bash
 mkdir [options] <directory>
 ```
 
 **الخيارات**:
+
 - `-p` : إنشاء المجلدات الأب إذا لم تكن موجودة
 
 **أمثلة**:
+
 ```bash
 mkdir new-folder
 mkdir -p src/components/ui    # Create nested directories
@@ -84,11 +94,13 @@ mkdir -p src/components/ui    # Create nested directories
 ### `touch` - Create File
 
 **الاستخدام**:
+
 ```bash
 touch <filename>
 ```
 
 **أمثلة**:
+
 ```bash
 touch index.html
 touch src/app.ts
@@ -100,11 +112,13 @@ touch file1.js file2.js file3.js    # Multiple files
 ### `cat` - Display File Contents
 
 **الاستخدام**:
+
 ```bash
 cat <filename>
 ```
 
 **أمثلة**:
+
 ```bash
 cat README.md
 cat package.json
@@ -115,15 +129,18 @@ cat package.json
 ### `rm` - Remove Files/Directories
 
 **الاستخدام**:
+
 ```bash
 rm [options] <file>
 ```
 
 **الخيارات**:
+
 - `-r` : حذف مجلد وما بداخله
 - `-f` : فرض الحذف بدون تأكيد
 
 **أمثلة**:
+
 ```bash
 rm file.txt
 rm -r folder/          # Remove directory
@@ -137,14 +154,17 @@ rm -rf node_modules/   # Force remove directory
 ### `cp` - Copy Files
 
 **الاستخدام**:
+
 ```bash
 cp [options] <source> <destination>
 ```
 
 **الخيارات**:
+
 - `-r` : نسخ مجلد كامل
 
 **أمثلة**:
+
 ```bash
 cp file.txt file-copy.txt
 cp -r src/ backup/
@@ -155,11 +175,13 @@ cp -r src/ backup/
 ### `mv` - Move/Rename Files
 
 **الاستخدام**:
+
 ```bash
 mv <source> <destination>
 ```
 
 **أمثلة**:
+
 ```bash
 mv old-name.txt new-name.txt    # Rename
 mv file.txt src/                # Move
@@ -377,17 +399,17 @@ help <command>
 
 ## ⌨️ Terminal Shortcuts
 
-| Shortcut | الوصف |
-|----------|--------|
-| `Ctrl+C` | إيقاف الأمر الحالي |
-| `Ctrl+L` | مسح الشاشة |
-| `Ctrl+U` | حذف السطر من الموضع للبداية |
-| `Ctrl+K` | حذف السطر من الموضع للنهاية |
-| `Ctrl+W` | حذف الكلمة السابقة |
-| `Ctrl+A` | الانتقال لبداية السطر |
-| `Ctrl+E` | الانتقال لنهاية السطر |
-| `↑` / `↓` | تصفح سجل الأوامر |
-| `Tab` | إكمال تلقائي |
+| Shortcut  | الوصف                       |
+| --------- | --------------------------- |
+| `Ctrl+C`  | إيقاف الأمر الحالي          |
+| `Ctrl+L`  | مسح الشاشة                  |
+| `Ctrl+U`  | حذف السطر من الموضع للبداية |
+| `Ctrl+K`  | حذف السطر من الموضع للنهاية |
+| `Ctrl+W`  | حذف الكلمة السابقة          |
+| `Ctrl+A`  | الانتقال لبداية السطر       |
+| `Ctrl+E`  | الانتقال لنهاية السطر       |
+| `↑` / `↓` | تصفح سجل الأوامر            |
+| `Tab`     | إكمال تلقائي                |
 
 ---
 
@@ -516,18 +538,21 @@ gc "message"    # same as git commit -m "message"
 ### مشكلة: Command not found
 
 **الحل**:
+
 - تحقق من التهجئة
 - استخدم `help` لرؤية الأوامر المتاحة
 
 ### مشكلة: Permission denied
 
 **الحل**:
+
 - تحقق من صلاحيات الملف
 - في المتصفح، لا يوجد نظام صلاحيات حقيقي
 
 ### مشكلة: Fatal error in Git
 
 **الحل**:
+
 1. تحقق من اتصال الإنترنت
 2. تحقق من مصادقة GitHub
 3. تحقق من صلاحيات المستودع

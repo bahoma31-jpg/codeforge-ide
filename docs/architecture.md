@@ -53,17 +53,17 @@ interface EditorStore {
   files: File[];
   activeFileId: string | null;
   tabs: Tab[];
-  
+
   // Monaco Editor Instance
   monacoInstance: monaco.editor.IStandaloneCodeEditor | null;
-  
+
   // Actions
   openFile: (file: File) => void;
   closeFile: (fileId: string) => void;
   saveFile: (fileId: string, content: string) => void;
   updateFileContent: (fileId: string, content: string) => void;
   setActiveFile: (fileId: string) => void;
-  
+
   // Editor Config
   theme: 'light' | 'dark';
   fontSize: number;
@@ -73,6 +73,7 @@ interface EditorStore {
 ```
 
 **تدفق البيانات**:
+
 ```
 User Action → Editor Component → Editor Store → File System Service → IndexedDB
 ```
@@ -91,12 +92,12 @@ interface GitStore {
   branches: string[];
   commits: Commit[];
   status: FileStatus[];
-  
+
   // GitHub
   githubToken: string | null;
   githubUser: GitHubUser | null;
   repositories: GitHubRepo[];
-  
+
   // Actions
   init: (path: string) => Promise<void>;
   clone: (url: string, path: string) => Promise<void>;
@@ -106,7 +107,7 @@ interface GitStore {
   createBranch: (name: string) => Promise<void>;
   checkout: (branch: string) => Promise<void>;
   merge: (branch: string) => Promise<void>;
-  
+
   // Status
   getStatus: () => Promise<FileStatus[]>;
   stage: (files: string[]) => Promise<void>;
@@ -115,6 +116,7 @@ interface GitStore {
 ```
 
 **تدفق البيانات**:
+
 ```
 Git Command → Git Store → Git Service (isomorphic-git) → IndexedDB/GitHub API
 ```
@@ -130,7 +132,7 @@ interface FileSystemStore {
   // State
   tree: FileNode[];
   currentPath: string;
-  
+
   // Actions
   readFile: (path: string) => Promise<string>;
   writeFile: (path: string, content: string) => Promise<void>;
@@ -139,7 +141,7 @@ interface FileSystemStore {
   createFolder: (path: string) => Promise<void>;
   rename: (oldPath: string, newPath: string) => Promise<void>;
   copy: (source: string, destination: string) => Promise<void>;
-  
+
   // Tree Operations
   loadTree: (path: string) => Promise<void>;
   expandFolder: (path: string) => void;
@@ -148,6 +150,7 @@ interface FileSystemStore {
 ```
 
 **بنية FileNode**:
+
 ```typescript
 interface FileNode {
   id: string;
@@ -172,13 +175,13 @@ interface TerminalStore {
   // State
   terminals: Terminal[];
   activeTerminalId: string | null;
-  
+
   // Actions
   createTerminal: () => string;
   closeTerminal: (id: string) => void;
   setActiveTerminal: (id: string) => void;
   executeCommand: (id: string, command: string) => Promise<string>;
-  
+
   // Command History
   history: string[];
   historyIndex: number;
@@ -234,20 +237,20 @@ interface Terminal {
 
 ### عمليات Git المدعومة
 
-| Operation | Description | Local | Remote |
-|-----------|-------------|-------|--------|
-| `init` | إنشاء مستودع جديد | ✅ | - |
-| `clone` | استنساخ مستودع | ✅ | ✅ |
-| `add` | إضافة للمرحلة | ✅ | - |
-| `commit` | حفظ التغييرات | ✅ | - |
-| `push` | رفع إلى GitHub | ✅ | ✅ |
-| `pull` | جلب من GitHub | ✅ | ✅ |
-| `fetch` | جلب المراجع | ✅ | ✅ |
-| `merge` | دمج الفروع | ✅ | - |
-| `branch` | إدارة الفروع | ✅ | - |
-| `checkout` | التبديل بين الفروع | ✅ | - |
-| `status` | حالة الملفات | ✅ | - |
-| `log` | سجل العمليات | ✅ | - |
+| Operation  | Description        | Local | Remote |
+| ---------- | ------------------ | ----- | ------ |
+| `init`     | إنشاء مستودع جديد  | ✅    | -      |
+| `clone`    | استنساخ مستودع     | ✅    | ✅     |
+| `add`      | إضافة للمرحلة      | ✅    | -      |
+| `commit`   | حفظ التغييرات      | ✅    | -      |
+| `push`     | رفع إلى GitHub     | ✅    | ✅     |
+| `pull`     | جلب من GitHub      | ✅    | ✅     |
+| `fetch`    | جلب المراجع        | ✅    | ✅     |
+| `merge`    | دمج الفروع         | ✅    | -      |
+| `branch`   | إدارة الفروع       | ✅    | -      |
+| `checkout` | التبديل بين الفروع | ✅    | -      |
+| `status`   | حالة الملفات       | ✅    | -      |
+| `log`      | سجل العمليات       | ✅    | -      |
 
 ---
 
@@ -478,9 +481,12 @@ const Terminal = dynamic(() => import('./terminal'), {
 ### Memoization
 
 ```typescript
-const FileNode = memo(({ node }: Props) => {
-  // Component logic
-}, (prev, next) => prev.node.id === next.node.id);
+const FileNode = memo(
+  ({ node }: Props) => {
+    // Component logic
+  },
+  (prev, next) => prev.node.id === next.node.id
+);
 ```
 
 ### Web Workers

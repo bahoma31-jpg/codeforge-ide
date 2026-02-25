@@ -1,7 +1,11 @@
 import { create } from 'zustand';
 
 /** Extension status */
-export type ExtensionStatus = 'installed' | 'enabled' | 'disabled' | 'available';
+export type ExtensionStatus =
+  | 'installed'
+  | 'enabled'
+  | 'disabled'
+  | 'available';
 
 /** Extension definition */
 export interface Extension {
@@ -73,7 +77,9 @@ export const useExtensionsStore = create<ExtensionsStore>((set, get) => ({
   enableExtension: (id: string) =>
     set((state) => {
       const updated = state.extensions.map((e) =>
-        e.id === id ? { ...e, enabled: true, status: 'enabled' as ExtensionStatus } : e
+        e.id === id
+          ? { ...e, enabled: true, status: 'enabled' as ExtensionStatus }
+          : e
       );
       return {
         extensions: updated,
@@ -84,7 +90,9 @@ export const useExtensionsStore = create<ExtensionsStore>((set, get) => ({
   disableExtension: (id: string) =>
     set((state) => {
       const updated = state.extensions.map((e) =>
-        e.id === id ? { ...e, enabled: false, status: 'disabled' as ExtensionStatus } : e
+        e.id === id
+          ? { ...e, enabled: false, status: 'disabled' as ExtensionStatus }
+          : e
       );
       return {
         extensions: updated,
@@ -103,7 +111,8 @@ export const useExtensionsStore = create<ExtensionsStore>((set, get) => ({
 
   setSearchQuery: (query: string) => set({ searchQuery: query }),
 
-  setSelectedCategory: (category: string) => set({ selectedCategory: category }),
+  setSelectedCategory: (category: string) =>
+    set({ selectedCategory: category }),
 
   getFilteredExtensions: (): Extension[] => {
     const { extensions, searchQuery, selectedCategory } = get();

@@ -1,9 +1,9 @@
-﻿import { editor } from "monaco-editor";
+﻿import { editor } from 'monaco-editor';
 
 const modelCache = new Map<string, editor.ITextModel>();
 
 export function getOrCreateModel(
-  monaco: typeof import("monaco-editor"),
+  monaco: typeof import('monaco-editor'),
   filePath: string,
   content: string,
   language: string

@@ -42,7 +42,10 @@ export function StatusBar({
             className="flex items-center gap-1 hover:opacity-80"
             aria-label={`${errors} error${errors !== 1 ? 's' : ''}. Click to view.`}
           >
-            <AlertCircle className="h-3 w-3 text-destructive" aria-hidden="true" />
+            <AlertCircle
+              className="h-3 w-3 text-destructive"
+              aria-hidden="true"
+            />
             <span>{errors}</span>
           </button>
         )}
@@ -52,7 +55,10 @@ export function StatusBar({
             className="flex items-center gap-1 hover:opacity-80"
             aria-label={`${warnings} warning${warnings !== 1 ? 's' : ''}. Click to view.`}
           >
-            <AlertCircle className="h-3 w-3 text-yellow-500" aria-hidden="true" />
+            <AlertCircle
+              className="h-3 w-3 text-yellow-500"
+              aria-hidden="true"
+            />
             <span>{warnings}</span>
           </button>
         )}
@@ -70,10 +76,7 @@ export function StatusBar({
       </div>
 
       <div className="flex items-center gap-4">
-        <span
-          role="status"
-          aria-label={`Line ${line}, Column ${column}`}
-        >
+        <span role="status" aria-label={`Line ${line}, Column ${column}`}>
           Ln {line}, Col {column}
         </span>
         <span aria-label={`Language: ${language}`}>{language}</span>

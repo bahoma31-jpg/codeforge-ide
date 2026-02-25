@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import { useEffect, useRef } from "react";
-import { Editor, OnMount } from "@monaco-editor/react";
-import { editor } from "monaco-editor";
-import { useEditorStore } from "@/lib/stores/editor-store";
-import { useUIStore } from "@/lib/stores/ui-store";
-import { defaultMonacoOptions } from "@/lib/monaco/monaco-config";
-import { registerCodeForgeThemes } from "@/lib/monaco/theme-config";
+import { useEffect, useRef } from 'react';
+import { Editor, OnMount } from '@monaco-editor/react';
+import { editor } from 'monaco-editor';
+import { useEditorStore } from '@/lib/stores/editor-store';
+import { useUIStore } from '@/lib/stores/ui-store';
+import { defaultMonacoOptions } from '@/lib/monaco/monaco-config';
+import { registerCodeForgeThemes } from '@/lib/monaco/theme-config';
 import {
   configureTypeScriptDefaults,
   configureHTMLDefaults,
@@ -14,9 +14,9 @@ import {
   configureJSONDefaults,
   addExtraLibraries,
   registerCustomSnippets,
-} from "@/lib/monaco/language-providers";
-import { registerCodeActions } from "@/lib/monaco/code-actions";
-import { useMonacoKeyboardShortcuts } from "@/lib/hooks/useMonacoEditor";
+} from '@/lib/monaco/language-providers';
+import { registerCodeActions } from '@/lib/monaco/code-actions';
+import { useMonacoKeyboardShortcuts } from '@/lib/hooks/useMonacoEditor';
 
 export default function MonacoEditor() {
   const { tabs, activeTabId, updateTabContent } = useEditorStore();
@@ -44,7 +44,8 @@ export default function MonacoEditor() {
     registerCodeActions();
 
     // Apply initial theme
-    const monacoTheme = theme === "light" ? "codeforge-light" : "codeforge-dark";
+    const monacoTheme =
+      theme === 'light' ? 'codeforge-light' : 'codeforge-dark';
     monaco.editor.setTheme(monacoTheme);
 
     // Focus editor
@@ -60,7 +61,8 @@ export default function MonacoEditor() {
   // Update theme when it changes
   useEffect(() => {
     if (editorRef.current) {
-      const monacoTheme = theme === "light" ? "codeforge-light" : "codeforge-dark";
+      const monacoTheme =
+        theme === 'light' ? 'codeforge-light' : 'codeforge-dark';
       editorRef.current.updateOptions({ theme: monacoTheme });
     }
   }, [theme]);
@@ -81,7 +83,7 @@ export default function MonacoEditor() {
       onChange={handleEditorChange}
       onMount={handleEditorDidMount}
       options={defaultMonacoOptions}
-      theme={theme === "light" ? "codeforge-light" : "codeforge-dark"}
+      theme={theme === 'light' ? 'codeforge-light' : 'codeforge-dark'}
       loading={
         <div className="flex h-full items-center justify-center">
           <p className="text-muted-foreground">Loading Monaco Editor...</p>

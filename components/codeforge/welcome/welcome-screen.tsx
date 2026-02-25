@@ -146,9 +146,7 @@ export function WelcomeScreen() {
               <Button
                 variant="ghost"
                 className="w-full justify-start"
-                onClick={() =>
-                  window.open('/docs/architecture.md', '_blank')
-                }
+                onClick={() => window.open('/docs/architecture.md', '_blank')}
               >
                 <Book className="w-4 h-4 mr-2" />
                 Architecture Guide

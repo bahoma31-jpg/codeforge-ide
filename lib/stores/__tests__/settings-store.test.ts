@@ -48,11 +48,15 @@ describe('SettingsStore', () => {
 
   it('should update accent color', () => {
     useSettingsStore.getState().updateThemeSettings({ accentColor: '#ff0000' });
-    expect(useSettingsStore.getState().settings.theme.accentColor).toBe('#ff0000');
+    expect(useSettingsStore.getState().settings.theme.accentColor).toBe(
+      '#ff0000'
+    );
   });
 
   it('should update terminal settings', () => {
-    useSettingsStore.getState().updateTerminalSettings({ fontSize: 16, cursorBlink: false });
+    useSettingsStore
+      .getState()
+      .updateTerminalSettings({ fontSize: 16, cursorBlink: false });
     const { terminal } = useSettingsStore.getState().settings;
     expect(terminal.fontSize).toBe(16);
     expect(terminal.cursorBlink).toBe(false);
@@ -87,12 +91,18 @@ describe('SettingsStore', () => {
   });
 
   it('should handle line numbers setting', () => {
-    useSettingsStore.getState().updateEditorSettings({ lineNumbers: 'relative' });
-    expect(useSettingsStore.getState().settings.editor.lineNumbers).toBe('relative');
+    useSettingsStore
+      .getState()
+      .updateEditorSettings({ lineNumbers: 'relative' });
+    expect(useSettingsStore.getState().settings.editor.lineNumbers).toBe(
+      'relative'
+    );
   });
 
   it('should handle autoSave settings', () => {
-    useSettingsStore.getState().updateEditorSettings({ autoSave: false, autoSaveDelay: 2000 });
+    useSettingsStore
+      .getState()
+      .updateEditorSettings({ autoSave: false, autoSaveDelay: 2000 });
     const { editor } = useSettingsStore.getState().settings;
     expect(editor.autoSave).toBe(false);
     expect(editor.autoSaveDelay).toBe(2000);

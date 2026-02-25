@@ -1,7 +1,7 @@
 /**
  * CodeForge IDE - Files Store
  * Agent 4: File System Manager
- * 
+ *
  * Zustand store for file system state management
  */
 
@@ -19,7 +19,7 @@ import {
   getRootNodes as dbGetRootNodes,
   getAllNodes as dbGetAllNodes,
   searchFiles as dbSearchFiles,
-  FileSystemError
+  FileSystemError,
 } from '../db/file-operations';
 import { initializeDB } from '../db/indexeddb';
 
@@ -40,7 +40,12 @@ interface FilesState {
   // Actions
   initialize: () => Promise<void>;
   loadFileTree: () => Promise<void>;
-  createFile: (name: string, parentId: string | null, content?: string, language?: string) => Promise<FileNode>;
+  createFile: (
+    name: string,
+    parentId: string | null,
+    content?: string,
+    language?: string
+  ) => Promise<FileNode>;
   createFolder: (name: string, parentId: string | null) => Promise<FileNode>;
   readFile: (id: string) => Promise<FileNode>;
   updateFile: (id: string, updates: Partial<FileNode>) => Promise<FileNode>;
@@ -49,7 +54,7 @@ interface FilesState {
   moveNode: (id: string, newParentId: string | null) => Promise<FileNode>;
   getChildren: (parentId: string | null) => Promise<FileNode[]>;
   searchFiles: (query: string) => Promise<FileNode[]>;
-  
+
   // UI Actions
   setActiveFile: (id: string | null) => void;
   setSelectedFile: (id: string | null) => void;
@@ -83,7 +88,10 @@ export const useFilesStore = create<FilesState>((set, get) => ({
       await get().loadFileTree();
       set({ isInitialized: true });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to initialize file system';
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Failed to initialize file system';
       set({ error: message });
       console.error('File system initialization error:', error);
     } finally {
@@ -97,11 +105,12 @@ export const useFilesStore = create<FilesState>((set, get) => ({
     try {
       const [allNodes, roots] = await Promise.all([
         dbGetAllNodes(),
-        dbGetRootNodes()
+        dbGetRootNodes(),
       ]);
       set({ nodes: allNodes, rootNodes: roots });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to load file tree';
+      const message =
+        error instanceof Error ? error.message : 'Failed to load file tree';
       set({ error: message });
       console.error('Load file tree error:', error);
       throw error;
@@ -118,11 +127,12 @@ export const useFilesStore = create<FilesState>((set, get) => ({
       await get().loadFileTree();
       return file;
     } catch (error) {
-      const message = error instanceof FileSystemError 
-        ? error.message 
-        : error instanceof Error 
-        ? error.message 
-        : 'Failed to create file';
+      const message =
+        error instanceof FileSystemError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'Failed to create file';
       set({ error: message });
       console.error('Create file error:', error);
       throw error;
@@ -143,11 +153,12 @@ export const useFilesStore = create<FilesState>((set, get) => ({
       }
       return folder;
     } catch (error) {
-      const message = error instanceof FileSystemError 
-        ? error.message 
-        : error instanceof Error 
-        ? error.message 
-        : 'Failed to create folder';
+      const message =
+        error instanceof FileSystemError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'Failed to create folder';
       set({ error: message });
       console.error('Create folder error:', error);
       throw error;
@@ -163,11 +174,12 @@ export const useFilesStore = create<FilesState>((set, get) => ({
       const file = await dbReadFile(id);
       return file;
     } catch (error) {
-      const message = error instanceof FileSystemError 
-        ? error.message 
-        : error instanceof Error 
-        ? error.message 
-        : 'Failed to read file';
+      const message =
+        error instanceof FileSystemError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'Failed to read file';
       set({ error: message });
       console.error('Read file error:', error);
       throw error;
@@ -182,15 +194,16 @@ export const useFilesStore = create<FilesState>((set, get) => ({
       const file = await dbUpdateFile(id, updates);
       // Update nodes in state
       set((state) => ({
-        nodes: state.nodes.map(n => n.id === id ? file : n)
+        nodes: state.nodes.map((n) => (n.id === id ? file : n)),
       }));
       return file;
     } catch (error) {
-      const message = error instanceof FileSystemError 
-        ? error.message 
-        : error instanceof Error 
-        ? error.message 
-        : 'Failed to update file';
+      const message =
+        error instanceof FileSystemError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'Failed to update file';
       set({ error: message });
       console.error('Update file error:', error);
       throw error;
@@ -203,7 +216,7 @@ export const useFilesStore = create<FilesState>((set, get) => ({
     try {
       await dbDeleteNode(id);
       await get().loadFileTree();
-      
+
       // Clear active/selected if deleted
       if (get().activeFileId === id) {
         set({ activeFileId: null });
@@ -212,11 +225,12 @@ export const useFilesStore = create<FilesState>((set, get) => ({
         set({ selectedFileId: null });
       }
     } catch (error) {
-      const message = error instanceof FileSystemError 
-        ? error.message 
-        : error instanceof Error 
-        ? error.message 
-        : 'Failed to delete node';
+      const message =
+        error instanceof FileSystemError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'Failed to delete node';
       set({ error: message });
       console.error('Delete node error:', error);
       throw error;
@@ -233,11 +247,12 @@ export const useFilesStore = create<FilesState>((set, get) => ({
       await get().loadFileTree();
       return node;
     } catch (error) {
-      const message = error instanceof FileSystemError 
-        ? error.message 
-        : error instanceof Error 
-        ? error.message 
-        : 'Failed to rename node';
+      const message =
+        error instanceof FileSystemError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'Failed to rename node';
       set({ error: message });
       console.error('Rename node error:', error);
       throw error;
@@ -258,11 +273,12 @@ export const useFilesStore = create<FilesState>((set, get) => ({
       }
       return node;
     } catch (error) {
-      const message = error instanceof FileSystemError 
-        ? error.message 
-        : error instanceof Error 
-        ? error.message 
-        : 'Failed to move node';
+      const message =
+        error instanceof FileSystemError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'Failed to move node';
       set({ error: message });
       console.error('Move node error:', error);
       throw error;
@@ -294,7 +310,7 @@ export const useFilesStore = create<FilesState>((set, get) => ({
   // UI Actions
   setActiveFile: (id) => set({ activeFileId: id }),
   setSelectedFile: (id) => set({ selectedFileId: id }),
-  
+
   toggleFolder: (id) => {
     set((state) => {
       const expanded = new Set(state.expandedFolders);
@@ -323,17 +339,17 @@ export const useFilesStore = create<FilesState>((set, get) => ({
     });
   },
 
-  clearError: () => set({ error: null })
+  clearError: () => set({ error: null }),
 }));
 
 // Helper to get node by ID from current state
 export function getNodeById(id: string): FileNode | undefined {
-  return useFilesStore.getState().nodes.find(n => n.id === id);
+  return useFilesStore.getState().nodes.find((n) => n.id === id);
 }
 
 // Helper to get children from current state
 export function getChildrenFromState(parentId: string | null): FileNode[] {
-  return useFilesStore.getState().nodes.filter(n => n.parentId === parentId);
+  return useFilesStore.getState().nodes.filter((n) => n.parentId === parentId);
 }
 
 // Helper to check if folder is expanded

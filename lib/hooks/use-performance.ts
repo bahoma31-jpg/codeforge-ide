@@ -76,10 +76,7 @@ export function useThrottle<T extends (...args: unknown[]) => unknown>(
  * Memoized file tree hook for expensive computations.
  * Returns memoized data based on provided dependencies.
  */
-export function useMemoizedFileTree<T>(
-  data: T,
-  deps: React.DependencyList
-): T {
+export function useMemoizedFileTree<T>(data: T, deps: React.DependencyList): T {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const memoizedData = useMemo(() => data, deps);
   return memoizedData;

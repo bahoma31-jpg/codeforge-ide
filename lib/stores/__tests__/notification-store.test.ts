@@ -70,7 +70,11 @@ describe('NotificationStore', () => {
 
   it('should remove a notification by ID', () => {
     const { addNotification } = useNotificationStore.getState();
-    const id = addNotification({ type: 'info', title: 'To remove', autoDismiss: false });
+    const id = addNotification({
+      type: 'info',
+      title: 'To remove',
+      autoDismiss: false,
+    });
     addNotification({ type: 'success', title: 'Keep', autoDismiss: false });
 
     useNotificationStore.getState().removeNotification(id);
@@ -82,7 +86,11 @@ describe('NotificationStore', () => {
 
   it('should update unreadCount after removing a notification', () => {
     const { addNotification } = useNotificationStore.getState();
-    const id = addNotification({ type: 'info', title: 'Remove me', autoDismiss: false });
+    const id = addNotification({
+      type: 'info',
+      title: 'Remove me',
+      autoDismiss: false,
+    });
     addNotification({ type: 'info', title: 'Stay', autoDismiss: false });
 
     expect(useNotificationStore.getState().unreadCount).toBe(2);
@@ -93,7 +101,11 @@ describe('NotificationStore', () => {
 
   it('should mark a notification as read', () => {
     const { addNotification } = useNotificationStore.getState();
-    const id = addNotification({ type: 'warning', title: 'Read me', autoDismiss: false });
+    const id = addNotification({
+      type: 'warning',
+      title: 'Read me',
+      autoDismiss: false,
+    });
 
     useNotificationStore.getState().markAsRead(id);
 
@@ -142,7 +154,11 @@ describe('NotificationStore', () => {
   it('should enforce max 100 notifications', () => {
     const { addNotification } = useNotificationStore.getState();
     for (let i = 0; i < 110; i++) {
-      addNotification({ type: 'info', title: `Notif ${i}`, autoDismiss: false });
+      addNotification({
+        type: 'info',
+        title: `Notif ${i}`,
+        autoDismiss: false,
+      });
     }
 
     const state = useNotificationStore.getState();

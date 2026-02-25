@@ -1,4 +1,4 @@
-﻿import * as monaco from "monaco-editor";
+﻿import * as monaco from 'monaco-editor';
 
 // TypeScript/JavaScript IntelliSense
 export function configureTypeScriptDefaults() {
@@ -10,9 +10,9 @@ export function configureTypeScriptDefaults() {
     noEmit: true,
     esModuleInterop: true,
     jsx: monaco.languages.typescript.JsxEmit.React,
-    reactNamespace: "React",
+    reactNamespace: 'React',
     allowJs: true,
-    typeRoots: ["node_modules/@types"],
+    typeRoots: ['node_modules/@types'],
   });
 
   monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
@@ -40,15 +40,15 @@ export function configureHTMLDefaults() {
       tabSize: 2,
       insertSpaces: true,
       wrapLineLength: 120,
-      unformatted: "wbr",
-      contentUnformatted: "pre,code,textarea",
+      unformatted: 'wbr',
+      contentUnformatted: 'pre,code,textarea',
       indentInnerHtml: false,
       preserveNewLines: true,
       maxPreserveNewLines: null,
       indentHandlebars: false,
       endWithNewline: false,
-      extraLiners: "head, body, /html",
-      wrapAttributes: "auto",
+      extraLiners: 'head, body, /html',
+      wrapAttributes: 'auto',
     },
     suggest: { html5: true, angular1: false, ionic: false },
   });
@@ -59,24 +59,24 @@ export function configureCSSDefaults() {
   monaco.languages.css.cssDefaults.setOptions({
     validate: true,
     lint: {
-      compatibleVendorPrefixes: "warning",
-      vendorPrefix: "warning",
-      duplicateProperties: "warning",
-      emptyRules: "warning",
-      importStatement: "ignore",
-      boxModel: "ignore",
-      universalSelector: "ignore",
-      zeroUnits: "ignore",
-      fontFaceProperties: "warning",
-      hexColorLength: "error",
-      argumentsInColorFunction: "error",
-      unknownProperties: "warning",
-      ieHack: "ignore",
-      unknownVendorSpecificProperties: "ignore",
-      propertyIgnoredDueToDisplay: "warning",
-      important: "ignore",
-      float: "ignore",
-      idSelector: "ignore",
+      compatibleVendorPrefixes: 'warning',
+      vendorPrefix: 'warning',
+      duplicateProperties: 'warning',
+      emptyRules: 'warning',
+      importStatement: 'ignore',
+      boxModel: 'ignore',
+      universalSelector: 'ignore',
+      zeroUnits: 'ignore',
+      fontFaceProperties: 'warning',
+      hexColorLength: 'error',
+      argumentsInColorFunction: 'error',
+      unknownProperties: 'warning',
+      ieHack: 'ignore',
+      unknownVendorSpecificProperties: 'ignore',
+      propertyIgnoredDueToDisplay: 'warning',
+      important: 'ignore',
+      float: 'ignore',
+      idSelector: 'ignore',
     },
   });
 }
@@ -88,15 +88,15 @@ export function configureJSONDefaults() {
     allowComments: true,
     schemas: [
       {
-        uri: "http://myserver/package-schema.json",
-        fileMatch: ["package.json"],
+        uri: 'http://myserver/package-schema.json',
+        fileMatch: ['package.json'],
         schema: {
-          type: "object",
+          type: 'object',
           properties: {
-            name: { type: "string", description: "Package name" },
-            version: { type: "string", description: "Version number" },
-            dependencies: { type: "object" },
-            devDependencies: { type: "object" },
+            name: { type: 'string', description: 'Package name' },
+            version: { type: 'string', description: 'Version number' },
+            dependencies: { type: 'object' },
+            devDependencies: { type: 'object' },
           },
         },
       },
@@ -114,17 +114,17 @@ export function addExtraLibraries() {
   `;
   monaco.languages.typescript.typescriptDefaults.addExtraLib(
     reactTypes,
-    "file:///node_modules/@types/react/index.d.ts"
+    'file:///node_modules/@types/react/index.d.ts'
   );
 }
 
 // Custom Snippets
 export function registerCustomSnippets() {
-  monaco.languages.registerCompletionItemProvider("typescript", {
+  monaco.languages.registerCompletionItemProvider('typescript', {
     provideCompletionItems: () => {
       const suggestions: monaco.languages.CompletionItem[] = [
         {
-          label: "rfc",
+          label: 'rfc',
           kind: monaco.languages.CompletionItemKind.Snippet,
           insertText: [
             'export default function ${1:ComponentName}() {',
@@ -135,8 +135,9 @@ export function registerCustomSnippets() {
             '  );',
             '}',
           ].join('\n'),
-          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-          documentation: "React Functional Component",
+          insertTextRules:
+            monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          documentation: 'React Functional Component',
         },
       ];
       return { suggestions };

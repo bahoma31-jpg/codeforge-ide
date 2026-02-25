@@ -16,22 +16,31 @@ interface FileTreeProps {
 }
 
 export function FileTree({ files, onFileOpen }: FileTreeProps) {
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
+    new Set()
+  );
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [focusedIndex, setFocusedIndex] = useState(0);
 
   // Flatten tree for navigation
-  const flattenTree = (nodes: FileNode[], level = 0): Array<FileNode & { level: number }> => {
+  const flattenTree = (
+    nodes: FileNode[],
+    level = 0
+  ): Array<FileNode & { level: number }> => {
     let result: Array<FileNode & { level: number }> = [];
-    
+
     for (const node of nodes) {
       result.push({ ...node, level });
-      
-      if (node.type === 'folder' && expandedFolders.has(node.path) && node.children) {
+
+      if (
+        node.type === 'folder' &&
+        expandedFolders.has(node.path) &&
+        node.children
+      ) {
         result = result.concat(flattenTree(node.children, level + 1));
       }
     }
-    
+
     return result;
   };
 
@@ -49,7 +58,9 @@ export function FileTree({ files, onFileOpen }: FileTreeProps) {
     });
   };
 
-  const handleNavigate = (direction: 'up' | 'down' | 'left' | 'right' | 'home' | 'end') => {
+  const handleNavigate = (
+    direction: 'up' | 'down' | 'left' | 'right' | 'home' | 'end'
+  ) => {
     let newIndex = focusedIndex;
 
     switch (direction) {
@@ -72,7 +83,11 @@ export function FileTree({ files, onFileOpen }: FileTreeProps) {
     setFocusedIndex(newIndex);
   };
 
-  const renderTree = (nodes: FileNode[], level = 0, startIndex = 0): { elements: React.ReactNode[], nextIndex: number } => {
+  const renderTree = (
+    nodes: FileNode[],
+    level = 0,
+    startIndex = 0
+  ): { elements: React.ReactNode[]; nextIndex: number } => {
     let currentIndex = startIndex;
     const elements: React.ReactNode[] = [];
 
@@ -81,7 +96,7 @@ export function FileTree({ files, onFileOpen }: FileTreeProps) {
       const isSelected = selectedPath === node.path;
       const isFocused = focusedIndex === currentIndex;
       const nodeIndex = currentIndex;
-      
+
       currentIndex++;
 
       elements.push(
@@ -106,9 +121,9 @@ export function FileTree({ files, onFileOpen }: FileTreeProps) {
           onFocus={() => setFocusedIndex(nodeIndex)}
           onNavigate={handleNavigate}
         >
-          {node.type === 'folder' && isExpanded && node.children ? (
-            renderTree(node.children, level + 1, currentIndex).elements
-          ) : null}
+          {node.type === 'folder' && isExpanded && node.children
+            ? renderTree(node.children, level + 1, currentIndex).elements
+            : null}
         </FileTreeItem>
       );
 

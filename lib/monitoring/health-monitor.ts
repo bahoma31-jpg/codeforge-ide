@@ -53,7 +53,8 @@ export class HealthMonitor {
   /** Get memory usage in MB (if available) */
   private getMemoryUsage(): number | undefined {
     if (typeof performance !== 'undefined' && 'memory' in performance) {
-      const memory = (performance as { memory: { usedJSHeapSize: number } }).memory;
+      const memory = (performance as { memory: { usedJSHeapSize: number } })
+        .memory;
       return Math.round(memory.usedJSHeapSize / (1024 * 1024));
     }
     return undefined;

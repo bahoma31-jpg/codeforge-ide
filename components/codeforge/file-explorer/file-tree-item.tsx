@@ -19,7 +19,9 @@ interface FileTreeItemProps {
   isFocused?: boolean;
   index: number;
   totalItems: number;
-  onNavigate?: (direction: 'up' | 'down' | 'left' | 'right' | 'home' | 'end') => void;
+  onNavigate?: (
+    direction: 'up' | 'down' | 'left' | 'right' | 'home' | 'end'
+  ) => void;
 }
 
 export function FileTreeItem({
@@ -122,7 +124,10 @@ export function FileTreeItem({
   };
 
   return (
-    <div role="group" aria-label={`${type === 'folder' ? 'Folder' : 'File'}: ${name}`}>
+    <div
+      role="group"
+      aria-label={`${type === 'folder' ? 'Folder' : 'File'}: ${name}`}
+    >
       <div
         ref={itemRef}
         role="treeitem"
@@ -162,9 +167,7 @@ export function FileTreeItem({
         )}
         <span className="flex-1 truncate text-sm">{name}</span>
       </div>
-      {isFolder && isExpanded && children && (
-        <div role="group">{children}</div>
-      )}
+      {isFolder && isExpanded && children && <div role="group">{children}</div>}
     </div>
   );
 }

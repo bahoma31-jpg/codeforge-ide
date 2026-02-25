@@ -1,7 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useNotificationStore, type NotificationType } from '@/lib/stores/notification-store';
+import {
+  useNotificationStore,
+  type NotificationType,
+} from '@/lib/stores/notification-store';
 
 /** Filter tabs for notification types */
 const filterTabs: { label: string; value: NotificationType | 'all' }[] = [
@@ -26,10 +29,20 @@ interface NotificationCenterProps {
 }
 
 /** Notification center panel — shows all notifications with filtering */
-export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps) {
-  const { notifications, markAsRead, markAllAsRead, clearAll, removeNotification } =
-    useNotificationStore();
-  const [activeFilter, setActiveFilter] = useState<NotificationType | 'all'>('all');
+export function NotificationCenter({
+  isOpen,
+  onClose,
+}: NotificationCenterProps) {
+  const {
+    notifications,
+    markAsRead,
+    markAllAsRead,
+    clearAll,
+    removeNotification,
+  } = useNotificationStore();
+  const [activeFilter, setActiveFilter] = useState<NotificationType | 'all'>(
+    'all'
+  );
 
   const filteredNotifications =
     activeFilter === 'all'

@@ -14,16 +14,18 @@ export function useAnnouncer() {
     (message: string, priority: AnnouncementPriority = 'polite') => {
       const announcer = document.getElementById('live-region');
       if (!announcer) {
-        console.warn('Live region not found. Add <LiveRegion /> to your layout.');
+        console.warn(
+          'Live region not found. Add <LiveRegion /> to your layout.'
+        );
         return;
       }
 
       // Set priority
       announcer.setAttribute('aria-live', priority);
-      
+
       // Clear previous message
       announcer.textContent = '';
-      
+
       // Add new message after a brief delay to ensure screen readers detect the change
       setTimeout(() => {
         announcer.textContent = message;

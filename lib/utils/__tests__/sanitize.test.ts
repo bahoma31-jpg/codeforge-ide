@@ -25,9 +25,7 @@ describe('sanitizeHTML', () => {
   });
 
   it('should escape quotes and ampersand', () => {
-    expect(sanitizeHTML('"Tom & Jerry"')).toBe(
-      '&quot;Tom &amp; Jerry&quot;'
-    );
+    expect(sanitizeHTML('"Tom & Jerry"')).toBe('&quot;Tom &amp; Jerry&quot;');
   });
 
   it('should escape single quotes', () => {

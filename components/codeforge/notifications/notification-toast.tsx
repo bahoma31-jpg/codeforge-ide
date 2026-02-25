@@ -1,7 +1,10 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useNotificationStore, type Notification } from '@/lib/stores/notification-store';
+import {
+  useNotificationStore,
+  type Notification,
+} from '@/lib/stores/notification-store';
 
 /** Icon mapping for notification types */
 const typeIcons: Record<Notification['type'], string> = {
@@ -70,9 +73,7 @@ export function NotificationToast() {
   const [visibleIds, setVisibleIds] = useState<Set<string>>(new Set());
 
   // Show only unread, most recent 5 notifications
-  const toastNotifications = notifications
-    .filter((n) => !n.read)
-    .slice(0, 5);
+  const toastNotifications = notifications.filter((n) => !n.read).slice(0, 5);
 
   useEffect(() => {
     const newIds = new Set(toastNotifications.map((n) => n.id));

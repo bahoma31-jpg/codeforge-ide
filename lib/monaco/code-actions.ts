@@ -1,16 +1,16 @@
-﻿import * as monaco from "monaco-editor";
+﻿import * as monaco from 'monaco-editor';
 
 export function registerCodeActions() {
-  monaco.languages.registerCodeActionProvider("typescript", {
+  monaco.languages.registerCodeActionProvider('typescript', {
     provideCodeActions: (model, range, context) => {
       const actions: monaco.languages.CodeAction[] = [];
 
-      if (context.only === "quickfix") {
+      if (context.only === 'quickfix') {
         const word = model.getWordAtPosition(range.getStartPosition());
         if (word) {
           actions.push({
             title: `Log "${word.word}" to console`,
-            kind: "quickfix",
+            kind: 'quickfix',
             edit: {
               edits: [
                 {

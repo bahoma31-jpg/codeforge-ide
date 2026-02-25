@@ -52,9 +52,7 @@ describe('RateLimiter', () => {
     const limiter = new RateLimiter(1, 1000);
     limiter.record();
 
-    expect(() => limiter.execute(() => 'fail')).toThrow(
-      'Rate limit exceeded'
-    );
+    expect(() => limiter.execute(() => 'fail')).toThrow('Rate limit exceeded');
   });
 
   it('should reset the state', () => {

@@ -1,7 +1,7 @@
 /**
  * CodeForge IDE - File Dialog
  * Agent 4: File System Manager
- * 
+ *
  * Dialog for creating/renaming files and folders
  */
 
@@ -36,7 +36,7 @@ export function FileDialog({
   onOpenChange,
   mode,
   parentNode,
-  nodeToRename
+  nodeToRename,
 }: FileDialogProps) {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
@@ -98,7 +98,7 @@ export function FileDialog({
   // Handle submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate
     const validationError = validateName(name);
     if (validationError) {
@@ -142,7 +142,7 @@ export function FileDialog({
           <DialogTitle>{getTitle()}</DialogTitle>
           <DialogDescription>{getDescription()}</DialogDescription>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
@@ -155,12 +155,10 @@ export function FileDialog({
                 autoFocus
                 disabled={isSubmitting}
               />
-              {error && (
-                <p className="text-sm text-destructive">{error}</p>
-              )}
+              {error && <p className="text-sm text-destructive">{error}</p>}
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button
               type="button"
@@ -171,7 +169,11 @@ export function FileDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting || !name.trim()}>
-              {isSubmitting ? 'Creating...' : mode === 'rename' ? 'Rename' : 'Create'}
+              {isSubmitting
+                ? 'Creating...'
+                : mode === 'rename'
+                  ? 'Rename'
+                  : 'Create'}
             </Button>
           </DialogFooter>
         </form>

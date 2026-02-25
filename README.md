@@ -18,6 +18,7 @@
 ## 🌟 Features
 
 ### محرر الأكواد المتقدم
+
 - ✨ **Monaco Editor** - نفس محرر VS Code مع دعم كامل للغات البرمجة
 - 🎨 **Syntax Highlighting** - تلوين تلقائي لأكثر من 60 لغة برمجة
 - 💡 **IntelliSense** - إكمال تلقائي ذكي واقتراحات
@@ -26,6 +27,7 @@
 - 🎯 **Code Formatting** - تنسيق تلقائي للكود
 
 ### تكامل Git و GitHub
+
 - 🔐 **GitHub OAuth** - مصادقة آمنة مع GitHub
 - 📦 **Repository Management** - إدارة كاملة للمستودعات
 - 🌿 **Branch Operations** - إنشاء، تبديل، ودمج الفروع
@@ -34,6 +36,7 @@
 - 🔀 **Conflict Resolution** - حل التعارضات بصريًا
 
 ### نظام الملفات المتقدم
+
 - 💿 **IndexedDB Storage** - تخزين محلي قوي وسريع
 - 📂 **File Explorer** - مستكشف ملفات تفاعلي
 - 📄 **Multi-file Tabs** - فتح ملفات متعددة في نفس الوقت
@@ -41,6 +44,7 @@
 - 📋 **Copy/Paste/Rename** - عمليات الملفات الأساسية
 
 ### محطة طرفية متكاملة
+
 - 💻 **xterm.js Terminal** - محطة طرفية حقيقية في المتصفح
 - 🖥️ **Multiple Terminals** - فتح محطات متعددة
 - ⚡ **Built-in Commands** - أوامر مدمجة (ls, cd, mkdir, cat...)
@@ -48,6 +52,7 @@
 - 📊 **Command History** - سجل الأوامر المستخدمة
 
 ### تخصيص واجهة المستخدم
+
 - 🎨 **Themes** - ثيمات قابلة للتخصيص (Light/Dark)
 - 🔤 **Font Customization** - تخصيص الخطوط والأحجام
 - ⌨️ **Keyboard Shortcuts** - اختصارات لوحة مفاتيح قابلة للتعديل
@@ -143,17 +148,17 @@ CodeForge IDE
 
 ### Technology Stack
 
-| Category | Technology |
-|----------|-----------|
-| **Frontend** | Next.js 14.2, React 18, TypeScript |
-| **Editor** | Monaco Editor |
-| **Terminal** | xterm.js |
-| **UI Library** | shadcn/ui, Tailwind CSS |
-| **State Management** | Zustand |
-| **Git Integration** | isomorphic-git |
-| **Storage** | IndexedDB, LightningFS |
-| **Authentication** | NextAuth.js (GitHub OAuth) |
-| **Package Manager** | pnpm |
+| Category             | Technology                         |
+| -------------------- | ---------------------------------- |
+| **Frontend**         | Next.js 14.2, React 18, TypeScript |
+| **Editor**           | Monaco Editor                      |
+| **Terminal**         | xterm.js                           |
+| **UI Library**       | shadcn/ui, Tailwind CSS            |
+| **State Management** | Zustand                            |
+| **Git Integration**  | isomorphic-git                     |
+| **Storage**          | IndexedDB, LightningFS             |
+| **Authentication**   | NextAuth.js (GitHub OAuth)         |
+| **Package Manager**  | pnpm                               |
 
 ---
 
@@ -209,6 +214,7 @@ chore: maintain
 ## 📝 Roadmap
 
 ### Version 1.0 (Current)
+
 - [x] Monaco Editor Integration
 - [x] GitHub OAuth
 - [x] Basic Git Operations
@@ -219,6 +225,7 @@ chore: maintain
 - [x] CI/CD Pipeline
 
 ### Version 1.1 (Next)
+
 - [ ] Extensions System
 - [ ] Themes Marketplace
 - [ ] Collaborative Editing
@@ -226,6 +233,7 @@ chore: maintain
 - [ ] Mobile Support
 
 ### Version 2.0 (Future)
+
 - [ ] AI Code Assistant
 - [ ] Live Share
 - [ ] Debugging Tools

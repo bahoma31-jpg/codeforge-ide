@@ -17,9 +17,33 @@ function resetStore() {
 }
 
 const mockResults: SearchMatch[] = [
-  { fileId: '1', fileName: 'index.ts', filePath: '/src/index.ts', line: 10, column: 5, lineContent: 'const foo = bar;', matchText: 'foo' },
-  { fileId: '2', fileName: 'app.ts', filePath: '/src/app.ts', line: 20, column: 1, lineContent: 'export foo;', matchText: 'foo' },
-  { fileId: '3', fileName: 'utils.ts', filePath: '/src/utils.ts', line: 5, column: 12, lineContent: 'function foo() {}', matchText: 'foo' },
+  {
+    fileId: '1',
+    fileName: 'index.ts',
+    filePath: '/src/index.ts',
+    line: 10,
+    column: 5,
+    lineContent: 'const foo = bar;',
+    matchText: 'foo',
+  },
+  {
+    fileId: '2',
+    fileName: 'app.ts',
+    filePath: '/src/app.ts',
+    line: 20,
+    column: 1,
+    lineContent: 'export foo;',
+    matchText: 'foo',
+  },
+  {
+    fileId: '3',
+    fileName: 'utils.ts',
+    filePath: '/src/utils.ts',
+    line: 5,
+    column: 12,
+    lineContent: 'function foo() {}',
+    matchText: 'foo',
+  },
 ];
 
 describe('SearchStore', () => {

@@ -45,12 +45,12 @@ User clicks "Sign in"
 
 ### 2. الصلاحيات المطلوبة
 
-| Scope | الوصف | مطلوب |
-|-------|--------|--------|
-| `repo` | قراءة وكتابة المستودعات | ✅ |
-| `user:email` | قراءة بريد المستخدم | ✅ |
-| `workflow` | إدارة GitHub Actions | ☐ |
-| `gist` | إدارة Gists | ☐ |
+| Scope        | الوصف                   | مطلوب |
+| ------------ | ----------------------- | ----- |
+| `repo`       | قراءة وكتابة المستودعات | ✅    |
+| `user:email` | قراءة بريد المستخدم     | ✅    |
+| `workflow`   | إدارة GitHub Actions    | ☐     |
+| `gist`       | إدارة Gists             | ☐     |
 
 ---
 
@@ -66,6 +66,7 @@ git init
 ```
 
 **أو عبر الواجهة**:
+
 1. Source Control Panel (من الشريط الجانبي)
 2. اضغط على "Initialize Repository"
 
@@ -78,7 +79,7 @@ import { fs } from '@/lib/filesystem';
 await git.init({
   fs,
   dir: '/project',
-  defaultBranch: 'main'
+  defaultBranch: 'main',
 });
 
 // Creates:
@@ -96,12 +97,14 @@ await git.init({
 #### استنساخ مستودع من GitHub
 
 **عبر الواجهة**:
+
 1. Welcome Screen → "Clone Repository"
 2. أدخل URL المستودع
 3. اختر مجلد الوجهة
 4. اضغط "Clone"
 
 **في المحطة الطرفية**:
+
 ```bash
 git clone https://github.com/username/repo.git
 ```
@@ -116,11 +119,11 @@ await git.clone({
   url: 'https://github.com/username/repo.git',
   onAuth: () => ({
     username: 'token',
-    password: githubToken
+    password: githubToken,
   }),
   onProgress: (progress) => {
     console.log(`${progress.phase}: ${progress.loaded}/${progress.total}`);
-  }
+  },
 });
 ```
 
@@ -131,11 +134,13 @@ await git.clone({
 #### إضافة ملفات للمرحلة (Staging)
 
 **عبر الواجهة**:
+
 1. في Git Panel، سترى قائمة "Changes"
 2. اضغط على علامة `+` بجانب الملف
 3. سيتحرك إلى "Staged Changes"
 
 **في المحطة الطرفية**:
+
 ```bash
 # إضافة ملف واحد
 git add file.js
@@ -150,10 +155,12 @@ git add src/**/*.ts
 #### حفظ التغييرات (Commit)
 
 **عبر الواجهة**:
+
 1. اكتب Commit Message في الحقل
 2. اضغط `Ctrl+Enter` أو زر "Commit"
 
 **في المحطة الطرفية**:
+
 ```bash
 git commit -m "feat: add new feature"
 
@@ -175,15 +182,15 @@ footer (optional)
 
 **أنواع الرسائل**:
 
-| Type | الوصف | مثال |
-|------|--------|------|
-| `feat` | ميزة جديدة | `feat: add dark mode` |
-| `fix` | إصلاح خطأ | `fix: resolve login bug` |
-| `docs` | توثيق | `docs: update README` |
-| `style` | تنسيق | `style: format code` |
+| Type       | الوصف      | مثال                            |
+| ---------- | ---------- | ------------------------------- |
+| `feat`     | ميزة جديدة | `feat: add dark mode`           |
+| `fix`      | إصلاح خطأ  | `fix: resolve login bug`        |
+| `docs`     | توثيق      | `docs: update README`           |
+| `style`    | تنسيق      | `style: format code`            |
 | `refactor` | إعادة بناء | `refactor: simplify auth logic` |
-| `test` | اختبارات | `test: add unit tests` |
-| `chore` | صيانة | `chore: update dependencies` |
+| `test`     | اختبارات   | `test: add unit tests`          |
+| `chore`    | صيانة      | `chore: update dependencies`    |
 
 ---
 
@@ -192,11 +199,13 @@ footer (optional)
 #### رفع التغييرات
 
 **عبر الواجهة**:
+
 1. بعد عمل Commit
 2. اضغط على زر "Push" (↑)
 3. أو استخدم `Ctrl+Shift+P`
 
 **في المحطة الطرفية**:
+
 ```bash
 # Push to current branch
 git push
@@ -227,10 +236,12 @@ git push
 #### جلب التغييرات
 
 **عبر الواجهة**:
+
 1. اضغط على زر "Pull" (↓)
 2. أو استخدم Git Panel → "Sync"
 
 **في المحطة الطرفية**:
+
 ```bash
 # Pull with merge
 git pull
@@ -249,11 +260,13 @@ git fetch
 ### 1. Creating Branches
 
 **عبر الواجهة**:
+
 1. في Status Bar بالأسفل، اضغط على اسم الفرع الحالي
 2. اختر "Create new branch"
 3. أدخل اسم الفرع
 
 **في المحطة الطرفية**:
+
 ```bash
 # Create and switch
 git checkout -b feature/new-feature
@@ -265,10 +278,12 @@ git branch feature/new-feature
 ### 2. Switching Branches
 
 **عبر الواجهة**:
+
 1. في Status Bar، اضغط على اسم الفرع
 2. اختر الفرع المطلوب
 
 **في المحطة الطرفية**:
+
 ```bash
 git checkout main
 git checkout feature/new-feature
@@ -280,11 +295,13 @@ git switch main
 ### 3. Merging Branches
 
 **عبر الواجهة**:
+
 1. انتقل إلى الفرع المستهدف (main)
 2. Git Panel → "Merge Branch"
 3. اختر الفرع المراد دمجه
 
 **في المحطة الطرفية**:
+
 ```bash
 # Switch to target branch
 git checkout main
@@ -316,6 +333,7 @@ git push origin --delete branch-name
 ### فهم التعارضات
 
 تحدته التعارضات عندما:
+
 - يتم تعديل نفس السطر في فرعين مختلفين
 - يتم حذف ملف في فرع وتعديله في فرع آخر
 
@@ -342,6 +360,7 @@ const message = "Hello from feature";
    - Compare Changes
 
 5. **بعد الحل، قم بـ**:
+
 ```bash
 git add file.js
 git commit -m "resolve: merge conflict in file.js"
@@ -350,18 +369,21 @@ git commit -m "resolve: merge conflict in file.js"
 ### استراتيجيات حل التعارضات
 
 #### 1. Accept Ours (التغييرات الحالية)
+
 ```bash
 git checkout --ours file.js
 git add file.js
 ```
 
 #### 2. Accept Theirs (التغييرات الواردة)
+
 ```bash
 git checkout --theirs file.js
 git add file.js
 ```
 
 #### 3. Manual Resolution (يدويًا)
+
 ```bash
 # عدل الملف يدويًا
 # ثم:
@@ -527,22 +549,27 @@ git remote add upstream https://github.com/original/repo.git
 ## 🔒 Best Practices
 
 ### 1. Commit Frequently
+
 - عمل commits صغيرة ومتركزة
 - كل commit يجب أن يعمل بشكل مستقل
 
 ### 2. Write Clear Commit Messages
+
 - استخدم Conventional Commits
 - كن واضحًا ومحددًا
 
 ### 3. Pull Before Push
+
 - دائمًا اعمل pull قبل push
 - يجنب التعارضات
 
 ### 4. Use Branches
+
 - فرع جديد لكل ميزة
 - لا تعمل مباشرة على main
 
 ### 5. Review Before Committing
+
 - راجع git status
 - راجع git diff
 - تأكد من الملفات المراد حفظها
@@ -554,6 +581,7 @@ git remote add upstream https://github.com/original/repo.git
 ### Issue 1: Authentication Failed
 
 **الحل**:
+
 1. تأكد من أنك مسجل دخول GitHub
 2. تحقق من صلاحيات الـ token
 3. أعد تسجيل الدخول
@@ -561,6 +589,7 @@ git remote add upstream https://github.com/original/repo.git
 ### Issue 2: Merge Conflicts
 
 **الحل**:
+
 1. استخدم أدوات حل التعارضات في الواجهة
 2. عدل يدويًا إذا لزم الأمر
 3. تأكد من git add بعد الحل
@@ -568,6 +597,7 @@ git remote add upstream https://github.com/original/repo.git
 ### Issue 3: Detached HEAD
 
 **الحل**:
+
 ```bash
 # Create branch from detached state
 git checkout -b new-branch-name

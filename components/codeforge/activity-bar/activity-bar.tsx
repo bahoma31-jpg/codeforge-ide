@@ -11,7 +11,12 @@ interface ActivityBarProps {
 const activities = [
   { id: 'explorer', icon: Files, label: 'Explorer', shortcut: 'Ctrl+Shift+E' },
   { id: 'search', icon: Search, label: 'Search', shortcut: 'Ctrl+Shift+F' },
-  { id: 'git', icon: GitBranch, label: 'Source Control', shortcut: 'Ctrl+Shift+G' },
+  {
+    id: 'git',
+    icon: GitBranch,
+    label: 'Source Control',
+    shortcut: 'Ctrl+Shift+G',
+  },
   { id: 'terminal', icon: Terminal, label: 'Terminal', shortcut: 'Ctrl+`' },
   { id: 'settings', icon: Settings, label: 'Settings', shortcut: 'Ctrl+,' },
 ];

@@ -1,7 +1,7 @@
 /**
  * CodeForge IDE - IndexedDB Database Schema
  * Agent 4: File System Manager
- * 
+ *
  * This file defines the structure of the IndexedDB database
  * for the local file system.
  */
@@ -14,16 +14,16 @@ export const STORE_NAME = 'files';
  * FileNode represents a file or folder in the file system
  */
 export interface FileNode {
-  id: string;              // UUID
-  name: string;            // "index.ts"
-  path: string;            // "/src/index.ts"
+  id: string; // UUID
+  name: string; // "index.ts"
+  path: string; // "/src/index.ts"
   type: 'file' | 'folder';
   parentId: string | null; // null for root
-  content?: string;        // File content (files only)
-  language?: string;       // "typescript", "javascript"...
-  size?: number;           // In bytes
-  createdAt: number;       // Timestamp
-  updatedAt: number;       // Timestamp
+  content?: string; // File content (files only)
+  language?: string; // "typescript", "javascript"...
+  size?: number; // In bytes
+  createdAt: number; // Timestamp
+  updatedAt: number; // Timestamp
   metadata?: FileMetadata;
 }
 
@@ -32,9 +32,9 @@ export interface FileNode {
  */
 export interface FileMetadata {
   readOnly?: boolean;
-  isExpanded?: boolean;  // For folders
+  isExpanded?: boolean; // For folders
   icon?: string;
-  encoding?: string;     // "utf-8", "base64"...
+  encoding?: string; // "utf-8", "base64"...
 }
 
 /**
@@ -74,44 +74,47 @@ export const dbSchema: DBSchema = {
         {
           name: 'path',
           keyPath: 'path',
-          options: { unique: true }
+          options: { unique: true },
         },
         {
           name: 'parentId',
           keyPath: 'parentId',
-          options: { unique: false }
+          options: { unique: false },
         },
         {
           name: 'type',
           keyPath: 'type',
-          options: { unique: false }
+          options: { unique: false },
         },
         {
           name: 'name',
           keyPath: 'name',
-          options: { unique: false }
-        }
-      ]
-    }
-  ]
+          options: { unique: false },
+        },
+      ],
+    },
+  ],
 };
 
 /**
  * Migration system for database upgrades
  */
-export type MigrationFunction = (db: IDBDatabase, transaction: IDBTransaction) => void;
+export type MigrationFunction = (
+  db: IDBDatabase,
+  transaction: IDBTransaction
+) => void;
 
 export const migrations: Record<number, MigrationFunction> = {
   1: (db: IDBDatabase) => {
     // Create files object store
     const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-    
+
     // Create indexes
     store.createIndex('path', 'path', { unique: true });
     store.createIndex('parentId', 'parentId', { unique: false });
     store.createIndex('type', 'type', { unique: false });
     store.createIndex('name', 'name', { unique: false });
-  }
+  },
 };
 
 /**
@@ -135,17 +138,17 @@ export function validateFileNode(node: Partial<FileNode>): node is FileNode {
 export function isValidPath(path: string): boolean {
   // Path must start with /
   if (!path.startsWith('/')) return false;
-  
+
   // Path cannot end with / unless it's root
   if (path !== '/' && path.endsWith('/')) return false;
-  
+
   // Path cannot contain double slashes
   if (path.includes('//')) return false;
-  
+
   // Path cannot contain invalid characters
   const invalidChars = /[<>:"|?*\x00-\x1F]/;
   if (invalidChars.test(path)) return false;
-  
+
   return true;
 }
 
@@ -173,9 +176,9 @@ export function getParentPath(path: string): string | null {
  */
 export function joinPath(...parts: string[]): string {
   const joined = parts
-    .filter(p => p && p !== '/')
+    .filter((p) => p && p !== '/')
     .join('/')
     .replace(/\/+/g, '/');
-  
+
   return '/' + joined;
 }

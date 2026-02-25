@@ -1,7 +1,7 @@
 /**
  * CodeForge IDE - File Context Menu
  * Agent 4: File System Manager
- * 
+ *
  * Right-click context menu for files and folders
  */
 
@@ -21,7 +21,7 @@ import {
   Pencil,
   Trash2,
   Copy,
-  FileText
+  FileText,
 } from 'lucide-react';
 import type { FileNode } from '@/lib/db/schema';
 import { useFilesStore } from '@/lib/stores/files-store';
@@ -34,7 +34,9 @@ interface FileContextMenuProps {
 
 export function FileContextMenu({ node, children }: FileContextMenuProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogMode, setDialogMode] = useState<'file' | 'folder' | 'rename'>('file');
+  const [dialogMode, setDialogMode] = useState<'file' | 'folder' | 'rename'>(
+    'file'
+  );
   const { deleteNode } = useFilesStore();
   const isFolder = node.type === 'folder';
 
@@ -54,10 +56,10 @@ export function FileContextMenu({ node, children }: FileContextMenuProps) {
   };
 
   const handleDelete = async () => {
-    const confirmMessage = isFolder 
+    const confirmMessage = isFolder
       ? `Delete folder "${node.name}" and all its contents?`
       : `Delete file "${node.name}"?`;
-    
+
     if (window.confirm(confirmMessage)) {
       try {
         await deleteNode(node.id);
@@ -76,11 +78,9 @@ export function FileContextMenu({ node, children }: FileContextMenuProps) {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <div onContextMenu={(e) => e.preventDefault()}>
-            {children}
-          </div>
+          <div onContextMenu={(e) => e.preventDefault()}>{children}</div>
         </DropdownMenuTrigger>
-        
+
         <DropdownMenuContent className="w-56">
           {/* New File/Folder - only for folders */}
           {isFolder && (
@@ -89,16 +89,16 @@ export function FileContextMenu({ node, children }: FileContextMenuProps) {
                 <FilePlus className="mr-2 h-4 w-4" />
                 <span>New File</span>
               </DropdownMenuItem>
-              
+
               <DropdownMenuItem onClick={handleNewFolder}>
                 <FolderPlus className="mr-2 h-4 w-4" />
                 <span>New Folder</span>
               </DropdownMenuItem>
-              
+
               <DropdownMenuSeparator />
             </>
           )}
-          
+
           {/* View (files only) */}
           {!isFolder && (
             <>
@@ -106,27 +106,27 @@ export function FileContextMenu({ node, children }: FileContextMenuProps) {
                 <FileText className="mr-2 h-4 w-4" />
                 <span>View File</span>
               </DropdownMenuItem>
-              
+
               <DropdownMenuSeparator />
             </>
           )}
-          
+
           {/* Rename */}
           <DropdownMenuItem onClick={handleRename}>
             <Pencil className="mr-2 h-4 w-4" />
             <span>Rename</span>
           </DropdownMenuItem>
-          
+
           {/* Copy Path */}
           <DropdownMenuItem onClick={handleCopyPath}>
             <Copy className="mr-2 h-4 w-4" />
             <span>Copy Path</span>
           </DropdownMenuItem>
-          
+
           <DropdownMenuSeparator />
-          
+
           {/* Delete */}
-          <DropdownMenuItem 
+          <DropdownMenuItem
             onClick={handleDelete}
             className="text-destructive focus:text-destructive"
           >

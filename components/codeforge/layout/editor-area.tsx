@@ -1,8 +1,8 @@
-﻿"use client";
+﻿'use client';
 
-import { useEditorStore } from "@/lib/stores/editor-store";
-import TabBar from "../editor/tab-bar";
-import MonacoEditor from "../editor/monaco-editor";
+import { useEditorStore } from '@/lib/stores/editor-store';
+import TabBar from '../editor/tab-bar';
+import MonacoEditor from '../editor/monaco-editor';
 
 export default function EditorArea() {
   const { tabs } = useEditorStore();

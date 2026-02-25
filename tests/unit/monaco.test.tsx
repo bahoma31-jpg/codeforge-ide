@@ -1,25 +1,29 @@
-﻿import { describe, it, expect, vi } from "vitest";
-import { detectLanguage, supportedLanguages } from "@/lib/monaco/monaco-config";
-import { getOrCreateModel, disposeModel, clearAllModels } from "@/lib/monaco/model-cache";
+﻿import { describe, it, expect, vi } from 'vitest';
+import { detectLanguage, supportedLanguages } from '@/lib/monaco/monaco-config';
+import {
+  getOrCreateModel,
+  disposeModel,
+  clearAllModels,
+} from '@/lib/monaco/model-cache';
 
-describe("Monaco Config", () => {
-  it("detects language from file extension", () => {
-    expect(detectLanguage("test.ts")).toBe("typescript");
-    expect(detectLanguage("test.js")).toBe("javascript");
-    expect(detectLanguage("index.html")).toBe("html");
-    expect(detectLanguage("styles.css")).toBe("css");
-    expect(detectLanguage("data.json")).toBe("json");
-    expect(detectLanguage("README.md")).toBe("markdown");
-    expect(detectLanguage("unknown.xyz")).toBe("plaintext");
+describe('Monaco Config', () => {
+  it('detects language from file extension', () => {
+    expect(detectLanguage('test.ts')).toBe('typescript');
+    expect(detectLanguage('test.js')).toBe('javascript');
+    expect(detectLanguage('index.html')).toBe('html');
+    expect(detectLanguage('styles.css')).toBe('css');
+    expect(detectLanguage('data.json')).toBe('json');
+    expect(detectLanguage('README.md')).toBe('markdown');
+    expect(detectLanguage('unknown.xyz')).toBe('plaintext');
   });
 
-  it("supports 10+ languages", () => {
+  it('supports 10+ languages', () => {
     expect(supportedLanguages.length).toBeGreaterThanOrEqual(10);
   });
 });
 
-describe("Monaco Model Cache", () => {
-  it("creates and retrieves models", () => {
+describe('Monaco Model Cache', () => {
+  it('creates and retrieves models', () => {
     const mockMonaco = {
       editor: {
         createModel: vi.fn(() => ({
@@ -35,24 +39,24 @@ describe("Monaco Model Cache", () => {
 
     const model = getOrCreateModel(
       mockMonaco as any,
-      "test.ts",
+      'test.ts',
       'const x = 1;',
-      "typescript"
+      'typescript'
     );
     expect(model).toBeDefined();
     expect(mockMonaco.editor.createModel).toHaveBeenCalledWith(
       'const x = 1;',
-      "typescript",
-      "test.ts"
+      'typescript',
+      'test.ts'
     );
   });
 });
 
-describe("Mock Data", () => {
-  it("provides 3 sample tabs", async () => {
-    const { mockTabs } = await import("@/lib/utils/mock-files");
+describe('Mock Data', () => {
+  it('provides 3 sample tabs', async () => {
+    const { mockTabs } = await import('@/lib/utils/mock-files');
     expect(mockTabs).toHaveLength(3);
-    expect(mockTabs[0].language).toBe("typescript");
-    expect(mockTabs[2].language).toBe("markdown");
+    expect(mockTabs[0].language).toBe('typescript');
+    expect(mockTabs[2].language).toBe('markdown');
   });
 });

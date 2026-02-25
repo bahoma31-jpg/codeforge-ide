@@ -1,7 +1,7 @@
 /**
  * CodeForge IDE - IndexedDB Wrapper
  * Agent 4: File System Manager
- * 
+ *
  * Low-level IndexedDB operations wrapper
  */
 
@@ -41,7 +41,7 @@ export class IndexedDBManager {
       request.onsuccess = () => {
         this.db = request.result;
         this.connectionPromise = null;
-        
+
         // Handle unexpected close
         this.db.onclose = () => {
           this.db = null;
@@ -188,7 +188,7 @@ export class IndexedDBManager {
 
       ids.forEach((id) => {
         const request = store.delete(id);
-        
+
         request.onsuccess = () => {
           completed++;
           if (completed === ids.length && !hasError) {
@@ -247,7 +247,7 @@ export class IndexedDBManager {
     }
 
     const databases = await indexedDB.databases();
-    return databases.some(db => db.name === DB_NAME);
+    return databases.some((db) => db.name === DB_NAME);
   }
 
   /**

@@ -12,19 +12,20 @@ Phase 9 introduces a comprehensive security and performance layer to CodeForge I
 
 The middleware intercepts all incoming requests (except static assets and API routes) and applies the following security headers:
 
-| Header | Value | Purpose |
-|--------|-------|---------|
-| `Content-Security-Policy` | `default-src 'self'; script-src 'self' 'unsafe-eval' blob:; ...` | Controls which resources the browser can load. Allows `unsafe-eval` for Monaco Editor and `blob:` for Web Workers. |
-| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains; preload` | Forces HTTPS for 1 year on all subdomains. |
-| `X-Content-Type-Options` | `nosniff` | Prevents browser MIME-type sniffing. |
-| `X-Frame-Options` | `DENY` | Blocks the app from being loaded in iframes (clickjacking protection). |
-| `Referrer-Policy` | `strict-origin-when-cross-origin` | Limits referrer information sent to external sites. |
-| `Permissions-Policy` | `camera=(), microphone=(), geolocation=()` | Disables access to camera, microphone, and geolocation APIs. |
-| `X-XSS-Protection` | `1; mode=block` | Enables legacy browser XSS filter. |
+| Header                      | Value                                                            | Purpose                                                                                                            |
+| --------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `Content-Security-Policy`   | `default-src 'self'; script-src 'self' 'unsafe-eval' blob:; ...` | Controls which resources the browser can load. Allows `unsafe-eval` for Monaco Editor and `blob:` for Web Workers. |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains; preload`                   | Forces HTTPS for 1 year on all subdomains.                                                                         |
+| `X-Content-Type-Options`    | `nosniff`                                                        | Prevents browser MIME-type sniffing.                                                                               |
+| `X-Frame-Options`           | `DENY`                                                           | Blocks the app from being loaded in iframes (clickjacking protection).                                             |
+| `Referrer-Policy`           | `strict-origin-when-cross-origin`                                | Limits referrer information sent to external sites.                                                                |
+| `Permissions-Policy`        | `camera=(), microphone=(), geolocation=()`                       | Disables access to camera, microphone, and geolocation APIs.                                                       |
+| `X-XSS-Protection`          | `1; mode=block`                                                  | Enables legacy browser XSS filter.                                                                                 |
 
 ### Matcher Configuration
 
 The middleware excludes these paths:
+
 - `/api/*` — API routes
 - `/_next/static/*` — Static assets
 - `/_next/image/*` — Optimized images
@@ -128,12 +129,12 @@ limiter.reset();
 
 ### API
 
-| Method | Description |
-|--------|-------------|
-| `canProceed(): boolean` | Returns `true` if the action is within the rate limit. Does not record. |
-| `record(): void` | Records the current timestamp as an action. |
+| Method                       | Description                                                                     |
+| ---------------------------- | ------------------------------------------------------------------------------- |
+| `canProceed(): boolean`      | Returns `true` if the action is within the rate limit. Does not record.         |
+| `record(): void`             | Records the current timestamp as an action.                                     |
 | `execute<T>(fn: () => T): T` | Executes `fn` if within limit, throws `Error('Rate limit exceeded')` otherwise. |
-| `reset(): void` | Clears all recorded request timestamps. |
+| `reset(): void`              | Clears all recorded request timestamps.                                         |
 
 ---
 
@@ -242,12 +243,12 @@ Added an `async headers()` function as a **fallback security layer** in addition
 
 ### Added Headers
 
-| Header | Value |
-|--------|-------|
-| `X-DNS-Prefetch-Control` | `on` |
-| `X-Content-Type-Options` | `nosniff` |
-| `X-Frame-Options` | `DENY` |
-| `Referrer-Policy` | `strict-origin-when-cross-origin` |
+| Header                   | Value                             |
+| ------------------------ | --------------------------------- |
+| `X-DNS-Prefetch-Control` | `on`                              |
+| `X-Content-Type-Options` | `nosniff`                         |
+| `X-Frame-Options`        | `DENY`                            |
+| `Referrer-Policy`        | `strict-origin-when-cross-origin` |
 
 > **Note:** The existing `webpack` configuration for Monaco Editor and `transpilePackages` were preserved without modification.
 
@@ -291,14 +292,14 @@ pnpm vitest watch lib/utils/__tests__/
 
 ## Files Created/Modified
 
-| File | Action | Description |
-|------|--------|-------------|
-| `middleware.ts` | Created | Security middleware with 7 HTTP headers |
-| `lib/utils/sanitize.ts` | Created | Input sanitization utilities (4 functions) |
-| `next.config.ts` | Modified | Added fallback security headers |
-| `lib/hooks/use-performance.ts` | Created | Performance hooks (debounce, throttle, memoize) |
-| `components/codeforge/layout/error-boundary.tsx` | Created | Error boundary component |
-| `lib/utils/rate-limiter.ts` | Created | Sliding window rate limiter |
-| `lib/utils/__tests__/sanitize.test.ts` | Created | Unit tests for sanitization |
-| `lib/utils/__tests__/rate-limiter.test.ts` | Created | Unit tests for rate limiter |
-| `docs/PHASE9_SECURITY_PERFORMANCE.md` | Created | This documentation |
+| File                                             | Action   | Description                                     |
+| ------------------------------------------------ | -------- | ----------------------------------------------- |
+| `middleware.ts`                                  | Created  | Security middleware with 7 HTTP headers         |
+| `lib/utils/sanitize.ts`                          | Created  | Input sanitization utilities (4 functions)      |
+| `next.config.ts`                                 | Modified | Added fallback security headers                 |
+| `lib/hooks/use-performance.ts`                   | Created  | Performance hooks (debounce, throttle, memoize) |
+| `components/codeforge/layout/error-boundary.tsx` | Created  | Error boundary component                        |
+| `lib/utils/rate-limiter.ts`                      | Created  | Sliding window rate limiter                     |
+| `lib/utils/__tests__/sanitize.test.ts`           | Created  | Unit tests for sanitization                     |
+| `lib/utils/__tests__/rate-limiter.test.ts`       | Created  | Unit tests for rate limiter                     |
+| `docs/PHASE9_SECURITY_PERFORMANCE.md`            | Created  | This documentation                              |

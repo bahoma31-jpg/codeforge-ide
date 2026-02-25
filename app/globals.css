@@ -98,7 +98,7 @@ a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
-[role="button"]:focus-visible {
+[role='button']:focus-visible {
   outline: 3px solid hsl(var(--ring));
   outline-offset: 2px;
   box-shadow: 0 0 0 4px hsl(var(--ring) / 0.2);
@@ -208,12 +208,12 @@ textarea:focus-visible,
 /* ========================================
    Keyboard Navigation Indicators
    ======================================== */
-[data-keyboard-nav="true"] *:focus {
+[data-keyboard-nav='true'] *:focus {
   outline: 3px solid hsl(var(--ring));
   outline-offset: 2px;
 }
 
 /* Hide focus for mouse users, show for keyboard users */
-[data-keyboard-nav="false"] *:focus:not(:focus-visible) {
+[data-keyboard-nav='false'] *:focus:not(:focus-visible) {
   outline: none;
 }

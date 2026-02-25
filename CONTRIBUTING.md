@@ -30,6 +30,7 @@
 - ✅ إظهار التعاطف مع أعضاء المجتمع الآخرين
 
 ❌ السلوك غير المقبول يشمل:
+
 - التحرش بأي شكل من الأشكال
 - التعليقات المهينة أو الاستفزازية
 - الهجمات الشخصية أو السياسية
@@ -130,6 +131,7 @@ codeforge-ide/
 #### 1. Bug Reports
 
 قبل إنشاء تقرير خطأ:
+
 - ✅ تحقق من المشاكل الموجودة
 - ✅ استخدم أحدث إصدار
 - ✅ جرب إعادة إنتاج المشكلة
@@ -138,29 +140,36 @@ codeforge-ide/
 
 ```markdown
 ## Bug Description
+
 وصف واضح ومختصر للخطأ
 
 ## Steps to Reproduce
+
 1. اذهب إلى '...'
 2. اضغط على '...'
 3. مرر إلى '...'
 4. ستظهر المشكلة
 
 ## Expected Behavior
+
 ماذا كنت تتوقع أن يحدث
 
 ## Actual Behavior
+
 ماذا حدث فعليًا
 
 ## Screenshots
+
 إن وجدت
 
 ## Environment
+
 - OS: [e.g., Windows 11]
 - Browser: [e.g., Chrome 120]
 - Version: [e.g., 1.0.0]
 
 ## Additional Context
+
 أي معلومات إضافية
 ```
 
@@ -168,18 +177,23 @@ codeforge-ide/
 
 ```markdown
 ## Feature Description
+
 وصف واضح للميزة المطلوبة
 
 ## Problem it Solves
+
 ما المشكلة التي تحلها هذه الميزة؟
 
 ## Proposed Solution
+
 كيف تقترح تنفيذ هذه الميزة؟
 
 ## Alternatives Considered
+
 حلول بديلة تم النظر فيها
 
 ## Additional Context
+
 أي معلومات إضافية
 ```
 
@@ -202,6 +216,7 @@ codeforge-ide/
 ### Before Submitting
 
 1. **Create a branch**:
+
 ```bash
 git checkout -b feature/amazing-feature
 # or
@@ -211,6 +226,7 @@ git checkout -b fix/bug-fix
 2. **Make your changes**
 
 3. **Test your changes**:
+
 ```bash
 npm run test
 npm run lint
@@ -218,6 +234,7 @@ npm run type-check
 ```
 
 4. **Commit your changes**:
+
 ```bash
 git add .
 git commit -m "feat: add amazing feature"
@@ -236,6 +253,7 @@ footer (optional)
 ```
 
 **Types**:
+
 - `feat`: ميزة جديدة
 - `fix`: إصلاح خطأ
 - `docs`: تحديث التوثيق
@@ -246,6 +264,7 @@ footer (optional)
 - `perf`: تحسين الأداء
 
 **أمثلة**:
+
 ```bash
 feat: add dark mode support
 feat(editor): add vim keybindings
@@ -262,6 +281,7 @@ perf: optimize editor rendering
 ### Submitting PR
 
 1. **Push to your fork**:
+
 ```bash
 git push origin feature/amazing-feature
 ```
@@ -272,20 +292,24 @@ git push origin feature/amazing-feature
 
 ```markdown
 ## Description
+
 وصف التغييرات
 
 ## Type of Change
+
 - [ ] Bug fix
 - [ ] New feature
 - [ ] Breaking change
 - [ ] Documentation update
 
 ## Testing
+
 - [ ] Tests pass locally
 - [ ] Added new tests
 - [ ] Manual testing completed
 
 ## Checklist
+
 - [ ] Code follows project style
 - [ ] Self-review completed
 - [ ] Comments added for complex code
@@ -429,6 +453,7 @@ async function commit(
 ### README Updates
 
 عند إضافة ميزة جديدة:
+
 1. حدّث README.md
 2. أضف أمثلة استخدام
 3. حدّث قائمة الميزات

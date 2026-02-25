@@ -55,8 +55,7 @@ export const useSearchStore = create<SearchStore>((set, _get) => ({
   toggleCaseSensitive: () =>
     set((state) => ({ isCaseSensitive: !state.isCaseSensitive })),
 
-  toggleWholeWord: () =>
-    set((state) => ({ isWholeWord: !state.isWholeWord })),
+  toggleWholeWord: () => set((state) => ({ isWholeWord: !state.isWholeWord })),
 
   setResults: (results: SearchMatch[]) =>
     set({

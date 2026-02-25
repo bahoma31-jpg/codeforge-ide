@@ -1,6 +1,6 @@
-﻿import { useEffect } from "react";
-import { editor } from "monaco-editor";
-import * as monaco from "monaco-editor";
+﻿import { useEffect } from 'react';
+import { editor } from 'monaco-editor';
+import * as monaco from 'monaco-editor';
 
 export function useMonacoKeyboardShortcuts(
   editorInstance: editor.IStandaloneCodeEditor | null
@@ -13,7 +13,7 @@ export function useMonacoKeyboardShortcuts(
       monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
       () => {
         // TODO: Agent 4 will implement actual file saving
-        console.log("Save triggered (placeholder)");
+        console.log('Save triggered (placeholder)');
       }
     );
 
@@ -21,7 +21,7 @@ export function useMonacoKeyboardShortcuts(
     editorInstance.addCommand(
       monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyF,
       () => {
-        editorInstance.getAction("editor.action.formatDocument")?.run();
+        editorInstance.getAction('editor.action.formatDocument')?.run();
       }
     );
 
@@ -29,7 +29,7 @@ export function useMonacoKeyboardShortcuts(
     editorInstance.addCommand(
       monaco.KeyMod.CtrlCmd | monaco.KeyCode.Slash,
       () => {
-        editorInstance.getAction("editor.action.commentLine")?.run();
+        editorInstance.getAction('editor.action.commentLine')?.run();
       }
     );
   }, [editorInstance]);

@@ -2,10 +2,21 @@
 
 import { useState, useEffect } from 'react';
 import { useUIStore } from '@/lib/stores/ui-store';
-import { AlertCircle, Bug, FileText, GitBranch, Terminal, X } from 'lucide-react';
+import {
+  AlertCircle,
+  Bug,
+  FileText,
+  GitBranch,
+  Terminal,
+  X,
+} from 'lucide-react';
 import GitOutputPanel from '../source-control/git-output-panel';
 import GitHistoryPanel from '../source-control/git-history-panel';
-import { getGitLogs, clearGitLogs, subscribeToGitLogs } from '@/lib/utils/git-log';
+import {
+  getGitLogs,
+  clearGitLogs,
+  subscribeToGitLogs,
+} from '@/lib/utils/git-log';
 import type { GitLogEntry } from '@/lib/utils/git-log';
 
 const sections = [
@@ -82,7 +93,9 @@ export default function Panel({ height }: { height: number }) {
         </button>
       </div>
 
-      <div className={`min-h-0 flex-1 overflow-y-auto ${active === 'git' ? '' : 'p-4'}`}>
+      <div
+        className={`min-h-0 flex-1 overflow-y-auto ${active === 'git' ? '' : 'p-4'}`}
+      >
         {active === 'terminal' && (
           <div className="rounded border-2 border-dashed border-muted-foreground/30 p-4">
             <p className="text-sm text-muted-foreground">
@@ -128,7 +141,10 @@ export default function Panel({ height }: { height: number }) {
             {/* Sub-tab Content */}
             <div className="flex-1 min-h-0 overflow-hidden">
               {gitSubTab === 'output' && (
-                <GitOutputPanel entries={logEntries} onClear={handleClearLogs} />
+                <GitOutputPanel
+                  entries={logEntries}
+                  onClear={handleClearLogs}
+                />
               )}
               {gitSubTab === 'history' && <GitHistoryPanel />}
             </div>

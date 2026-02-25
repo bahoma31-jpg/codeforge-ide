@@ -1,15 +1,11 @@
 /**
  * CodeForge IDE - Initial Sample Files
  * Agent 4: File System Manager
- * 
+ *
  * Creates sample files on first run
  */
 
-import {
-  createFile,
-  createFolder,
-  getAllNodes
-} from '../db/file-operations';
+import { createFile, createFolder, getAllNodes } from '../db/file-operations';
 import { detectLanguage } from './file-icons';
 
 /**
@@ -51,16 +47,16 @@ CodeForge is a modern, web-based code editor inspired by VS Code.
 Explore the sample files in the \`src\` directory to see CodeForge in action!
 
 Happy coding! 💻
-`
+`,
   },
-  
+
   // src folder
   {
     path: '/src',
     type: 'folder',
-    content: ''
+    content: '',
   },
-  
+
   // src/index.ts
   {
     path: '/src/index.ts',
@@ -97,9 +93,9 @@ console.log(greetUser(user));
 
 // Export for testing
 export { greetUser };
-`
+`,
   },
-  
+
   // src/utils.ts
   {
     path: '/src/utils.ts',
@@ -163,9 +159,9 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
 export function generateId(): string {
   return Math.random().toString(36).substring(2, 11);
 }
-`
+`,
   },
-  
+
   // src/types.ts
   {
     path: '/src/types.ts',
@@ -236,16 +232,16 @@ export type Language =
 export type Result<T, E = Error> = 
   | { success: true; data: T }
   | { success: false; error: E };
-`
+`,
   },
-  
+
   // components folder
   {
     path: '/components',
     type: 'folder',
-    content: ''
+    content: '',
   },
-  
+
   // components/Button.tsx
   {
     path: '/components/Button.tsx',
@@ -289,8 +285,8 @@ export function Button({
     </button>
   );
 }
-`
-  }
+`,
+  },
 ];
 
 /**
@@ -308,7 +304,7 @@ export async function initializeSampleFiles(): Promise<boolean> {
     console.log('Creating initial sample files...');
 
     // Create folders first
-    const folders = sampleFiles.filter(f => f.type === 'folder');
+    const folders = sampleFiles.filter((f) => f.type === 'folder');
     for (const folder of folders) {
       const name = folder.path.split('/').filter(Boolean).pop()!;
       await createFolder(name, null);
@@ -316,17 +312,18 @@ export async function initializeSampleFiles(): Promise<boolean> {
     }
 
     // Then create files
-    const files = sampleFiles.filter(f => f.type === 'file');
+    const files = sampleFiles.filter((f) => f.type === 'file');
     for (const file of files) {
       const pathParts = file.path.split('/').filter(Boolean);
       const name = pathParts.pop()!;
-      const parentPath = pathParts.length > 0 ? '/' + pathParts.join('/') : null;
-      
+      const parentPath =
+        pathParts.length > 0 ? '/' + pathParts.join('/') : null;
+
       // Find parent ID if needed
       let parentId: string | null = null;
       if (parentPath) {
         const allNodes = await getAllNodes();
-        const parent = allNodes.find(n => n.path === parentPath);
+        const parent = allNodes.find((n) => n.path === parentPath);
         if (parent) {
           parentId = parent.id;
         }
@@ -349,12 +346,12 @@ export async function initializeSampleFiles(): Promise<boolean> {
  * Get sample files count
  */
 export function getSampleFilesCount(): number {
-  return sampleFiles.filter(f => f.type === 'file').length;
+  return sampleFiles.filter((f) => f.type === 'file').length;
 }
 
 /**
  * Get sample folders count
  */
 export function getSampleFoldersCount(): number {
-  return sampleFiles.filter(f => f.type === 'folder').length;
+  return sampleFiles.filter((f) => f.type === 'folder').length;
 }

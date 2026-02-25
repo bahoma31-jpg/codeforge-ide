@@ -9,7 +9,10 @@ interface NotificationBadgeProps {
 }
 
 /** Notification badge — bell icon with unread count for the Status Bar */
-export function NotificationBadge({ onClick, className = '' }: NotificationBadgeProps) {
+export function NotificationBadge({
+  onClick,
+  className = '',
+}: NotificationBadgeProps) {
   const { unreadCount } = useNotificationStore();
 
   return (

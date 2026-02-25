@@ -20,8 +20,8 @@ Or use an online tool like [RealFaviconGenerator](https://realfavicongenerator.n
 
 ## Required Files
 
-| File | Size | Purpose |
-|------|------|---------|
-| `icon-192x192.png` | 192×192 | Standard PWA icon |
-| `icon-512x512.png` | 512×512 | Splash screen / install prompt |
-| `icon.svg` | Scalable | Source file for generation |
+| File               | Size     | Purpose                        |
+| ------------------ | -------- | ------------------------------ |
+| `icon-192x192.png` | 192×192  | Standard PWA icon              |
+| `icon-512x512.png` | 512×512  | Splash screen / install prompt |
+| `icon.svg`         | Scalable | Source file for generation     |

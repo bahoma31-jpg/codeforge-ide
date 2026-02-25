@@ -59,7 +59,7 @@ export function useFocusTrap(isActive: boolean) {
 
     return () => {
       container.removeEventListener('keydown', handleKeyDown);
-      
+
       // Restore focus to the previously active element
       if (previousActiveElement.current) {
         previousActiveElement.current.focus();

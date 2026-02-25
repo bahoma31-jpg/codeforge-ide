@@ -45,11 +45,11 @@ useNotificationStore.getState().clearAll();
 
 ### UI Components
 
-| Component | File | Description |
-|-----------|------|-------------|
-| `NotificationToast` | `components/codeforge/notifications/notification-toast.tsx` | Bottom-right toast stack, shows up to 5 unread, auto-dismiss |
-| `NotificationCenter` | `components/codeforge/notifications/notification-center.tsx` | Side panel with filter tabs, mark all read, clear all |
-| `NotificationBadge` | `components/codeforge/notifications/notification-badge.tsx` | Bell icon with unread count for Status Bar |
+| Component            | File                                                         | Description                                                  |
+| -------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| `NotificationToast`  | `components/codeforge/notifications/notification-toast.tsx`  | Bottom-right toast stack, shows up to 5 unread, auto-dismiss |
+| `NotificationCenter` | `components/codeforge/notifications/notification-center.tsx` | Side panel with filter tabs, mark all read, clear all        |
+| `NotificationBadge`  | `components/codeforge/notifications/notification-badge.tsx`  | Bell icon with unread count for Status Bar                   |
 
 ### Usage in Layout
 
@@ -67,7 +67,10 @@ function App() {
         <NotificationBadge onClick={() => setShowCenter(true)} />
       </StatusBar>
       <NotificationToast />
-      <NotificationCenter isOpen={showCenter} onClose={() => setShowCenter(false)} />
+      <NotificationCenter
+        isOpen={showCenter}
+        onClose={() => setShowCenter(false)}
+      />
     </>
   );
 }
@@ -88,8 +91,17 @@ import { analytics } from '@/lib/analytics/analytics-service';
 await analytics.init();
 
 // Track events
-analytics.track({ category: 'editor', action: 'file_opened', label: 'index.ts' });
-analytics.track({ category: 'terminal', action: 'command_run', label: 'npm test', value: 1500 });
+analytics.track({
+  category: 'editor',
+  action: 'file_opened',
+  label: 'index.ts',
+});
+analytics.track({
+  category: 'terminal',
+  action: 'command_run',
+  label: 'npm test',
+  value: 1500,
+});
 analytics.track({ category: 'git', action: 'commit_created' });
 
 // Get statistics
@@ -112,7 +124,10 @@ await analytics.flush();
 Collects Core Web Vitals (LCP, FID, CLS, TTFB, INP) and feeds them to AnalyticsService.
 
 ```typescript
-import { initWebVitals, getVitalsReport } from '@/lib/analytics/web-vitals-reporter';
+import {
+  initWebVitals,
+  getVitalsReport,
+} from '@/lib/analytics/web-vitals-reporter';
 
 // Initialize on app mount (client-side only)
 initWebVitals();
@@ -183,6 +198,7 @@ healthMonitor.stopMonitoring();
 ```
 
 **Health States:**
+
 - `healthy` — Normal operation
 - `degraded` — High memory (>256MB) or moderate errors (>3)
 - `unhealthy` — Very high memory (>512MB) or many errors (>10)
@@ -193,21 +209,21 @@ healthMonitor.stopMonitoring();
 
 ### Configuration
 
-| File | Purpose |
-|------|---------|
-| `public/manifest.json` | PWA manifest with app metadata |
-| `public/icons/icon.svg` | Source SVG icon |
-| `public/icons/README.md` | Icon generation instructions |
-| `next.config.ts` | next-pwa integration with caching |
-| `app/layout.tsx` | PWA meta tags |
+| File                     | Purpose                           |
+| ------------------------ | --------------------------------- |
+| `public/manifest.json`   | PWA manifest with app metadata    |
+| `public/icons/icon.svg`  | Source SVG icon                   |
+| `public/icons/README.md` | Icon generation instructions      |
+| `next.config.ts`         | next-pwa integration with caching |
+| `app/layout.tsx`         | PWA meta tags                     |
 
 ### Caching Strategies
 
-| Resource Type | Strategy | Cache Duration |
-|--------------|----------|---------------|
-| Images, fonts, icons | Cache First | 30 days |
-| JavaScript, CSS | Stale While Revalidate | 7 days |
-| HTML pages | Network First | 1 day |
+| Resource Type        | Strategy               | Cache Duration |
+| -------------------- | ---------------------- | -------------- |
+| Images, fonts, icons | Cache First            | 30 days        |
+| JavaScript, CSS      | Stale While Revalidate | 7 days         |
+| HTML pages           | Network First          | 1 day          |
 
 ### Installing as PWA
 
@@ -229,11 +245,11 @@ convert icon.svg -resize 512x512 icon-512x512.png
 
 Phase 11 also includes stores that were planned in earlier phases:
 
-| Store | File | Purpose |
-|-------|------|---------|
-| Search Store | `lib/stores/search-store.ts` | Search & replace state management |
-| Extensions Store | `lib/stores/extensions-store.ts` | Extension lifecycle management |
-| Settings Store | `lib/stores/settings-store.ts` | Application settings (editor, theme, terminal) |
+| Store            | File                             | Purpose                                        |
+| ---------------- | -------------------------------- | ---------------------------------------------- |
+| Search Store     | `lib/stores/search-store.ts`     | Search & replace state management              |
+| Extensions Store | `lib/stores/extensions-store.ts` | Extension lifecycle management                 |
+| Settings Store   | `lib/stores/settings-store.ts`   | Application settings (editor, theme, terminal) |
 
 ---
 
@@ -264,17 +280,20 @@ pnpm test:coverage
 ## Troubleshooting
 
 ### PWA not installing
+
 - Ensure you're on HTTPS (or localhost for dev)
 - Check that `manifest.json` is accessible at `/manifest.json`
 - Verify icon files exist in `public/icons/`
 - PWA is disabled in development mode by default
 
 ### Analytics not persisting
+
 - Call `analytics.flush()` before page unload
 - Check browser IndexedDB storage (DevTools → Application → IndexedDB)
 - Verify `idb-keyval` is installed: `pnpm list idb-keyval`
 
 ### Health monitor shows 'unhealthy'
+
 - Check `healthMonitor.getStatus().memoryUsage` for memory leaks
 - Review `logger.getLogs('error')` for accumulated errors
 - Call `healthMonitor.resetErrors()` after resolving issues

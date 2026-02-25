@@ -25,18 +25,20 @@ export function sanitizeHTML(input: string): string {
 export function sanitizePath(path: string): string {
   if (!path) return '';
 
-  return path
-    // Remove null bytes
-    .replace(/\0/g, '')
-    // Remove path traversal sequences
-    .replace(/\.\./g, '')
-    // Normalize multiple slashes to single slash
-    .replace(/\/{2,}/g, '/')
-    // Remove leading slash for relative paths
-    .replace(/^\//, '')
-    // Clean up any remaining empty segments
-    .replace(/\/{2,}/g, '/')
-    .trim();
+  return (
+    path
+      // Remove null bytes
+      .replace(/\0/g, '')
+      // Remove path traversal sequences
+      .replace(/\.\./g, '')
+      // Normalize multiple slashes to single slash
+      .replace(/\/{2,}/g, '/')
+      // Remove leading slash for relative paths
+      .replace(/^\//, '')
+      // Clean up any remaining empty segments
+      .replace(/\/{2,}/g, '/')
+      .trim()
+  );
 }
 
 /**
@@ -46,11 +48,13 @@ export function sanitizePath(path: string): string {
 export function sanitizeCommand(command: string): string {
   if (!command) return '';
 
-  return command
-    // Remove ASCII control characters except tab, newline, carriage return
-    // eslint-disable-next-line no-control-regex
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
-    .trim();
+  return (
+    command
+      // Remove ASCII control characters except tab, newline, carriage return
+      // eslint-disable-next-line no-control-regex
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+      .trim()
+  );
 }
 
 /**

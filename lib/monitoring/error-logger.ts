@@ -57,7 +57,11 @@ export class ErrorLogger {
    * @param message - Log message
    * @param context - Optional contextual data
    */
-  log(level: LogLevel, message: string, context?: Record<string, unknown>): void {
+  log(
+    level: LogLevel,
+    message: string,
+    context?: Record<string, unknown>
+  ): void {
     const entry: ErrorLog = {
       id: uuidv4(),
       level,
@@ -81,7 +85,11 @@ export class ErrorLogger {
    * @param error - Optional Error instance for stack trace
    * @param context - Optional contextual data
    */
-  error(message: string, error?: Error, context?: Record<string, unknown>): void {
+  error(
+    message: string,
+    error?: Error,
+    context?: Record<string, unknown>
+  ): void {
     this.log('error', message, {
       ...context,
       ...(error && { stack: error.stack, errorName: error.name }),
@@ -104,7 +112,11 @@ export class ErrorLogger {
   }
 
   /** Log a fatal error */
-  fatal(message: string, error?: Error, context?: Record<string, unknown>): void {
+  fatal(
+    message: string,
+    error?: Error,
+    context?: Record<string, unknown>
+  ): void {
     this.log('fatal', message, {
       ...context,
       ...(error && { stack: error.stack, errorName: error.name }),

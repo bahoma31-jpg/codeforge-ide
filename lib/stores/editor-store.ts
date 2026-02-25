@@ -18,7 +18,13 @@ interface EditorState {
   closeTab: (id: string) => void;
   setActiveTab: (id: string) => void;
   updateTabContent: (id: string, content: string) => void;
-  openFile: (file: { id: string; name: string; content: string; language?: string; path: string }) => void;
+  openFile: (file: {
+    id: string;
+    name: string;
+    content: string;
+    language?: string;
+    path: string;
+  }) => void;
 }
 
 export const useEditorStore = create<EditorState>((set) => ({
@@ -60,9 +66,9 @@ export const useEditorStore = create<EditorState>((set) => ({
       language: file.language || 'plaintext',
       content: file.content,
       isDirty: false,
-      isActive: true
+      isActive: true,
     };
-    
+
     set((state) => {
       // Check if file is already open
       const exists = state.tabs.find((t) => t.id === file.id);
@@ -70,12 +76,12 @@ export const useEditorStore = create<EditorState>((set) => ({
         // Just activate it
         return { activeTabId: exists.id };
       }
-      
+
       // Add new tab
       return {
         tabs: [...state.tabs, tab],
-        activeTabId: tab.id
+        activeTabId: tab.id,
       };
     });
-  }
+  },
 }));

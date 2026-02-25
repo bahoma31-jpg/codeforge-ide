@@ -1,7 +1,7 @@
 /**
  * CodeForge IDE - File Operations API
  * Agent 4: File System Manager
- * 
+ *
  * High-level file system operations using IndexedDB
  */
 
@@ -13,7 +13,7 @@ import {
   isValidPath,
   getFileName,
   getParentPath,
-  joinPath
+  joinPath,
 } from './schema';
 
 /**
@@ -48,10 +48,14 @@ export async function createFile(
   } else {
     const parent = await db.get<FileNode>(parentId);
     if (!parent) {
-      throw new FileSystemError('Parent folder not found', 'PARENT_NOT_FOUND', { parentId });
+      throw new FileSystemError('Parent folder not found', 'PARENT_NOT_FOUND', {
+        parentId,
+      });
     }
     if (parent.type !== 'folder') {
-      throw new FileSystemError('Parent must be a folder', 'INVALID_PARENT', { parentId });
+      throw new FileSystemError('Parent must be a folder', 'INVALID_PARENT', {
+        parentId,
+      });
     }
     path = parent.path === '/' ? '/' + name : parent.path + '/' + name;
   }
@@ -82,12 +86,14 @@ export async function createFile(
     size,
     createdAt: Date.now(),
     updatedAt: Date.now(),
-    metadata: {}
+    metadata: {},
   };
 
   // Validate before saving
   if (!validateFileNode(file)) {
-    throw new FileSystemError('Invalid file node', 'VALIDATION_ERROR', { file });
+    throw new FileSystemError('Invalid file node', 'VALIDATION_ERROR', {
+      file,
+    });
   }
 
   // Save to database
@@ -112,10 +118,14 @@ export async function createFolder(
   } else {
     const parent = await db.get<FileNode>(parentId);
     if (!parent) {
-      throw new FileSystemError('Parent folder not found', 'PARENT_NOT_FOUND', { parentId });
+      throw new FileSystemError('Parent folder not found', 'PARENT_NOT_FOUND', {
+        parentId,
+      });
     }
     if (parent.type !== 'folder') {
-      throw new FileSystemError('Parent must be a folder', 'INVALID_PARENT', { parentId });
+      throw new FileSystemError('Parent must be a folder', 'INVALID_PARENT', {
+        parentId,
+      });
     }
     path = parent.path === '/' ? '/' + name : parent.path + '/' + name;
   }
@@ -128,7 +138,9 @@ export async function createFolder(
   // Check if folder already exists
   const existing = await db.getByIndex<FileNode>('path', path);
   if (existing) {
-    throw new FileSystemError('Folder already exists', 'FOLDER_EXISTS', { path });
+    throw new FileSystemError('Folder already exists', 'FOLDER_EXISTS', {
+      path,
+    });
   }
 
   // Create folder node
@@ -141,13 +153,15 @@ export async function createFolder(
     createdAt: Date.now(),
     updatedAt: Date.now(),
     metadata: {
-      isExpanded: false
-    }
+      isExpanded: false,
+    },
   };
 
   // Validate before saving
   if (!validateFileNode(folder)) {
-    throw new FileSystemError('Invalid folder node', 'VALIDATION_ERROR', { folder });
+    throw new FileSystemError('Invalid folder node', 'VALIDATION_ERROR', {
+      folder,
+    });
   }
 
   // Save to database
@@ -209,12 +223,16 @@ export async function updateFile(
     ...file,
     ...updates,
     size,
-    updatedAt: Date.now()
+    updatedAt: Date.now(),
   };
 
   // Validate before saving
   if (!validateFileNode(updated)) {
-    throw new FileSystemError('Invalid file node after update', 'VALIDATION_ERROR', { updated });
+    throw new FileSystemError(
+      'Invalid file node after update',
+      'VALIDATION_ERROR',
+      { updated }
+    );
   }
 
   // Save to database
@@ -262,7 +280,8 @@ export async function renameNode(
 
   // Construct new path
   const parentPath = getParentPath(node.path);
-  const newPath = parentPath === null ? '/' + newName : joinPath(parentPath, newName);
+  const newPath =
+    parentPath === null ? '/' + newName : joinPath(parentPath, newName);
 
   // Validate new path
   if (!isValidPath(newPath)) {
@@ -272,7 +291,11 @@ export async function renameNode(
   // Check if new path already exists
   const existing = await db.getByIndex<FileNode>('path', newPath);
   if (existing && existing.id !== id) {
-    throw new FileSystemError('A file or folder with this name already exists', 'NAME_CONFLICT', { newPath });
+    throw new FileSystemError(
+      'A file or folder with this name already exists',
+      'NAME_CONFLICT',
+      { newPath }
+    );
   }
 
   // Update node
@@ -280,7 +303,7 @@ export async function renameNode(
     ...node,
     name: newName,
     path: newPath,
-    updatedAt: Date.now()
+    updatedAt: Date.now(),
   };
 
   await db.put(updated);
@@ -314,12 +337,21 @@ export async function moveNode(
   } else {
     const newParent = await db.get<FileNode>(newParentId);
     if (!newParent) {
-      throw new FileSystemError('New parent not found', 'PARENT_NOT_FOUND', { newParentId });
+      throw new FileSystemError('New parent not found', 'PARENT_NOT_FOUND', {
+        newParentId,
+      });
     }
     if (newParent.type !== 'folder') {
-      throw new FileSystemError('New parent must be a folder', 'INVALID_PARENT', { newParentId });
+      throw new FileSystemError(
+        'New parent must be a folder',
+        'INVALID_PARENT',
+        { newParentId }
+      );
     }
-    newPath = newParent.path === '/' ? '/' + node.name : newParent.path + '/' + node.name;
+    newPath =
+      newParent.path === '/'
+        ? '/' + node.name
+        : newParent.path + '/' + node.name;
   }
 
   // Validate new path
@@ -330,7 +362,11 @@ export async function moveNode(
   // Check if new path already exists
   const existing = await db.getByIndex<FileNode>('path', newPath);
   if (existing && existing.id !== id) {
-    throw new FileSystemError('A file or folder with this name already exists in destination', 'NAME_CONFLICT', { newPath });
+    throw new FileSystemError(
+      'A file or folder with this name already exists in destination',
+      'NAME_CONFLICT',
+      { newPath }
+    );
   }
 
   // Update node
@@ -338,7 +374,7 @@ export async function moveNode(
     ...node,
     parentId: newParentId,
     path: newPath,
-    updatedAt: Date.now()
+    updatedAt: Date.now(),
   };
 
   await db.put(updated);
@@ -354,7 +390,9 @@ export async function moveNode(
 /**
  * Get children of a folder
  */
-export async function getChildren(parentId: string | null): Promise<FileNode[]> {
+export async function getChildren(
+  parentId: string | null
+): Promise<FileNode[]> {
   const db = getDBManager();
   return db.getAllByIndex<FileNode>('parentId', parentId);
 }
@@ -385,7 +423,7 @@ async function updateChildrenPaths(
   const allNodes = await db.getAll<FileNode>();
 
   // Find all nodes that are descendants of the moved/renamed folder
-  const descendants = allNodes.filter(node => 
+  const descendants = allNodes.filter((node) =>
     node.path.startsWith(oldParentPath + '/')
   );
 
@@ -397,7 +435,7 @@ async function updateChildrenPaths(
     const updated: FileNode = {
       ...node,
       path: newPath,
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
     };
 
     await db.put(updated);
@@ -412,7 +450,7 @@ export async function searchFiles(query: string): Promise<FileNode[]> {
   const allNodes = await db.getAll<FileNode>();
   const lowerQuery = query.toLowerCase();
 
-  return allNodes.filter(node => 
+  return allNodes.filter((node) =>
     node.name.toLowerCase().includes(lowerQuery)
   );
 }
@@ -433,12 +471,12 @@ function buildTree(nodes: FileNode[]): FileNode[] {
   const rootNodes: FileNode[] = [];
 
   // First pass: create map
-  nodes.forEach(node => {
+  nodes.forEach((node) => {
     nodeMap.set(node.id, { ...node, children: [] });
   });
 
   // Second pass: build tree
-  nodes.forEach(node => {
+  nodes.forEach((node) => {
     const nodeWithChildren = nodeMap.get(node.id)!;
     if (node.parentId === null) {
       rootNodes.push(nodeWithChildren);

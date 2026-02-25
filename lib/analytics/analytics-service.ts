@@ -1,7 +1,13 @@
 import { get, set } from 'idb-keyval';
 
 /** Categories of tracked events */
-export type AnalyticsCategory = 'editor' | 'terminal' | 'git' | 'search' | 'settings' | 'general';
+export type AnalyticsCategory =
+  | 'editor'
+  | 'terminal'
+  | 'git'
+  | 'search'
+  | 'settings'
+  | 'general';
 
 /** Single analytics event */
 export interface AnalyticsEvent {

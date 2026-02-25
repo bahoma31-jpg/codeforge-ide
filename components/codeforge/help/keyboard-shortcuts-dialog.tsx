@@ -42,7 +42,11 @@ const shortcutsData: ShortcutCategory[] = [
   {
     category: 'Git',
     shortcuts: [
-      { keys: 'Ctrl+Shift+G', description: 'Source Control', arabic: 'لوحة Git' },
+      {
+        keys: 'Ctrl+Shift+G',
+        description: 'Source Control',
+        arabic: 'لوحة Git',
+      },
       { keys: 'Ctrl+Enter', description: 'Commit', arabic: 'حفظ التغييرات' },
       { keys: 'Ctrl+Shift+P', description: 'Push', arabic: 'رفع' },
       { keys: 'Ctrl+Shift+U', description: 'Pull', arabic: 'جلب' },
@@ -51,8 +55,16 @@ const shortcutsData: ShortcutCategory[] = [
   {
     category: 'Terminal',
     shortcuts: [
-      { keys: 'Ctrl+`', description: 'Toggle Terminal', arabic: 'تبديل المحطة' },
-      { keys: 'Ctrl+Shift+`', description: 'New Terminal', arabic: 'محطة جديدة' },
+      {
+        keys: 'Ctrl+`',
+        description: 'Toggle Terminal',
+        arabic: 'تبديل المحطة',
+      },
+      {
+        keys: 'Ctrl+Shift+`',
+        description: 'New Terminal',
+        arabic: 'محطة جديدة',
+      },
       { keys: 'Ctrl+C', description: 'Stop Command', arabic: 'إيقاف الأمر' },
       { keys: 'Ctrl+L', description: 'Clear Screen', arabic: 'مسح الشاشة' },
     ],
@@ -60,10 +72,26 @@ const shortcutsData: ShortcutCategory[] = [
   {
     category: 'Navigation',
     shortcuts: [
-      { keys: 'Ctrl+B', description: 'Toggle Sidebar', arabic: 'تبديل الشريط الجانبي' },
-      { keys: 'Ctrl+J', description: 'Toggle Panel', arabic: 'تبديل اللوحة السفلية' },
-      { keys: 'Ctrl+Shift+E', description: 'Explorer', arabic: 'مستكشف الملفات' },
-      { keys: 'Ctrl+0', description: 'Focus Sidebar', arabic: 'التركيز على الشريط' },
+      {
+        keys: 'Ctrl+B',
+        description: 'Toggle Sidebar',
+        arabic: 'تبديل الشريط الجانبي',
+      },
+      {
+        keys: 'Ctrl+J',
+        description: 'Toggle Panel',
+        arabic: 'تبديل اللوحة السفلية',
+      },
+      {
+        keys: 'Ctrl+Shift+E',
+        description: 'Explorer',
+        arabic: 'مستكشف الملفات',
+      },
+      {
+        keys: 'Ctrl+0',
+        description: 'Focus Sidebar',
+        arabic: 'التركيز على الشريط',
+      },
     ],
   },
 ];
@@ -102,7 +130,9 @@ export function KeyboardShortcutsDialog({
       ...category,
       shortcuts: category.shortcuts.filter(
         (shortcut) =>
-          shortcut.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          shortcut.description
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
           shortcut.arabic.includes(searchQuery) ||
           shortcut.keys.toLowerCase().includes(searchQuery.toLowerCase())
       ),
@@ -111,7 +141,7 @@ export function KeyboardShortcutsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent 
+      <DialogContent
         ref={dialogRef as any}
         className="max-w-3xl h-[600px]"
         role="dialog"
@@ -128,8 +158,8 @@ export function KeyboardShortcutsDialog({
         </DialogHeader>
 
         <div className="relative mb-4">
-          <Search 
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" 
+          <Search
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground"
             aria-hidden="true"
           />
           <Input
@@ -142,21 +172,33 @@ export function KeyboardShortcutsDialog({
         </div>
 
         <Tabs defaultValue="Editor" className="flex-1">
-          <TabsList 
+          <TabsList
             className="grid w-full grid-cols-4"
             role="tablist"
             aria-label="Shortcut categories"
           >
-            <TabsTrigger value="Editor" role="tab">Editor</TabsTrigger>
-            <TabsTrigger value="Git" role="tab">Git</TabsTrigger>
-            <TabsTrigger value="Terminal" role="tab">Terminal</TabsTrigger>
-            <TabsTrigger value="Navigation" role="tab">Navigation</TabsTrigger>
+            <TabsTrigger value="Editor" role="tab">
+              Editor
+            </TabsTrigger>
+            <TabsTrigger value="Git" role="tab">
+              Git
+            </TabsTrigger>
+            <TabsTrigger value="Terminal" role="tab">
+              Terminal
+            </TabsTrigger>
+            <TabsTrigger value="Navigation" role="tab">
+              Navigation
+            </TabsTrigger>
           </TabsList>
 
-          <ScrollArea className="h-[400px] mt-4" role="region" aria-live="polite">
+          <ScrollArea
+            className="h-[400px] mt-4"
+            role="region"
+            aria-live="polite"
+          >
             {filteredCategories.map((category) => (
-              <TabsContent 
-                key={category.category} 
+              <TabsContent
+                key={category.category}
                 value={category.category}
                 role="tabpanel"
                 aria-labelledby={`tab-${category.category}`}
@@ -174,7 +216,7 @@ export function KeyboardShortcutsDialog({
                           {shortcut.arabic}
                         </p>
                       </div>
-                      <kbd 
+                      <kbd
                         className="px-3 py-1.5 text-sm font-mono font-semibold border rounded-md bg-muted"
                         aria-label={`Keyboard shortcut: ${shortcut.keys}`}
                       >

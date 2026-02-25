@@ -1,7 +1,7 @@
 /**
  * CodeForge IDE - File Icons System
  * Agent 4: File System Manager
- * 
+ *
  * Maps file extensions to icons and colors
  */
 
@@ -18,7 +18,7 @@ import {
   ArchiveIcon,
   Settings,
   Database,
-  type LucideIcon
+  type LucideIcon,
 } from 'lucide-react';
 
 /**
@@ -68,257 +68,257 @@ const fileTypeMap: Record<string, FileTypeConfig> = {
   '.ts': {
     icon: FileCodeIcon,
     color: 'text-blue-500',
-    label: 'TypeScript'
+    label: 'TypeScript',
   },
   '.tsx': {
     icon: FileCodeIcon,
     color: 'text-blue-500',
-    label: 'TypeScript React'
+    label: 'TypeScript React',
   },
-  
+
   // JavaScript
   '.js': {
     icon: FileCodeIcon,
     color: 'text-yellow-500',
-    label: 'JavaScript'
+    label: 'JavaScript',
   },
   '.jsx': {
     icon: FileCodeIcon,
     color: 'text-yellow-500',
-    label: 'JavaScript React'
+    label: 'JavaScript React',
   },
   '.mjs': {
     icon: FileCodeIcon,
     color: 'text-yellow-500',
-    label: 'JavaScript Module'
+    label: 'JavaScript Module',
   },
   '.cjs': {
     icon: FileCodeIcon,
     color: 'text-yellow-500',
-    label: 'JavaScript CommonJS'
+    label: 'JavaScript CommonJS',
   },
-  
+
   // Python
   '.py': {
     icon: FileCodeIcon,
     color: 'text-blue-400',
-    label: 'Python'
+    label: 'Python',
   },
-  
+
   // HTML/CSS
   '.html': {
     icon: FileCodeIcon,
     color: 'text-orange-500',
-    label: 'HTML'
+    label: 'HTML',
   },
   '.htm': {
     icon: FileCodeIcon,
     color: 'text-orange-500',
-    label: 'HTML'
+    label: 'HTML',
   },
   '.css': {
     icon: FileCodeIcon,
     color: 'text-pink-500',
-    label: 'CSS'
+    label: 'CSS',
   },
   '.scss': {
     icon: FileCodeIcon,
     color: 'text-pink-500',
-    label: 'SCSS'
+    label: 'SCSS',
   },
   '.sass': {
     icon: FileCodeIcon,
     color: 'text-pink-500',
-    label: 'Sass'
+    label: 'Sass',
   },
   '.less': {
     icon: FileCodeIcon,
     color: 'text-pink-500',
-    label: 'Less'
+    label: 'Less',
   },
-  
+
   // Data formats
   '.json': {
     icon: FileJson,
     color: 'text-gray-500',
-    label: 'JSON'
+    label: 'JSON',
   },
   '.jsonc': {
     icon: FileJson,
     color: 'text-gray-500',
-    label: 'JSON with Comments'
+    label: 'JSON with Comments',
   },
   '.xml': {
     icon: FileCodeIcon,
     color: 'text-green-500',
-    label: 'XML'
+    label: 'XML',
   },
   '.yml': {
     icon: FileTextIcon,
     color: 'text-red-500',
-    label: 'YAML'
+    label: 'YAML',
   },
   '.yaml': {
     icon: FileTextIcon,
     color: 'text-red-500',
-    label: 'YAML'
+    label: 'YAML',
   },
   '.toml': {
     icon: FileTextIcon,
     color: 'text-gray-500',
-    label: 'TOML'
+    label: 'TOML',
   },
-  
+
   // Markdown
   '.md': {
     icon: FileTextIcon,
     color: 'text-white',
-    label: 'Markdown'
+    label: 'Markdown',
   },
   '.mdx': {
     icon: FileTextIcon,
     color: 'text-white',
-    label: 'MDX'
+    label: 'MDX',
   },
-  
+
   // Other languages
   '.rs': {
     icon: FileCodeIcon,
     color: 'text-orange-600',
-    label: 'Rust'
+    label: 'Rust',
   },
   '.go': {
     icon: FileCodeIcon,
     color: 'text-cyan-500',
-    label: 'Go'
+    label: 'Go',
   },
   '.java': {
     icon: FileCodeIcon,
     color: 'text-red-600',
-    label: 'Java'
+    label: 'Java',
   },
   '.php': {
     icon: FileCodeIcon,
     color: 'text-purple-500',
-    label: 'PHP'
+    label: 'PHP',
   },
   '.rb': {
     icon: FileCodeIcon,
     color: 'text-red-500',
-    label: 'Ruby'
+    label: 'Ruby',
   },
   '.swift': {
     icon: FileCodeIcon,
     color: 'text-orange-500',
-    label: 'Swift'
+    label: 'Swift',
   },
   '.kt': {
     icon: FileCodeIcon,
     color: 'text-purple-600',
-    label: 'Kotlin'
+    label: 'Kotlin',
   },
-  
+
   // Shell scripts
   '.sh': {
     icon: FileCodeIcon,
     color: 'text-green-500',
-    label: 'Shell Script'
+    label: 'Shell Script',
   },
   '.bash': {
     icon: FileCodeIcon,
     color: 'text-green-500',
-    label: 'Bash Script'
+    label: 'Bash Script',
   },
-  
+
   // Images
   '.png': {
     icon: ImageIcon,
     color: 'text-purple-500',
-    label: 'PNG Image'
+    label: 'PNG Image',
   },
   '.jpg': {
     icon: ImageIcon,
     color: 'text-purple-500',
-    label: 'JPEG Image'
+    label: 'JPEG Image',
   },
   '.jpeg': {
     icon: ImageIcon,
     color: 'text-purple-500',
-    label: 'JPEG Image'
+    label: 'JPEG Image',
   },
   '.gif': {
     icon: ImageIcon,
     color: 'text-purple-500',
-    label: 'GIF Image'
+    label: 'GIF Image',
   },
   '.svg': {
     icon: ImageIcon,
     color: 'text-purple-500',
-    label: 'SVG Image'
+    label: 'SVG Image',
   },
   '.webp': {
     icon: ImageIcon,
     color: 'text-purple-500',
-    label: 'WebP Image'
+    label: 'WebP Image',
   },
-  
+
   // Media
   '.mp4': {
     icon: VideoIcon,
     color: 'text-red-500',
-    label: 'MP4 Video'
+    label: 'MP4 Video',
   },
   '.mp3': {
     icon: MusicIcon,
     color: 'text-green-500',
-    label: 'MP3 Audio'
+    label: 'MP3 Audio',
   },
   '.wav': {
     icon: MusicIcon,
     color: 'text-green-500',
-    label: 'WAV Audio'
+    label: 'WAV Audio',
   },
-  
+
   // Archives
   '.zip': {
     icon: ArchiveIcon,
     color: 'text-yellow-600',
-    label: 'ZIP Archive'
+    label: 'ZIP Archive',
   },
   '.tar': {
     icon: ArchiveIcon,
     color: 'text-yellow-600',
-    label: 'TAR Archive'
+    label: 'TAR Archive',
   },
   '.gz': {
     icon: ArchiveIcon,
     color: 'text-yellow-600',
-    label: 'GZIP Archive'
+    label: 'GZIP Archive',
   },
-  
+
   // Config files
   '.env': {
     icon: Settings,
     color: 'text-yellow-500',
-    label: 'Environment'
+    label: 'Environment',
   },
   '.config': {
     icon: Settings,
     color: 'text-gray-500',
-    label: 'Configuration'
+    label: 'Configuration',
   },
-  
+
   // Database
   '.sql': {
     icon: Database,
     color: 'text-blue-600',
-    label: 'SQL'
+    label: 'SQL',
   },
   '.db': {
     icon: Database,
     color: 'text-blue-600',
-    label: 'Database'
-  }
+    label: 'Database',
+  },
 };
 
 /**
@@ -328,43 +328,43 @@ const specialFilenames: Record<string, FileTypeConfig> = {
   'package.json': {
     icon: FileJson,
     color: 'text-green-600',
-    label: 'Package Config'
+    label: 'Package Config',
   },
   'tsconfig.json': {
     icon: FileJson,
     color: 'text-blue-600',
-    label: 'TypeScript Config'
+    label: 'TypeScript Config',
   },
-  'Dockerfile': {
+  Dockerfile: {
     icon: FileCodeIcon,
     color: 'text-blue-500',
-    label: 'Docker'
+    label: 'Docker',
   },
   '.gitignore': {
     icon: FileTextIcon,
     color: 'text-orange-600',
-    label: 'Git Ignore'
+    label: 'Git Ignore',
   },
   '.env': {
     icon: Settings,
     color: 'text-yellow-500',
-    label: 'Environment'
+    label: 'Environment',
   },
   '.env.local': {
     icon: Settings,
     color: 'text-yellow-500',
-    label: 'Local Environment'
+    label: 'Local Environment',
   },
   'README.md': {
     icon: FileTextIcon,
     color: 'text-blue-400',
-    label: 'README'
+    label: 'README',
   },
-  'LICENSE': {
+  LICENSE: {
     icon: FileTextIcon,
     color: 'text-yellow-600',
-    label: 'License'
-  }
+    label: 'License',
+  },
 };
 
 /**
@@ -373,7 +373,7 @@ const specialFilenames: Record<string, FileTypeConfig> = {
 const defaultFileType: FileTypeConfig = {
   icon: FileIcon,
   color: 'text-gray-400',
-  label: 'File'
+  label: 'File',
 };
 
 /**
@@ -383,13 +383,13 @@ export const folderTypes = {
   closed: {
     icon: FolderIcon,
     color: 'text-blue-500',
-    label: 'Folder'
+    label: 'Folder',
   },
   open: {
     icon: FolderOpenIcon,
     color: 'text-blue-500',
-    label: 'Folder'
-  }
+    label: 'Folder',
+  },
 };
 
 /**
@@ -403,7 +403,7 @@ export function getFileTypeConfig(filename: string): FileTypeConfig {
 
   // Get extension
   const ext = getFileExtension(filename);
-  
+
   // Check extension mapping
   if (ext && fileTypeMap[ext]) {
     return fileTypeMap[ext];
@@ -434,13 +434,13 @@ export function getFileExtension(filename: string): string {
  */
 export function detectLanguage(filename: string): string | undefined {
   const ext = getFileExtension(filename);
-  
+
   for (const [language, extensions] of Object.entries(languageExtensions)) {
     if (extensions.includes(ext) || extensions.includes(filename)) {
       return language;
     }
   }
-  
+
   return undefined;
 }
 
@@ -456,7 +456,9 @@ export function getSupportedExtensions(): string[] {
  */
 export function isImageFile(filename: string): boolean {
   const ext = getFileExtension(filename);
-  return ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.bmp'].includes(ext);
+  return ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.bmp'].includes(
+    ext
+  );
 }
 
 /**
