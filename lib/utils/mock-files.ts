@@ -1,11 +1,11 @@
-﻿import { EditorTab } from "@/lib/types/editor.types";
+import { EditorTab } from '@/lib/types/editor.types';
 
 export const mockTabs: EditorTab[] = [
   {
-    id: "tab-1",
-    filePath: "src/index.ts",
-    fileName: "index.ts",
-    language: "typescript",
+    id: 'tab-1',
+    filePath: 'src/index.ts',
+    fileName: 'index.ts',
+    language: 'typescript',
     content: `import express from "express";
 
 const app = express();
@@ -22,10 +22,10 @@ app.listen(PORT, () => {
     isActive: true,
   },
   {
-    id: "tab-2",
-    filePath: "src/utils.ts",
-    fileName: "utils.ts",
-    language: "typescript",
+    id: 'tab-2',
+    filePath: 'src/utils.ts',
+    fileName: 'utils.ts',
+    language: 'typescript',
     content: `export function formatDate(date: Date): string {
   return date.toISOString().split("T")[0];
 }
@@ -37,10 +37,10 @@ export function capitalize(str: string): string {
     isActive: false,
   },
   {
-    id: "tab-3",
-    filePath: "README.md",
-    fileName: "README.md",
-    language: "markdown",
+    id: 'tab-3',
+    filePath: 'README.md',
+    fileName: 'README.md',
+    language: 'markdown',
     content: `# CodeForge IDE
 
 A modern, browser-based IDE powered by Monaco Editor.
