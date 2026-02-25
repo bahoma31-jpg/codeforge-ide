@@ -2,51 +2,56 @@
 
 import { useState, useEffect } from 'react';
 import { useGitStore } from '@/lib/stores/git-store';
-import { X, Loader2, FolderGit2, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, FolderGit2, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
-type CloneDialogProps = {
+interface CloneDialogProps {
   isOpen: boolean;
   onClose: () => void;
-};
+}
 
 export default function CloneDialog({ isOpen, onClose }: CloneDialogProps) {
-  const { cloneRepo, cloneProgress, isLoading, error, clearError } = useGitStore();
-  const [repoUrl, setRepoUrl] = useState('');
+  const { cloneProgress, cloneRepo } = useGitStore();
+  const [url, setUrl] = useState('');
   const [isCloning, setIsCloning] = useState(false);
-  const [cloneStatus, setCloneStatus] = useState<'idle' | 'cloning' | 'success' | 'error'>('idle');
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     if (!isOpen) {
       // Reset state when dialog closes
-      setRepoUrl('');
+      setUrl('');
       setIsCloning(false);
-      setCloneStatus('idle');
-      clearError();
+      setError(null);
+      setSuccess(false);
     }
-  }, [isOpen, clearError]);
+  }, [isOpen]);
 
   const handleClone = async () => {
-    if (!repoUrl.trim()) return;
+    if (!url.trim()) return;
 
     setIsCloning(true);
-    setCloneStatus('cloning');
-    clearError();
+    setError(null);
+    setSuccess(false);
 
     try {
-      await cloneRepo(repoUrl.trim());
-      setCloneStatus('success');
-      setTimeout(() => {
-        onClose();
-      }, 2000);
+      const result = await cloneRepo(url.trim());
+      if (result) {
+        setSuccess(true);
+        setTimeout(() => {
+          onClose();
+        }, 2000);
+      } else {
+        setError('Failed to clone repository. Please check the URL and try again.');
+      }
     } catch (err) {
-      setCloneStatus('error');
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     } finally {
       setIsCloning(false);
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !isCloning) {
       e.preventDefault();
       handleClone();
     } else if (e.key === 'Escape') {
@@ -57,58 +62,60 @@ export default function CloneDialog({ isOpen, onClose }: CloneDialogProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
-      {/* Overlay */}
-      <div
-        className="absolute inset-0 bg-black/50"
-        onClick={cloneStatus === 'cloning' ? undefined : onClose}
-      />
-
-      {/* Dialog */}
-      <div className="relative z-10 w-full max-w-md rounded-lg border border-border bg-[hsl(var(--cf-sidebar))] p-6 shadow-lg">
-        {/* Header */}
-        <div className="mb-4 flex items-center justify-between">
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      
+      <div className="relative bg-[hsl(var(--cf-sidebar))] rounded-lg shadow-lg w-full max-w-md mx-4 border border-border">
+        <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-2">
-            <FolderGit2 className="h-5 w-5 text-muted-foreground" />
+            <FolderGit2 className="w-5 h-5" />
             <h2 className="text-lg font-semibold">Clone Repository</h2>
           </div>
-          {cloneStatus !== 'cloning' && (
-            <button
-              onClick={onClose}
-              className="rounded p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
+          <button
+            onClick={onClose}
+            disabled={isCloning}
+            className="p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground disabled:opacity-50"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
-        {/* Content */}
-        <div className="space-y-4">
-          {/* URL Input */}
+        <div className="p-4 space-y-4">
+          {error && (
+            <div className="flex items-start gap-2 p-3 rounded bg-red-500/10 border border-red-500/20">
+              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-500">{error}</p>
+            </div>
+          )}
+
+          {success && (
+            <div className="flex items-center gap-2 p-3 rounded bg-green-500/10 border border-green-500/20">
+              <CheckCircle className="w-5 h-5 text-green-500" />
+              <p className="text-sm text-green-500">Repository cloned successfully!</p>
+            </div>
+          )}
+
           <div className="space-y-2">
-            <label htmlFor="repo-url" className="text-sm font-medium">
-              Repository URL
-            </label>
+            <label className="text-sm font-medium">Repository URL</label>
             <input
-              id="repo-url"
               type="text"
-              value={repoUrl}
-              onChange={(e) => setRepoUrl(e.target.value)}
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="https://github.com/owner/repo"
-              disabled={isCloning}
-              className="w-full rounded border border-border bg-[hsl(var(--cf-editor))] px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+              disabled={isCloning || success}
+              className="w-full px-3 py-2 text-sm bg-[hsl(var(--cf-editor))] border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+              autoFocus
             />
           </div>
 
-          {/* Progress Bar */}
-          {cloneStatus === 'cloning' && (
+          {isCloning && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Cloning...</span>
-                <span className="font-medium">{Math.round(cloneProgress)}%</span>
+                <span className="font-medium">{cloneProgress}%</span>
               </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+              <div className="h-2 bg-secondary rounded-full overflow-hidden">
                 <div
                   className="h-full bg-primary transition-all duration-300"
                   style={{ width: `${cloneProgress}%` }}
@@ -116,54 +123,30 @@ export default function CloneDialog({ isOpen, onClose }: CloneDialogProps) {
               </div>
             </div>
           )}
+        </div>
 
-          {/* Success Message */}
-          {cloneStatus === 'success' && (
-            <div className="flex items-start gap-2 rounded bg-green-500/10 p-3 text-sm text-green-500">
-              <CheckCircle className="h-5 w-5 flex-shrink-0" />
-              <div>
-                <p className="font-medium">Repository cloned successfully!</p>
-                <p className="text-xs">Files are now available in the explorer.</p>
-              </div>
-            </div>
-          )}
-
-          {/* Error Message */}
-          {cloneStatus === 'error' && error && (
-            <div className="flex items-start gap-2 rounded bg-destructive/10 p-3 text-sm text-destructive">
-              <AlertCircle className="h-5 w-5 flex-shrink-0" />
-              <div className="flex-1">
-                <p className="font-medium">Clone failed</p>
-                <p className="text-xs">{error}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex gap-2">
-            <button
-              onClick={handleClone}
-              disabled={!repoUrl.trim() || isCloning}
-              className="flex flex-1 items-center justify-center gap-2 rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isCloning ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Cloning...
-                </>
-              ) : (
-                'Clone'
-              )}
-            </button>
-            {cloneStatus !== 'cloning' && (
-              <button
-                onClick={onClose}
-                className="rounded bg-secondary px-4 py-2 text-sm font-medium hover:bg-secondary/80"
-              >
-                Cancel
-              </button>
+        <div className="flex justify-end gap-2 p-4 border-t border-border">
+          <button
+            onClick={onClose}
+            disabled={isCloning}
+            className="px-4 py-2 text-sm bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleClone}
+            disabled={!url.trim() || isCloning || success}
+            className="px-4 py-2 text-sm bg-primary text-primary-foreground hover:bg-primary/90 rounded disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {isCloning ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Cloning...</span>
+              </>
+            ) : (
+              <span>Clone</span>
             )}
-          </div>
+          </button>
         </div>
       </div>
     </div>
