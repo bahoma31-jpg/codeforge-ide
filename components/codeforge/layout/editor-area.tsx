@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEditorStore } from "@/lib/stores/editor-store";
 import TabBar from "../editor/tab-bar";
@@ -8,13 +8,22 @@ export default function EditorArea() {
   const { tabs } = useEditorStore();
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden bg-[hsl(var(--cf-editor))]">
+    <main 
+      id="main-content"
+      role="main" 
+      aria-label="Editor area"
+      className="flex flex-1 flex-col overflow-hidden bg-[hsl(var(--cf-editor))]"
+    >
       <TabBar />
       <div className="flex-1 overflow-hidden">
         {tabs.length > 0 ? (
           <MonacoEditor />
         ) : (
-          <div className="flex h-full items-center justify-center text-muted-foreground">
+          <div 
+            className="flex h-full items-center justify-center text-muted-foreground"
+            role="status"
+            aria-live="polite"
+          >
             <div className="text-center">
               <p className="text-lg font-medium">Welcome to CodeForge IDE</p>
               <p className="mt-2 text-sm">
@@ -24,6 +33,6 @@ export default function EditorArea() {
           </div>
         )}
       </div>
-    </div>
+    </main>
   );
 }
