@@ -1,0 +1,57 @@
+name: PR Checks
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+jobs:
+  validate-pr-title:
+    name: Validate PR Title (Conventional Commits)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check PR title format
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            chore
+            revert
+          requireScope: false
+          subjectPattern: ^.+$
+          subjectPatternError: |
+            The PR title "{title}" doesn't match Conventional Commits format.
+            Expected format: type(scope): description
+            Examples: "ci(phase10): add CI pipeline", "feat: add new feature"
+
+  check-pr-size:
+    name: Check PR Size
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check lines changed
+        run: |
+          BASE_SHA=${{ github.event.pull_request.base.sha }}
+          HEAD_SHA=${{ github.event.pull_request.head.sha }}
+          LINES_CHANGED=$(git diff --stat "$BASE_SHA".."$HEAD_SHA" | tail -1 | grep -oP '\d+(?= insertions|deletions)' | paste -sd+ | bc 2>/dev/null || echo 0)
+          echo "Total lines changed: $LINES_CHANGED"
+          if [ "$LINES_CHANGED" -gt 500 ]; then
+            echo "::notice::⚠️ This PR has $LINES_CHANGED lines changed (>500). Consider splitting it into smaller PRs for easier review."
+          else
+            echo "✅ PR size is reasonable ($LINES_CHANGED lines changed)."
+          fi
