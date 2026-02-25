@@ -46,9 +46,6 @@ jobs:
       - name: TypeScript type check
         run: pnpm exec tsc --noEmit
 
-      - name: Run unit tests
-        run: pnpm vitest run
-
       - name: Run tests with coverage
         run: pnpm vitest run --coverage
 
