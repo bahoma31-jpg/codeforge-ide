@@ -1,9 +1,10 @@
-﻿'use client';
+'use client';
 
 import { useMemo } from 'react';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { useEditorStore } from '@/lib/stores/editor-store';
 import { ChevronRight, File, Folder } from 'lucide-react';
+import SourceControlView from '../source-control/source-control-view';
 
 type SidebarProps = { width: number };
 
@@ -120,11 +121,7 @@ export default function Sidebar({ width }: SidebarProps) {
           </p>
         )}
 
-        {activityBarView === 'git' && (
-          <p className="text-sm text-muted-foreground">
-            Source Control placeholder (Agent 5 scope).
-          </p>
-        )}
+        {activityBarView === 'git' && <SourceControlView />}
 
         {activityBarView === 'extensions' && (
           <p className="text-sm text-muted-foreground">
