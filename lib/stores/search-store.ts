@@ -35,7 +35,7 @@ export interface SearchStore {
   clearSearch: () => void;
 }
 
-export const useSearchStore = create<SearchStore>((set, get) => ({
+export const useSearchStore = create<SearchStore>((set, _get) => ({
   query: '',
   replaceText: '',
   isRegex: false,
@@ -79,7 +79,8 @@ export const useSearchStore = create<SearchStore>((set, get) => ({
     set((state) => ({
       currentMatchIndex:
         state.totalMatches > 0
-          ? (state.currentMatchIndex - 1 + state.totalMatches) % state.totalMatches
+          ? (state.currentMatchIndex - 1 + state.totalMatches) %
+            state.totalMatches
           : -1,
     })),
 
