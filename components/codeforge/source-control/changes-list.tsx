@@ -3,204 +3,136 @@
 import { useState } from 'react';
 import { useGitStore } from '@/lib/stores/git-store';
 import { useEditorStore } from '@/lib/stores/editor-store';
-import { File, Plus, Minus, ChevronRight, ChevronDown } from 'lucide-react';
+import { File, ChevronRight, ChevronDown, Plus, Minus } from 'lucide-react';
+
+type FileStatus = 'M' | 'A' | 'D';
+
+interface FileChange {
+  path: string;
+  status: FileStatus;
+}
 
 export default function ChangesList() {
-  const { status, stagedFiles, addToStaging, removeFromStaging } = useGitStore();
+  const { stagedFiles, modifiedFiles, addToStaging, removeFromStaging } = useGitStore();
   const { addTab } = useEditorStore();
-  const [stagedExpanded, setStagedExpanded] = useState(true);
-  const [changesExpanded, setChangesExpanded] = useState(true);
+  
+  const [stagedCollapsed, setStagedCollapsed] = useState(false);
+  const [changesCollapsed, setChangesCollapsed] = useState(false);
 
-  const openFile = (filePath: string) => {
-    const fileName = filePath.split('/').pop() ?? filePath;
-    const ext = fileName.split('.').pop()?.toLowerCase() || '';
-    
-    const languageMap: Record<string, string> = {
-      ts: 'typescript',
-      tsx: 'typescriptreact',
-      js: 'javascript',
-      jsx: 'javascriptreact',
-      json: 'json',
-      css: 'css',
-      html: 'html',
-      md: 'markdown',
-      py: 'python',
-    };
-
-    addTab({
-      id: `tab-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      filePath,
-      fileName,
-      language: languageMap[ext] || 'plaintext',
-      content: '',
-      isDirty: false,
-      isActive: true,
-    });
+  const getFileName = (path: string) => {
+    const parts = path.split('/');
+    return parts[parts.length - 1];
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusColor = (status: FileStatus) => {
     switch (status) {
-      case 'modified':
-        return <span className="text-xs font-semibold text-yellow-500">M</span>;
-      case 'added':
-        return <span className="text-xs font-semibold text-green-500">A</span>;
-      case 'deleted':
-        return <span className="text-xs font-semibold text-red-500">D</span>;
-      case 'renamed':
-        return <span className="text-xs font-semibold text-blue-500">R</span>;
-      default:
-        return null;
+      case 'M': return 'text-yellow-500';
+      case 'A': return 'text-green-500';
+      case 'D': return 'text-red-500';
+      default: return 'text-muted-foreground';
     }
   };
 
-  const getFileName = (path: string) => {
-    return path.split('/').pop() || path;
+  const handleFileClick = (path: string) => {
+    addTab({
+      id: path,
+      title: getFileName(path),
+      content: '',
+      language: path.split('.').pop() || 'plaintext',
+      path,
+    });
   };
 
-  const getFilePath = (path: string) => {
-    const parts = path.split('/');
-    return parts.length > 1 ? parts.slice(0, -1).join('/') + '/' : '';
-  };
-
-  const allChanges = [
-    ...status.modified.map(path => ({ path, status: 'modified' })),
-    ...status.added.map(path => ({ path, status: 'added' })),
-    ...status.deleted.map(path => ({ path, status: 'deleted' })),
-  ];
-
-  const unstagedChanges = allChanges.filter(
-    change => !stagedFiles.some(staged => staged.filePath === change.path)
+  const renderFileItem = (file: FileChange, isStaged: boolean) => (
+    <div
+      key={file.path}
+      className="group flex items-center gap-2 px-2 py-1 rounded hover:bg-secondary cursor-pointer"
+    >
+      <File className="w-4 h-4 flex-shrink-0" />
+      <div className="flex-1 min-w-0" onClick={() => handleFileClick(file.path)}>
+        <p className="text-sm truncate">{getFileName(file.path)}</p>
+        <p className="text-xs text-muted-foreground truncate">{file.path}</p>
+      </div>
+      <span className={`text-xs font-mono font-semibold px-1.5 py-0.5 rounded ${getStatusColor(file.status)} bg-current/10 flex-shrink-0`}>
+        {file.status}
+      </span>
+      {isStaged ? (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            removeFromStaging(file.path);
+          }}
+          className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground flex-shrink-0"
+          title="Unstage"
+        >
+          <Minus className="w-3 h-3" />
+        </button>
+      ) : (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            addToStaging(file.path);
+          }}
+          className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-secondary text-muted-foreground hover:text-foreground flex-shrink-0"
+          title="Stage"
+        >
+          <Plus className="w-3 h-3" />
+        </button>
+      )}
+    </div>
   );
 
-  const totalChanges = unstagedChanges.length + stagedFiles.length;
+  const noChanges = stagedFiles.length === 0 && modifiedFiles.length === 0;
 
-  if (totalChanges === 0) {
+  if (noChanges) {
     return (
-      <div className="flex flex-col items-center justify-center p-6 text-center">
-        <File className="mb-2 h-8 w-8 text-muted-foreground/50" />
+      <div className="flex-1 flex items-center justify-center p-4">
         <p className="text-sm text-muted-foreground">No changes detected</p>
-        <p className="text-xs text-muted-foreground">Make changes to your files to see them here</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-1">
-      {/* Staged Changes */}
+    <div className="flex-1 overflow-y-auto">
       {stagedFiles.length > 0 && (
-        <div>
+        <div className="border-b border-border">
           <button
-            onClick={() => setStagedExpanded(!stagedExpanded)}
-            className="flex w-full items-center justify-between px-2 py-1.5 text-left hover:bg-secondary"
+            onClick={() => setStagedCollapsed(!stagedCollapsed)}
+            className="w-full flex items-center gap-2 px-2 py-2 hover:bg-secondary text-xs font-semibold uppercase tracking-wide"
           >
-            <div className="flex items-center gap-2">
-              {stagedExpanded ? (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              ) : (
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              )}
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Staged Changes
-              </span>
-              <span className="rounded-full bg-primary/20 px-1.5 py-0.5 text-xs font-medium text-primary">
-                {stagedFiles.length}
-              </span>
-            </div>
+            {stagedCollapsed ? (
+              <ChevronRight className="w-3 h-3" />
+            ) : (
+              <ChevronDown className="w-3 h-3" />
+            )}
+            <span>Staged Changes</span>
+            <span className="ml-auto text-muted-foreground">{stagedFiles.length}</span>
           </button>
-
-          {stagedExpanded && (
-            <div className="space-y-0.5 py-1">
-              {stagedFiles.map((file) => (
-                <div
-                  key={file.filePath}
-                  className="group flex items-center justify-between gap-2 px-2 py-1 hover:bg-secondary"
-                >
-                  <button
-                    onClick={() => openFile(file.filePath)}
-                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
-                  >
-                    <File className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        {getStatusBadge(file.status)}
-                        <span className="truncate text-sm">{getFileName(file.filePath)}</span>
-                      </div>
-                      {getFilePath(file.filePath) && (
-                        <span className="truncate text-xs text-muted-foreground">
-                          {getFilePath(file.filePath)}
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => removeFromStaging(file.filePath)}
-                    className="flex-shrink-0 rounded p-1 opacity-0 hover:bg-secondary group-hover:opacity-100"
-                    title="Unstage"
-                  >
-                    <Minus className="h-3 w-3" />
-                  </button>
-                </div>
-              ))}
+          {!stagedCollapsed && (
+            <div className="pb-2">
+              {stagedFiles.map((file) => renderFileItem(file, true))}
             </div>
           )}
         </div>
       )}
 
-      {/* Unstaged Changes */}
-      {unstagedChanges.length > 0 && (
+      {modifiedFiles.length > 0 && (
         <div>
           <button
-            onClick={() => setChangesExpanded(!changesExpanded)}
-            className="flex w-full items-center justify-between px-2 py-1.5 text-left hover:bg-secondary"
+            onClick={() => setChangesCollapsed(!changesCollapsed)}
+            className="w-full flex items-center gap-2 px-2 py-2 hover:bg-secondary text-xs font-semibold uppercase tracking-wide"
           >
-            <div className="flex items-center gap-2">
-              {changesExpanded ? (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              ) : (
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              )}
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Changes
-              </span>
-              <span className="rounded-full bg-secondary px-1.5 py-0.5 text-xs font-medium">
-                {unstagedChanges.length}
-              </span>
-            </div>
+            {changesCollapsed ? (
+              <ChevronRight className="w-3 h-3" />
+            ) : (
+              <ChevronDown className="w-3 h-3" />
+            )}
+            <span>Changes</span>
+            <span className="ml-auto text-muted-foreground">{modifiedFiles.length}</span>
           </button>
-
-          {changesExpanded && (
-            <div className="space-y-0.5 py-1">
-              {unstagedChanges.map((change) => (
-                <div
-                  key={change.path}
-                  className="group flex items-center justify-between gap-2 px-2 py-1 hover:bg-secondary"
-                >
-                  <button
-                    onClick={() => openFile(change.path)}
-                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
-                  >
-                    <File className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        {getStatusBadge(change.status)}
-                        <span className="truncate text-sm">{getFileName(change.path)}</span>
-                      </div>
-                      {getFilePath(change.path) && (
-                        <span className="truncate text-xs text-muted-foreground">
-                          {getFilePath(change.path)}
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => addToStaging(change.path)}
-                    className="flex-shrink-0 rounded p-1 opacity-0 hover:bg-secondary group-hover:opacity-100"
-                    title="Stage"
-                  >
-                    <Plus className="h-3 w-3" />
-                  </button>
-                </div>
-              ))}
+          {!changesCollapsed && (
+            <div className="pb-2">
+              {modifiedFiles.map((file) => renderFileItem(file, false))}
             </div>
           )}
         </div>
