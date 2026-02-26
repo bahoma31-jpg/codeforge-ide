@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
@@ -10,10 +11,15 @@ import {
   Keyboard,
   Github,
   Clock,
-  AlertTriangle,
+  Loader2,
+  User,
 } from 'lucide-react';
 import { useEditorStore } from '@/lib/stores/editor-store';
+import { useAuthStore } from '@/lib/stores/auth-store';
 import { useNotificationStore } from '@/lib/stores/notification-store';
+import { openFolder } from '@/lib/services/file-system.service';
+import { AuthDialog } from '@/components/codeforge/dialogs/auth-dialog';
+import { CloneDialog } from '@/components/codeforge/dialogs/clone-dialog';
 
 /** Docs that can be opened inside the editor */
 const DOCS = {
@@ -37,15 +43,56 @@ const DOCS = {
 export function WelcomeScreen() {
   const { openFile } = useEditorStore();
   const { addNotification } = useNotificationStore();
+  const { isAuthenticated, user, restoreSession } = useAuthStore();
 
-  const notifyUnimplemented = (feature: string) => {
-    addNotification({
-      type: 'warning',
-      title: 'قيد التطوير',
-      message: `ميزة "${feature}" لم تُبنى بعد — ستتوفر في إصدار قادم.`,
-      autoDismiss: true,
-      dismissAfterMs: 4000,
-    });
+  const [authOpen, setAuthOpen] = useState(false);
+  const [cloneOpen, setCloneOpen] = useState(false);
+  const [isOpeningFolder, setIsOpeningFolder] = useState(false);
+
+  // Restore GitHub session on mount
+  useEffect(() => {
+    restoreSession();
+  }, [restoreSession]);
+
+  const handleOpenFolder = async () => {
+    setIsOpeningFolder(true);
+    try {
+      const result = await openFolder();
+      addNotification({
+        type: 'success',
+        title: 'تم فتح المجلد',
+        message: `تم استيراد ${result.imported} ملف من "${result.rootName}"`,
+        autoDismiss: true,
+        dismissAfterMs: 5000,
+      });
+    } catch (err) {
+      if (err instanceof Error && err.message.includes('cancelled')) return;
+      addNotification({
+        type: 'error',
+        title: 'فشل فتح المجلد',
+        message: err instanceof Error ? err.message : 'خطأ غير متوقع',
+        autoDismiss: false,
+      });
+    } finally {
+      setIsOpeningFolder(false);
+    }
+  };
+
+  const handleCloneRepository = () => {
+    if (!isAuthenticated) {
+      addNotification({
+        type: 'warning',
+        title: 'تسجيل الدخول مطلوب',
+        message: 'يجب تسجيل الدخول بـ GitHub أولاً لاستنساخ المستودعات.',
+        autoDismiss: true,
+        action: {
+          label: 'تسجيل الدخول',
+          onClick: () => setAuthOpen(true),
+        },
+      });
+      return;
+    }
+    setCloneOpen(true);
   };
 
   const openDocInEditor = (doc: (typeof DOCS)[keyof typeof DOCS]) => {
@@ -116,21 +163,24 @@ export function WelcomeScreen() {
             <div className="space-y-2">
               <Button
                 variant="outline"
-                className="w-full justify-start border-red-500/40 text-red-400 hover:bg-red-500/10 hover:text-red-300"
-                onClick={() => notifyUnimplemented('Open Folder')}
+                className="w-full justify-start"
+                onClick={handleOpenFolder}
+                disabled={isOpeningFolder}
               >
-                <FolderOpen className="w-4 h-4 mr-2" />
+                {isOpeningFolder ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <FolderOpen className="w-4 h-4 mr-2" />
+                )}
                 Open Folder
-                <AlertTriangle className="w-3 h-3 ml-auto text-red-500" />
               </Button>
               <Button
                 variant="outline"
-                className="w-full justify-start border-red-500/40 text-red-400 hover:bg-red-500/10 hover:text-red-300"
-                onClick={() => notifyUnimplemented('Clone Repository')}
+                className="w-full justify-start"
+                onClick={handleCloneRepository}
               >
                 <GitBranch className="w-4 h-4 mr-2" />
                 Clone Repository
-                <AlertTriangle className="w-3 h-3 ml-auto text-red-500" />
               </Button>
               <Button
                 variant="outline"
@@ -162,17 +212,24 @@ export function WelcomeScreen() {
                 <Button
                   key={project.path}
                   variant="ghost"
-                  className="w-full justify-start border border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300"
-                  onClick={() => notifyUnimplemented(`Open project: ${project.name}`)}
+                  className="w-full justify-start"
+                  onClick={() =>
+                    addNotification({
+                      type: 'info',
+                      title: 'قريباً',
+                      message: `فتح المشاريع السابقة سيتوفر في إصدار قادم.`,
+                      autoDismiss: true,
+                    })
+                  }
                 >
                   <FolderOpen className="w-4 h-4 mr-2" />
                   <div className="flex-1 text-left">
                     <p className="font-medium">{project.name}</p>
-                    <p className="text-xs text-red-400/60">
+                    <p className="text-xs text-muted-foreground">
                       {project.path}
                     </p>
                   </div>
-                  <span className="text-xs text-red-400/60">
+                  <span className="text-xs text-muted-foreground">
                     {project.lastOpened}
                   </span>
                 </Button>
@@ -218,19 +275,42 @@ export function WelcomeScreen() {
           <Card className="p-6 space-y-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <Github className="w-5 h-5" />
-              Connect to GitHub
+              {isAuthenticated ? 'GitHub Connected' : 'Connect to GitHub'}
             </h2>
-            <p className="text-sm text-muted-foreground">
-              قم بتسجيل الدخول لمزامنة المشاريع والوصول إلى المستودعات
-            </p>
-            <Button
-              className="w-full border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300"
-              onClick={() => notifyUnimplemented('Sign in with GitHub')}
-            >
-              <Github className="w-4 h-4 mr-2" />
-              Sign in with GitHub
-              <AlertTriangle className="w-3 h-3 ml-2 text-red-500" />
-            </Button>
+            {isAuthenticated && user ? (
+              <div className="flex items-center gap-3">
+                <img
+                  src={user.avatar_url}
+                  alt={user.login}
+                  className="h-8 w-8 rounded-full"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    {user.name || user.login}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    @{user.login}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setAuthOpen(true)}
+                >
+                  <User className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  قم بتسجيل الدخول لمزامنة المشاريع والوصول إلى المستودعات
+                </p>
+                <Button className="w-full" onClick={() => setAuthOpen(true)}>
+                  <Github className="w-4 h-4 mr-2" />
+                  Sign in with GitHub
+                </Button>
+              </>
+            )}
           </Card>
         </div>
 
@@ -247,12 +327,12 @@ export function WelcomeScreen() {
             </kbd>{' '}
             for Keyboard Shortcuts
           </p>
-          <p className="text-xs text-red-400/70 flex items-center justify-center gap-1">
-            <AlertTriangle className="w-3 h-3" />
-            الأزرار باللون الأحمر لم تُبنَ بعد — ستتوفر في إصدار قادم
-          </p>
         </div>
       </div>
+
+      {/* Dialogs */}
+      <AuthDialog open={authOpen} onOpenChange={setAuthOpen} />
+      <CloneDialog open={cloneOpen} onOpenChange={setCloneOpen} />
     </div>
   );
 }
