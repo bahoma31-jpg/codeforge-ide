@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useMemo, useRef } from 'react';
 import { useUIStore } from '@/lib/stores/ui-store';
@@ -14,6 +14,7 @@ import Sidebar from './sidebar';
 import EditorArea from './editor-area';
 import Panel from './panel';
 import StatusBar from './status-bar';
+import { NotificationToast } from '../notifications/notification-toast';
 
 export default function MainLayout() {
   useKeyboardShortcuts();
@@ -39,129 +40,95 @@ export default function MainLayout() {
   }, [setTheme]);
 
   useEffect(() => {
+    applyTheme(theme);
     persistTheme(theme);
   }, [theme]);
 
-  const sidebarStyle = useMemo(
-    () => ({ width: `${sidebarWidth}px` }),
-    [sidebarWidth]
-  );
-  const panelStyle = useMemo(
-    () => ({ height: `${panelHeight}px` }),
-    [panelHeight]
-  );
-
   useEffect(() => {
-    const handle = sidebarHandleRef.current;
-    if (!handle) return;
-
-    let startX = 0;
-    let startWidth = 0;
-
-    const onPointerDown = (e: PointerEvent) => {
-      startX = e.clientX;
-      startWidth = sidebarWidth;
-      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
+    const handleSidebarResize = (e: MouseEvent) => {
+      const newWidth = Math.max(200, Math.min(e.clientX - 48, 600));
+      setSidebarWidth(newWidth);
     };
 
-    const onPointerMove = (e: PointerEvent) => {
-      if (document.body.style.cursor !== 'col-resize') return;
-      const dx = e.clientX - startX;
-      setSidebarWidth(startWidth + dx);
+    const handlePanelResize = (e: MouseEvent) => {
+      const newHeight = Math.max(
+        150,
+        Math.min(window.innerHeight - e.clientY, 500)
+      );
+      setPanelHeight(newHeight);
     };
 
-    const onPointerUp = () => {
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
+    const sidebarHandle = sidebarHandleRef.current;
+    const panelHandle = panelHandleRef.current;
+
+    const onSidebarMouseDown = () => {
+      document.addEventListener('mousemove', handleSidebarResize);
+      document.addEventListener(
+        'mouseup',
+        () => document.removeEventListener('mousemove', handleSidebarResize),
+        { once: true }
+      );
     };
 
-    handle.addEventListener('pointerdown', onPointerDown);
-    window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', onPointerUp);
+    const onPanelMouseDown = () => {
+      document.addEventListener('mousemove', handlePanelResize);
+      document.addEventListener(
+        'mouseup',
+        () => document.removeEventListener('mousemove', handlePanelResize),
+        { once: true }
+      );
+    };
+
+    sidebarHandle?.addEventListener('mousedown', onSidebarMouseDown);
+    panelHandle?.addEventListener('mousedown', onPanelMouseDown);
+
     return () => {
-      handle.removeEventListener('pointerdown', onPointerDown);
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
+      sidebarHandle?.removeEventListener('mousedown', onSidebarMouseDown);
+      panelHandle?.removeEventListener('mousedown', onPanelMouseDown);
     };
-  }, [sidebarWidth, setSidebarWidth]);
+  }, [setSidebarWidth, setPanelHeight]);
 
-  useEffect(() => {
-    const handle = panelHandleRef.current;
-    if (!handle) return;
-
-    let startY = 0;
-    let startHeight = 0;
-
-    const onPointerDown = (e: PointerEvent) => {
-      startY = e.clientY;
-      startHeight = panelHeight;
-      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-      document.body.style.cursor = 'row-resize';
-      document.body.style.userSelect = 'none';
-    };
-
-    const onPointerMove = (e: PointerEvent) => {
-      if (document.body.style.cursor !== 'row-resize') return;
-      const dy = startY - e.clientY;
-      setPanelHeight(startHeight + dy);
-    };
-
-    const onPointerUp = () => {
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-
-    handle.addEventListener('pointerdown', onPointerDown);
-    window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', onPointerUp);
-    return () => {
-      handle.removeEventListener('pointerdown', onPointerDown);
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
-    };
-  }, [panelHeight, setPanelHeight]);
+  const editorStyle = useMemo(
+    () => ({
+      width: sidebarVisible ? `calc(100% - ${sidebarWidth}px)` : '100%',
+    }),
+    [sidebarVisible, sidebarWidth]
+  );
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
-      <div className="flex flex-1 overflow-hidden">
-        <ActivityBar />
+    <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
+      <ActivityBar />
 
-        {sidebarVisible && (
+      {sidebarVisible && (
+        <>
+          <Sidebar width={sidebarWidth} />
+          <div
+            ref={sidebarHandleRef}
+            className="w-1 cursor-col-resize bg-border hover:bg-primary/50 transition-colors"
+          />
+        </>
+      )}
+
+      <div className="flex flex-1 flex-col overflow-hidden" style={editorStyle}>
+        <div className="flex-1 overflow-hidden">
+          <EditorArea />
+        </div>
+
+        {panelVisible && (
           <>
-            <div style={sidebarStyle} className="shrink-0 overflow-hidden">
-              <Sidebar width={sidebarWidth} />
-            </div>
             <div
-              ref={sidebarHandleRef}
-              className="w-1 shrink-0 cursor-col-resize bg-border/60 hover:bg-border"
-              aria-label="Resize sidebar"
-              role="separator"
+              ref={panelHandleRef}
+              className="h-1 cursor-row-resize bg-border hover:bg-primary/50 transition-colors"
             />
+            <Panel height={panelHeight} />
           </>
         )}
-
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <EditorArea />
-
-          {panelVisible && (
-            <>
-              <div
-                ref={panelHandleRef}
-                className="h-1 cursor-row-resize bg-border/60 hover:bg-border"
-                aria-label="Resize panel"
-                role="separator"
-              />
-              <div style={panelStyle} className="shrink-0 overflow-hidden">
-                <Panel height={panelHeight} />
-              </div>
-            </>
-          )}
-        </div>
       </div>
 
       <StatusBar />
+
+      {/* Toast notifications — renders in bottom-right corner */}
+      <NotificationToast />
     </div>
   );
 }
