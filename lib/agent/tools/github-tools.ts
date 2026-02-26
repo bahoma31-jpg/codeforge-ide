@@ -3,8 +3,8 @@
  * Agent tools for direct GitHub repository operations.
  * Uses GitHub REST API with Personal Access Token.
  *
- * 10 tools: create_repo, list_repos, push_file, push_files,
- *           create_branch, list_branches, create_pull_request,
+ * 12 tools: create_repo, delete_repo, list_repos, push_file, push_files,
+ *           delete_file, create_branch, list_branches, create_pull_request,
  *           list_pull_requests, create_issue, get_repo_info.
  */
 
@@ -103,6 +103,26 @@ export const githubTools: ToolDefinition[] = [
     category: 'github',
   },
   {
+    name: 'github_delete_repo',
+    description: 'Delete a GitHub repository permanently. This action is IRREVERSIBLE and will delete all code, issues, PRs, and settings. Requires user confirmation.',
+    parameters: {
+      type: 'object',
+      properties: {
+        owner: {
+          type: 'string',
+          description: 'Repository owner (username or org).',
+        },
+        repo: {
+          type: 'string',
+          description: 'Repository name to delete.',
+        },
+      },
+      required: ['owner', 'repo'],
+    },
+    riskLevel: 'confirm',
+    category: 'github',
+  },
+  {
     name: 'github_list_repos',
     description: 'List GitHub repositories for the authenticated user. Returns repo names, URLs, and basic info.',
     parameters: {
@@ -195,6 +215,38 @@ export const githubTools: ToolDefinition[] = [
         },
       },
       required: ['owner', 'repo', 'files', 'message'],
+    },
+    riskLevel: 'confirm',
+    category: 'github',
+  },
+  {
+    name: 'github_delete_file',
+    description: 'Delete a file from a GitHub repository. Requires the file path and a commit message.',
+    parameters: {
+      type: 'object',
+      properties: {
+        owner: {
+          type: 'string',
+          description: 'Repository owner.',
+        },
+        repo: {
+          type: 'string',
+          description: 'Repository name.',
+        },
+        path: {
+          type: 'string',
+          description: 'File path to delete (e.g., "src/old-file.ts").',
+        },
+        message: {
+          type: 'string',
+          description: 'Commit message for the deletion.',
+        },
+        branch: {
+          type: 'string',
+          description: 'Branch to delete from. Defaults to "main".',
+        },
+      },
+      required: ['owner', 'repo', 'path', 'message'],
     },
     riskLevel: 'confirm',
     category: 'github',
@@ -344,6 +396,33 @@ export function registerGitHubExecutors(service: AgentService): void {
           cloneUrl: result.clone_url,
           isPrivate: result.private,
           defaultBranch: result.default_branch,
+        },
+      };
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // ── github_delete_repo ──────────────────────────────────
+  service.registerToolExecutor('github_delete_repo', async (args) => {
+    try {
+      const owner = args.owner as string;
+      const repo = args.repo as string;
+
+      await githubFetch(`/repos/${owner}/${repo}`, {
+        method: 'DELETE',
+      });
+
+      await sendNotification(
+        `🤖 ⚠️ تم حذف المستودع: ${owner}/${repo} نهائياً`,
+        'success'
+      );
+
+      return {
+        success: true,
+        data: {
+          deleted: `${owner}/${repo}`,
+          message: `Repository ${owner}/${repo} has been permanently deleted.`,
         },
       };
     } catch (error) {
@@ -522,6 +601,54 @@ export function registerGitHubExecutors(service: AgentService): void {
           commitSha: newCommit.sha,
           commitUrl: newCommit.html_url,
           branch,
+        },
+      };
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // ── github_delete_file ──────────────────────────────────
+  service.registerToolExecutor('github_delete_file', async (args) => {
+    try {
+      const owner = args.owner as string;
+      const repo = args.repo as string;
+      const path = args.path as string;
+      const message = args.message as string;
+      const branch = (args.branch as string) || 'main';
+
+      // Get file SHA (required for deletion)
+      const existing = await githubFetch(
+        `/repos/${owner}/${repo}/contents/${path}?ref=${branch}`
+      );
+      const sha = existing.sha as string;
+
+      if (!sha) {
+        return { success: false, error: `الملف ${path} غير موجود في المستودع.` };
+      }
+
+      const result = await githubFetch(
+        `/repos/${owner}/${repo}/contents/${path}`,
+        {
+          method: 'DELETE',
+          body: JSON.stringify({
+            message,
+            sha,
+            branch,
+          }),
+        }
+      );
+
+      await sendNotification(
+        `🤖 تم حذف الملف: ${path} من ${owner}/${repo}`,
+        'success'
+      );
+
+      return {
+        success: true,
+        data: {
+          deleted: path,
+          commitSha: (result.commit as Record<string, unknown>)?.sha || '',
         },
       };
     } catch (error) {
