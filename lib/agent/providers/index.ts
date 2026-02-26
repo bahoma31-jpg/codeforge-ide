@@ -176,20 +176,28 @@ export function getDefaultModel(providerId: ProviderId): AgentModel {
 
 /**
  * Validate API key format (basic check)
+ * NOTE: We keep validation lenient because providers change key formats.
+ * The real validation happens when the API call is made.
  */
 export function validateApiKeyFormat(providerId: ProviderId, apiKey: string): boolean {
   if (!apiKey || apiKey.trim().length === 0) return false;
 
+  const key = apiKey.trim();
+
   switch (providerId) {
     case 'openai':
-      return apiKey.startsWith('sk-');
+      // OpenAI keys: sk-... or sk-proj-... or sess-... (formats change)
+      return key.length > 20;
     case 'google':
-      return apiKey.startsWith('AIza') && apiKey.length > 20;
+      // Google AI Studio keys: AIza... (39 chars typically)
+      return key.length > 20;
     case 'groq':
-      return apiKey.startsWith('gsk_');
+      // Groq keys: gsk_... but format has changed, some keys don't have prefix
+      return key.length > 20;
     case 'anthropic':
-      return apiKey.startsWith('sk-ant-');
+      // Anthropic keys: sk-ant-...
+      return key.length > 20;
     default:
-      return apiKey.length > 10;
+      return key.length > 10;
   }
 }
