@@ -19,6 +19,7 @@ import type {
 import { AgentService } from '@/lib/agent/agent-service';
 import { allTools, registerAllExecutors } from '@/lib/agent/tools';
 import { AGENT_CONFIG_KEY, MAX_HISTORY_MESSAGES } from '@/lib/agent/constants';
+import { getDefaultModel } from '@/lib/agent/providers';
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -117,6 +118,17 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       if (saved) {
         const parsed = JSON.parse(saved) as Partial<AgentConfig>;
         const config = { ...defaultConfig, ...parsed };
+
+        // FIX: If model is empty, auto-select first model from provider
+        if (!config.model && config.provider) {
+          try {
+            const defaultModel = getDefaultModel(config.provider);
+            config.model = defaultModel.id;
+          } catch {
+            // fallback — keep empty, user will select
+          }
+        }
+
         set({
           config,
           isConfigured: !!config.apiKey,
@@ -131,6 +143,12 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   sendMessage: async (content: string) => {
     const state = get();
     if (!state.isConfigured || state.isProcessing) return;
+
+    // Safety: ensure model is set before sending
+    if (!state.config.model) {
+      set({ error: 'يرجى اختيار نموذج من الإعدادات أولاً' });
+      return;
+    }
 
     // Add user message
     const userMessage: AgentMessage = {
@@ -225,8 +243,17 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
   // ─── Config Actions (persist to localStorage) ────────────
   setProvider: (provider: ProviderId) => {
+    // FIX: Auto-select first model from the new provider
+    let firstModel = '';
+    try {
+      const defaultModel = getDefaultModel(provider);
+      firstModel = defaultModel.id;
+    } catch {
+      // fallback
+    }
+
     set((s) => {
-      const config = { ...s.config, provider, apiKey: '', model: '' };
+      const config = { ...s.config, provider, apiKey: '', model: firstModel };
       localStorage.setItem(AGENT_CONFIG_KEY, JSON.stringify(config));
       return { config, isConfigured: false };
     });
