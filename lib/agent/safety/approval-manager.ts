@@ -1,170 +1,86 @@
 /**
  * CodeForge IDE — Approval Manager
- * Manages pending approvals for dangerous operations.
- * Provides a queue-based system for user confirmations.
+ * Manages the approval flow for risky tool calls.
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import type { PendingApproval, ToolCall, ToolDefinition, FileDiff, AuditLogEntry, ToolCallResult } from '../types';
-import { classifyRisk, getRiskDescription } from './risk-classifier';
+import type {
+  ToolCall,
+  ToolDefinition,
+  PendingApproval,
+  AuditLogEntry,
+  RiskLevel,
+} from '../types';
+import { classifyRisk } from './risk-classifier';
 
-/**
- * Approval callback type
- */
-type ApprovalCallback = (approved: boolean) => void;
-
-/**
- * Approval Manager
- */
 export class ApprovalManager {
-  private pendingApprovals: Map<string, PendingApproval> = new Map();
-  private approvalCallbacks: Map<string, ApprovalCallback> = new Map();
   private auditLog: AuditLogEntry[] = [];
-  private onApprovalRequest?: (approval: PendingApproval) => void;
 
   /**
-   * Set the callback for when an approval is requested
+   * Determine if a tool call needs approval
    */
-  setApprovalRequestHandler(handler: (approval: PendingApproval) => void): void {
-    this.onApprovalRequest = handler;
+  needsApproval(toolCall: ToolCall, toolDef?: ToolDefinition): boolean {
+    const risk = classifyRisk(toolCall, toolDef);
+    return risk === 'confirm';
   }
 
   /**
-   * Request approval for a tool call
-   * Returns a promise that resolves when the user responds
+   * Create a pending approval request
    */
-  async requestApproval(
-    toolCall: ToolCall,
-    toolDef: ToolDefinition,
-    diff?: FileDiff
-  ): Promise<boolean> {
-    const riskLevel = classifyRisk(toolCall, toolDef);
-
-    // Auto-approve safe operations
-    if (riskLevel === 'auto') {
-      this.logAction(toolCall.toolName, toolCall.args, { success: true }, 'auto');
-      return true;
-    }
-
-    // Notify-level: approve but show notification
-    if (riskLevel === 'notify') {
-      this.logAction(toolCall.toolName, toolCall.args, { success: true }, 'auto');
-      return true;
-    }
-
-    // Confirm-level: wait for user approval
-    const approval: PendingApproval = {
+  createApproval(toolCall: ToolCall, toolDef?: ToolDefinition): PendingApproval {
+    const risk = classifyRisk(toolCall, toolDef);
+    return {
       id: uuidv4(),
       toolCall,
-      description: getRiskDescription(toolCall, riskLevel),
-      riskLevel,
-      affectedFiles: this.extractAffectedFiles(toolCall),
-      diff,
+      toolName: toolCall.name,
+      description: this.generateDescription(toolCall),
+      riskLevel: risk,
       status: 'pending',
       createdAt: Date.now(),
     };
+  }
 
-    this.pendingApprovals.set(approval.id, approval);
-
-    // Notify the UI
-    this.onApprovalRequest?.(approval);
-
-    // Wait for user response
-    return new Promise<boolean>((resolve) => {
-      this.approvalCallbacks.set(approval.id, (approved) => {
-        approval.status = approved ? 'approved' : 'rejected';
-        this.pendingApprovals.delete(approval.id);
-        this.approvalCallbacks.delete(approval.id);
-
-        this.logAction(
-          toolCall.toolName,
-          toolCall.args,
-          { success: approved, error: approved ? undefined : 'Rejected by user' },
-          'user'
-        );
-
-        resolve(approved);
-      });
+  /**
+   * Log an approval decision
+   */
+  logDecision(
+    toolCall: ToolCall,
+    approved: boolean,
+    riskLevel: RiskLevel
+  ): void {
+    this.auditLog.push({
+      id: uuidv4(),
+      toolName: toolCall.name,
+      args: toolCall.arguments,
+      riskLevel,
+      approved,
+      approvedBy: approved ? 'user' : 'user',
+      timestamp: Date.now(),
     });
   }
 
   /**
-   * Approve a pending approval
-   */
-  approve(approvalId: string): void {
-    const callback = this.approvalCallbacks.get(approvalId);
-    if (callback) {
-      callback(true);
-    }
-  }
-
-  /**
-   * Reject a pending approval
-   */
-  reject(approvalId: string): void {
-    const callback = this.approvalCallbacks.get(approvalId);
-    if (callback) {
-      callback(false);
-    }
-  }
-
-  /**
-   * Get all pending approvals
-   */
-  getPendingApprovals(): PendingApproval[] {
-    return Array.from(this.pendingApprovals.values());
-  }
-
-  /**
-   * Get audit log
+   * Get the full audit log
    */
   getAuditLog(): AuditLogEntry[] {
     return [...this.auditLog];
   }
 
   /**
-   * Extract affected file paths
+   * Generate a human-readable description for a tool call
    */
-  private extractAffectedFiles(toolCall: ToolCall): string[] {
-    const files: string[] = [];
-    const args = toolCall.args;
+  private generateDescription(toolCall: ToolCall): string {
+    const args = toolCall.arguments;
 
-    if (typeof args.path === 'string') files.push(args.path);
-    if (typeof args.filePath === 'string') files.push(args.filePath);
-    if (typeof args.nodeId === 'string') files.push(args.nodeId);
-    if (Array.isArray(args.paths)) files.push(...(args.paths as string[]));
-
-    return files;
-  }
-
-  /**
-   * Log action to audit trail
-   */
-  private logAction(
-    toolName: string,
-    args: Record<string, unknown>,
-    result: ToolCallResult,
-    approvedBy: 'auto' | 'user'
-  ): void {
-    this.auditLog.push({
-      id: uuidv4(),
-      toolName,
-      args,
-      result,
-      approvedBy,
-      timestamp: Date.now(),
-    });
-  }
-
-  /**
-   * Clear all pending approvals
-   */
-  clearPending(): void {
-    // Reject all pending
-    for (const [id] of this.approvalCallbacks) {
-      this.reject(id);
+    switch (toolCall.name) {
+      case 'delete_file':
+        return `حذف: ${(args.nodeId as string) || 'ملف غير محدد'}`;
+      case 'git_push':
+        return `دفع التغييرات إلى GitHub${args.branch ? ` (فرع: ${args.branch})` : ''}`;
+      case 'git_create_pr':
+        return `إنشاء Pull Request: ${(args.title as string) || ''}`;
+      default:
+        return `تنفيذ: ${toolCall.name}`;
     }
-    this.pendingApprovals.clear();
-    this.approvalCallbacks.clear();
   }
 }

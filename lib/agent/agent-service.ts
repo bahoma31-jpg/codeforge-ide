@@ -38,14 +38,41 @@ export const DEFAULT_SYSTEM_PROMPT = `أنت مساعد برمجي ذكي مدم
 
 // ─── Provider Callers ─────────────────────────────────────────
 
+interface ProviderResponse {
+  content?: string;
+  toolCalls?: ToolCall[];
+}
+
+function parseToolCalls(rawToolCalls: Array<{ id?: string; function?: { name: string; arguments: string }; name?: string; arguments?: Record<string, unknown> }>): ToolCall[] {
+  return rawToolCalls.map((tc) => {
+    if (tc.function) {
+      // OpenAI / Groq format
+      let parsedArgs: Record<string, unknown> = {};
+      try {
+        parsedArgs = JSON.parse(tc.function.arguments || '{}');
+      } catch { parsedArgs = {}; }
+      return {
+        id: tc.id || uuidv4(),
+        name: tc.function.name,
+        arguments: parsedArgs,
+      };
+    }
+    // Pre-parsed format
+    return {
+      id: tc.id || uuidv4(),
+      name: tc.name || '',
+      arguments: tc.arguments || {},
+    };
+  });
+}
+
 async function callProvider(
   config: AgentConfig,
   messages: Array<{ role: string; content: string }>,
   tools: ToolDefinition[]
-): Promise<{ content?: string; toolCalls?: ToolCall[] }> {
+): Promise<ProviderResponse> {
   const { provider, apiKey, model, temperature, maxTokens } = config;
 
-  // Format tools for the API
   const formattedTools = tools.map((t) => ({
     type: 'function' as const,
     function: {
@@ -55,64 +82,45 @@ async function callProvider(
     },
   }));
 
+  // ── OpenAI ──
   if (provider === 'openai') {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model,
-        messages,
-        tools: formattedTools,
-        tool_choice: 'auto',
-        temperature,
-        max_tokens: maxTokens,
-      }),
+      body: JSON.stringify({ model, messages, tools: formattedTools, tool_choice: 'auto', temperature, max_tokens: maxTokens }),
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
+      const err = await res.json().catch(() => ({ error: { message: `HTTP ${res.status}` } }));
       throw new Error(err.error?.message || `OpenAI error: ${res.status}`);
     }
     const data = await res.json();
     const choice = data.choices?.[0]?.message;
     return {
       content: choice?.content || undefined,
-      toolCalls: choice?.tool_calls?.map((tc: any) => ({
-        id: tc.id,
-        name: tc.function.name,
-        arguments: JSON.parse(tc.function.arguments || '{}'),
-      })),
+      toolCalls: choice?.tool_calls ? parseToolCalls(choice.tool_calls) : undefined,
     };
   }
 
+  // ── Groq ──
   if (provider === 'groq') {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model,
-        messages,
-        tools: formattedTools,
-        tool_choice: 'auto',
-        temperature,
-        max_tokens: maxTokens,
-      }),
+      body: JSON.stringify({ model, messages, tools: formattedTools, tool_choice: 'auto', temperature, max_tokens: maxTokens }),
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
+      const err = await res.json().catch(() => ({ error: { message: `HTTP ${res.status}` } }));
       throw new Error(err.error?.message || `Groq error: ${res.status}`);
     }
     const data = await res.json();
     const choice = data.choices?.[0]?.message;
     return {
       content: choice?.content || undefined,
-      toolCalls: choice?.tool_calls?.map((tc: any) => ({
-        id: tc.id,
-        name: tc.function.name,
-        arguments: JSON.parse(tc.function.arguments || '{}'),
-      })),
+      toolCalls: choice?.tool_calls ? parseToolCalls(choice.tool_calls) : undefined,
     };
   }
 
+  // ── Google Gemini ──
   if (provider === 'google') {
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
@@ -120,10 +128,15 @@ async function callProvider(
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: messages.map((m) => ({
-            role: m.role === 'assistant' ? 'model' : 'user',
-            parts: [{ text: m.content }],
-          })),
+          contents: messages
+            .filter((m) => m.role !== 'system')
+            .map((m) => ({
+              role: m.role === 'assistant' ? 'model' : 'user',
+              parts: [{ text: m.content }],
+            })),
+          systemInstruction: {
+            parts: [{ text: messages.find((m) => m.role === 'system')?.content || DEFAULT_SYSTEM_PROMPT }],
+          },
           tools: [{
             functionDeclarations: tools.map((t) => ({
               name: t.name,
@@ -136,24 +149,32 @@ async function callProvider(
       }
     );
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
+      const err = await res.json().catch(() => ({ error: { message: `HTTP ${res.status}` } }));
       throw new Error(err.error?.message || `Gemini error: ${res.status}`);
     }
     const data = await res.json();
     const parts = data.candidates?.[0]?.content?.parts || [];
-    const textPart = parts.find((p: any) => p.text);
-    const fnPart = parts.filter((p: any) => p.functionCall);
+    const textPart = parts.find((p: Record<string, unknown>) => p.text);
+    const fnParts = parts.filter((p: Record<string, unknown>) => p.functionCall);
     return {
-      content: textPart?.text || undefined,
-      toolCalls: fnPart.length > 0 ? fnPart.map((p: any) => ({
-        id: uuidv4(),
-        name: p.functionCall.name,
-        arguments: p.functionCall.args || {},
-      })) : undefined,
+      content: (textPart?.text as string) || undefined,
+      toolCalls: fnParts.length > 0
+        ? fnParts.map((p: Record<string, unknown>) => {
+            const fc = p.functionCall as { name: string; args?: Record<string, unknown> };
+            return {
+              id: uuidv4(),
+              name: fc.name,
+              arguments: fc.args || {},
+            };
+          })
+        : undefined,
     };
   }
 
+  // ── Anthropic ──
   if (provider === 'anthropic') {
+    const systemMsg = messages.find((m) => m.role === 'system')?.content;
+    const nonSystemMsgs = messages.filter((m) => m.role !== 'system');
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -165,29 +186,27 @@ async function callProvider(
       body: JSON.stringify({
         model,
         max_tokens: maxTokens || 4096,
-        system: messages.find((m) => m.role === 'system')?.content,
-        messages: messages.filter((m) => m.role !== 'system'),
-        tools: tools.map((t) => ({
-          name: t.name,
-          description: t.description,
-          input_schema: t.parameters,
-        })),
+        system: systemMsg,
+        messages: nonSystemMsgs,
+        tools: tools.map((t) => ({ name: t.name, description: t.description, input_schema: t.parameters })),
       }),
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
+      const err = await res.json().catch(() => ({ error: { message: `HTTP ${res.status}` } }));
       throw new Error(err.error?.message || `Anthropic error: ${res.status}`);
     }
     const data = await res.json();
-    const textBlock = data.content?.find((b: any) => b.type === 'text');
-    const toolBlocks = data.content?.filter((b: any) => b.type === 'tool_use') || [];
+    const textBlock = data.content?.find((b: Record<string, unknown>) => b.type === 'text');
+    const toolBlocks = data.content?.filter((b: Record<string, unknown>) => b.type === 'tool_use') || [];
     return {
-      content: textBlock?.text || undefined,
-      toolCalls: toolBlocks.length > 0 ? toolBlocks.map((b: any) => ({
-        id: b.id,
-        name: b.name,
-        arguments: b.input || {},
-      })) : undefined,
+      content: (textBlock?.text as string) || undefined,
+      toolCalls: toolBlocks.length > 0
+        ? toolBlocks.map((b: Record<string, unknown>) => ({
+            id: b.id as string,
+            name: b.name as string,
+            arguments: (b.input as Record<string, unknown>) || {},
+          }))
+        : undefined,
     };
   }
 
@@ -234,13 +253,9 @@ export class AgentService {
     onToolCall?: (toolCall: ToolCall) => void,
     onApprovalRequired?: (approval: PendingApproval) => Promise<boolean>
   ): Promise<AgentMessage> {
-    // Build message list for API
     const apiMessages: Array<{ role: string; content: string }> = [
-      { role: 'system', content: systemPrompt || DEFAULT_SYSTEM_PROMPT },
-      ...messages.map((m) => ({
-        role: m.role,
-        content: m.content || '',
-      })),
+      { role: 'system', content: systemPrompt || this.config.systemPrompt || DEFAULT_SYSTEM_PROMPT },
+      ...messages.map((m) => ({ role: m.role, content: m.content || '' })),
     ];
 
     let iterations = 0;
@@ -249,7 +264,6 @@ export class AgentService {
     while (iterations < maxIterations) {
       iterations++;
 
-      // Call the LLM
       const response = await callProvider(this.config, apiMessages, this.tools);
 
       // If no tool calls, return the text response
@@ -264,10 +278,8 @@ export class AgentService {
 
       // Process each tool call
       for (const toolCall of response.toolCalls) {
-        // Notify UI about current tool call
         onToolCall?.(toolCall);
 
-        // Find the tool definition to check risk level
         const toolDef = this.tools.find((t) => t.name === toolCall.name);
         const riskLevel: RiskLevel = toolDef?.riskLevel || 'notify';
 
@@ -285,7 +297,6 @@ export class AgentService {
 
           const approved = await onApprovalRequired(approval);
 
-          // Log the decision
           this.auditLog.push({
             id: uuidv4(),
             toolName: toolCall.name,
@@ -296,15 +307,8 @@ export class AgentService {
           });
 
           if (!approved) {
-            // Add rejection to context
-            apiMessages.push({
-              role: 'assistant',
-              content: `أردت استخدام ${toolCall.name} لكن المستخدم رفض.`,
-            });
-            apiMessages.push({
-              role: 'user',
-              content: `تم رفض العملية: ${toolCall.name}. يرجى المتابعة بدونها.`,
-            });
+            apiMessages.push({ role: 'assistant', content: `أردت استخدام ${toolCall.name} لكن المستخدم رفض.` });
+            apiMessages.push({ role: 'user', content: `تم رفض العملية: ${toolCall.name}. يرجى المتابعة بدونها.` });
             continue;
           }
         }
@@ -323,7 +327,6 @@ export class AgentService {
           result = { success: false, error: `Tool '${toolCall.name}' not registered` };
         }
 
-        // Log execution
         this.auditLog.push({
           id: uuidv4(),
           toolName: toolCall.name,
@@ -334,19 +337,12 @@ export class AgentService {
           timestamp: Date.now(),
         });
 
-        // Add tool result to conversation for next LLM call
-        apiMessages.push({
-          role: 'assistant',
-          content: response.content || `[Calling tool: ${toolCall.name}]`,
-        });
-        apiMessages.push({
-          role: 'user',
-          content: `Tool ${toolCall.name} result: ${JSON.stringify(result)}`,
-        });
+        // Add tool result to conversation
+        apiMessages.push({ role: 'assistant', content: response.content || `[Calling tool: ${toolCall.name}]` });
+        apiMessages.push({ role: 'user', content: `Tool ${toolCall.name} result: ${JSON.stringify(result)}` });
       }
     }
 
-    // Max iterations reached
     return {
       id: uuidv4(),
       role: 'assistant',

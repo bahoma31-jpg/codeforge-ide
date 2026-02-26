@@ -28,7 +28,7 @@ export interface AgentConfig {
   provider: ProviderId;
   apiKey: string;
   model: string;
-  systemPrompt: string;
+  systemPrompt?: string;
   temperature: number;
   maxTokens: number;
   language: 'ar' | 'en';
@@ -48,11 +48,14 @@ export interface ToolDefinition {
 
 export interface ToolCall {
   id: string;
-  toolName: string;
-  args: Record<string, unknown>;
-  status: 'pending' | 'approved' | 'rejected' | 'executing' | 'completed' | 'failed';
+  name: string;
+  arguments: Record<string, unknown>;
+  /** Optional extended fields (used in UI) */
+  toolName?: string;
+  args?: Record<string, unknown>;
+  status?: 'pending' | 'approved' | 'rejected' | 'executing' | 'completed' | 'failed';
   result?: ToolCallResult;
-  createdAt: number;
+  createdAt?: number;
 }
 
 export interface ToolCallResult {
@@ -79,9 +82,10 @@ export interface AgentMessage {
 export interface PendingApproval {
   id: string;
   toolCall: ToolCall;
+  toolName: string;
   description: string;
   riskLevel: RiskLevel;
-  affectedFiles: string[];
+  affectedFiles?: string[];
   diff?: FileDiff;
   status: 'pending' | 'approved' | 'rejected';
   createdAt: number;
@@ -127,7 +131,9 @@ export interface AuditLogEntry {
   id: string;
   toolName: string;
   args: Record<string, unknown>;
-  result: ToolCallResult;
-  approvedBy: 'auto' | 'user';
+  result?: ToolCallResult;
+  riskLevel?: RiskLevel;
+  approved?: boolean;
+  approvedBy?: 'auto' | 'user';
   timestamp: number;
 }

@@ -1,99 +1,95 @@
 /**
  * CodeForge IDE — Risk Classifier
- * Classifies tool operations by risk level.
- * Provides additional safety checks beyond the static tool risk level.
+ * Classifies tool calls by risk level and checks for sensitive files.
  */
 
 import type { ToolCall, ToolDefinition, RiskLevel } from '../types';
 
-/**
- * Dangerous path patterns that should always require confirmation
- */
-const DANGEROUS_PATHS = [
-  /^\/?$/, // Root directory
-  /package\.json$/,
-  /tsconfig\.json$/,
-  /\.env/,
-  /\.gitignore$/,
-  /next\.config/,
-  /middleware\.ts$/,
+/** Files that require extra confirmation before modification */
+const SENSITIVE_FILES = [
+  'package.json',
+  'package-lock.json',
+  'pnpm-lock.yaml',
+  'tsconfig.json',
+  '.env',
+  '.env.local',
+  '.env.production',
+  '.gitignore',
+  'next.config.js',
+  'next.config.mjs',
+  'next.config.ts',
+  'vercel.json',
+  'tailwind.config.ts',
+  'tailwind.config.js',
+  'postcss.config.js',
+  'postcss.config.mjs',
+];
+
+/** Patterns that indicate destructive operations */
+const DESTRUCTIVE_PATTERNS = [
+  'delete',
+  'remove',
+  'drop',
+  'truncate',
+  'reset',
+  'force',
+  'push',
 ];
 
 /**
  * Classify the risk level of a tool call
- * May upgrade risk level based on context (e.g., modifying critical files)
  */
 export function classifyRisk(
   toolCall: ToolCall,
-  toolDef: ToolDefinition
+  toolDef?: ToolDefinition
 ): RiskLevel {
-  const baseRisk = toolDef.riskLevel;
+  // Use tool definition's risk level as baseline
+  const baseRisk = toolDef?.riskLevel || 'notify';
 
-  // Never downgrade risk
-  if (baseRisk === 'confirm') return 'confirm';
+  // Check if the operation involves sensitive files
+  const filePath = (toolCall.arguments?.filePath as string) || (toolCall.arguments?.path as string) || '';
+  const isSensitiveFile = SENSITIVE_FILES.some(
+    (sf) => filePath.endsWith(sf) || filePath.includes(sf)
+  );
 
-  // Check if operation targets dangerous paths
-  const targetPath = extractTargetPath(toolCall);
-  if (targetPath && isDangerousPath(targetPath)) {
+  // Escalate risk if sensitive file
+  if (isSensitiveFile && baseRisk !== 'confirm') {
     return 'confirm';
   }
 
-  // Bulk operations are always risky
-  if (isBulkOperation(toolCall)) {
-    return baseRisk === 'auto' ? 'notify' : 'confirm';
+  // Check for destructive patterns in tool name
+  const isDestructive = DESTRUCTIVE_PATTERNS.some(
+    (p) => toolCall.name.toLowerCase().includes(p)
+  );
+
+  if (isDestructive && baseRisk === 'auto') {
+    return 'notify';
   }
 
   return baseRisk;
 }
 
 /**
- * Check if a path matches dangerous patterns
+ * Check if a file path is sensitive
  */
-export function isDangerousPath(path: string): boolean {
-  return DANGEROUS_PATHS.some((pattern) => pattern.test(path));
+export function isSensitiveFile(filePath: string): boolean {
+  return SENSITIVE_FILES.some(
+    (sf) => filePath.endsWith(sf) || filePath.includes(sf)
+  );
 }
 
 /**
- * Extract the target file path from tool call arguments
+ * Get human-readable risk description
  */
-function extractTargetPath(toolCall: ToolCall): string | null {
-  const args = toolCall.args;
-  if (typeof args.path === 'string') return args.path;
-  if (typeof args.filePath === 'string') return args.filePath;
-  if (typeof args.name === 'string') return args.name;
-  return null;
-}
-
-/**
- * Check if tool call is a bulk operation
- */
-function isBulkOperation(toolCall: ToolCall): boolean {
-  const args = toolCall.args;
-
-  // Staging all files
-  if (
-    toolCall.toolName === 'git_stage' &&
-    Array.isArray(args.paths) &&
-    (args.paths as string[]).includes('.')
-  ) {
-    return true;
-  }
-
-  return false;
-}
-
-/**
- * Get a human-readable description of the risk
- */
-export function getRiskDescription(toolCall: ToolCall, riskLevel: RiskLevel): string {
+export function getRiskDescription(riskLevel: RiskLevel): string {
   switch (riskLevel) {
     case 'auto':
       return 'عملية آمنة — تنفيذ تلقائي';
     case 'notify':
-      return `عملية عادية — ${toolCall.toolName}`;
+      return 'عملية متوسطة — سيتم إشعارك';
     case 'confirm':
-      return `⚠️ عملية خطيرة تتطلب تأكيدك — ${toolCall.toolName}`;
+      return 'عملية حساسة — تحتاج تأكيدك';
     default:
-      return toolCall.toolName;
+      return 'مستوى خطر غير معروف';
   }
 }
