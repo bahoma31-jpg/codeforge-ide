@@ -15,6 +15,7 @@ import {
   X,
   FileWarning,
   GitBranch,
+  Github,
 } from 'lucide-react';
 
 interface ApprovalDialogProps {
@@ -26,7 +27,9 @@ export function ApprovalDialog({ approval }: ApprovalDialogProps) {
 
   if (approval.status !== 'pending') return null;
 
-  const isGitOp = approval.toolCall.toolName.startsWith('git_');
+  const toolName = approval.toolCall.name || approval.toolCall.toolName || 'unknown';
+  const isGitOp = toolName.startsWith('git_');
+  const isGitHubOp = toolName.startsWith('github_');
 
   return (
     <div className="mx-3 mb-3 rounded-xl border border-[#f9e2af]/40 bg-[#f9e2af]/5 overflow-hidden">
@@ -42,12 +45,14 @@ export function ApprovalDialog({ approval }: ApprovalDialogProps) {
       <div className="px-3 py-2">
         {/* Operation info */}
         <div className="flex items-center gap-2 text-xs text-[#cdd6f4]">
-          {isGitOp ? (
+          {isGitHubOp ? (
+            <Github size={12} className="text-[#cba6f7]" />
+          ) : isGitOp ? (
             <GitBranch size={12} className="text-[#fab387]" />
           ) : (
             <FileWarning size={12} className="text-[#fab387]" />
           )}
-          <span className="font-mono">{approval.toolCall.toolName}</span>
+          <span className="font-mono">{toolName}</span>
         </div>
 
         {/* Description */}
@@ -55,8 +60,26 @@ export function ApprovalDialog({ approval }: ApprovalDialogProps) {
           {approval.description}
         </p>
 
+        {/* Tool arguments preview */}
+        {approval.toolCall.arguments && Object.keys(approval.toolCall.arguments).length > 0 && (
+          <div className="mt-2 rounded-lg bg-[#181825] border border-[#313244] p-2">
+            <div className="text-[10px] text-[#45475a] mb-1">المعطيات:</div>
+            {Object.entries(approval.toolCall.arguments).map(([key, value]) => (
+              <div key={key} className="text-[10px] font-mono text-[#cdd6f4] mt-0.5">
+                <span className="text-[#89b4fa]">{key}</span>
+                <span className="text-[#45475a]">: </span>
+                <span className="text-[#a6e3a1]">
+                  {typeof value === 'string'
+                    ? value.length > 80 ? value.slice(0, 80) + '...' : value
+                    : JSON.stringify(value)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Affected files */}
-        {approval.affectedFiles.length > 0 && (
+        {approval.affectedFiles && approval.affectedFiles.length > 0 && (
           <div className="mt-2">
             <div className="text-[10px] text-[#45475a] mb-1">الملفات المتأثرة:</div>
             {approval.affectedFiles.map((file) => (
