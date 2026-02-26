@@ -57,12 +57,12 @@ export type SafetyAction =
  * - notify:  Execute but show a notification to the user
  * - confirm: Pause and wait for user approval before executing
  *
- * Usage in agent-service:
+ * @example
  * ```ts
  * const action = processToolSafety(toolCall, toolDef);
  * if (action.type === 'confirm') {
  *   const approved = await onApprovalRequired(action.approval);
- *   if (!approved) { /* skip */ }
+ *   if (!approved) { return; } // skip execution
  * } else if (action.type === 'notify') {
  *   onNotify?.(action.notification);
  * }
