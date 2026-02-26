@@ -2,6 +2,8 @@
  * CodeForge IDE — Agent Service (Core Engine)
  * Orchestrates the AI agent: sends messages, handles tool calls,
  * manages the conversation loop, and enforces safety rules.
+ *
+ * Now integrated with persistent AuditLogger for full operation tracking.
  */
 
 import { v4 as uuidv4 } from 'uuid';
@@ -16,6 +18,7 @@ import type {
   RiskLevel,
 } from './types';
 import { MAX_TOOL_ITERATIONS } from './constants';
+import { getAuditLogger, type AuditLogger } from './audit-logger';
 
 // ─── Default System Prompt ────────────────────────────────────
 
@@ -24,8 +27,17 @@ export const DEFAULT_SYSTEM_PROMPT = `أنت مساعد برمجي ذكي مدم
 ## قدراتك:
 - قراءة وتعديل وإنشاء وحذف الملفات في المشروع
 - إدارة Git: commit, push, branches, pull requests
+- إدارة GitHub: repos, issues, PRs, branches, files
 - شرح الكود وإصلاح الأخطاء واقتراح تحسينات
 - فهم سياق المشروع (package.json, tsconfig, بنية الملفات)
+
+## أدواتك على GitHub (19 أداة):
+- المستودعات: إنشاء، حذف، عرض، بحث، معلومات
+- الملفات: قراءة، كتابة، دفع متعدد، حذف، عرض محتويات
+- الفروع: إنشاء، عرض
+- Pull Requests: إنشاء، عرض، دمج
+- Issues: إنشاء، عرض، تعليق
+- المستخدم: معلومات الحساب
 
 ## قواعدك:
 1. اقرأ الملفات أولاً قبل التعديل — لا تفترض المحتوى
@@ -34,6 +46,7 @@ export const DEFAULT_SYSTEM_PROMPT = `أنت مساعد برمجي ذكي مدم
 4. اكتب كود نظيف مع تعليقات واضحة
 5. إذا لم تكن متأكداً — اسأل بدلاً من الافتراض
 6. تواصل مع المستخدم بنفس لغته (عربية أو إنجليزية)
+7. كل عملية تُسجل في Audit Log — لا تحاول تجاوز نظام الأمان
 `;
 
 // ─── Provider Callers ─────────────────────────────────────────
@@ -46,7 +59,6 @@ interface ProviderResponse {
 function parseToolCalls(rawToolCalls: Array<{ id?: string; function?: { name: string; arguments: string }; name?: string; arguments?: Record<string, unknown> }>): ToolCall[] {
   return rawToolCalls.map((tc) => {
     if (tc.function) {
-      // OpenAI / Groq format
       let parsedArgs: Record<string, unknown> = {};
       try {
         parsedArgs = JSON.parse(tc.function.arguments || '{}');
@@ -57,7 +69,6 @@ function parseToolCalls(rawToolCalls: Array<{ id?: string; function?: { name: st
         arguments: parsedArgs,
       };
     }
-    // Pre-parsed format
     return {
       id: tc.id || uuidv4(),
       name: tc.name || '',
@@ -218,12 +229,13 @@ async function callProvider(
 export class AgentService {
   private config: AgentConfig;
   private tools: ToolDefinition[];
-  private auditLog: AuditLogEntry[] = [];
+  private auditLogger: AuditLogger;
   private toolExecutors: Map<string, (args: Record<string, unknown>) => Promise<ToolCallResult>> = new Map();
 
   constructor(config: AgentConfig, tools: ToolDefinition[]) {
     this.config = config;
     this.tools = tools;
+    this.auditLogger = getAuditLogger();
   }
 
   /** Update configuration */
@@ -231,9 +243,14 @@ export class AgentService {
     this.config = config;
   }
 
-  /** Get audit log */
+  /** Get audit log entries (from persistent storage) */
   getAuditLog(): AuditLogEntry[] {
-    return [...this.auditLog];
+    return this.auditLogger.getAll();
+  }
+
+  /** Get the audit logger instance for advanced operations */
+  getAuditLoggerInstance(): AuditLogger {
+    return this.auditLogger;
   }
 
   /** Register a tool executor function */
@@ -246,6 +263,7 @@ export class AgentService {
 
   /**
    * Send a message and get a response (with tool calling loop)
+   * All tool executions are logged to the persistent AuditLogger.
    */
   async sendMessage(
     messages: AgentMessage[],
@@ -282,8 +300,17 @@ export class AgentService {
 
         const toolDef = this.tools.find((t) => t.name === toolCall.name);
         const riskLevel: RiskLevel = toolDef?.riskLevel || 'notify';
+        const category = toolDef?.category || 'utility';
 
-        // If high risk, request approval
+        // ── Start audit tracking (captures duration) ──
+        const auditTracker = this.auditLogger.logStart(
+          toolCall.name,
+          toolCall.arguments,
+          riskLevel,
+          category
+        );
+
+        // ── If high risk, request approval ──
         if (riskLevel === 'confirm' && onApprovalRequired) {
           const approval: PendingApproval = {
             id: uuidv4(),
@@ -297,23 +324,17 @@ export class AgentService {
 
           const approved = await onApprovalRequired(approval);
 
-          this.auditLog.push({
-            id: uuidv4(),
-            toolName: toolCall.name,
-            args: toolCall.arguments,
-            riskLevel,
-            approved,
-            timestamp: Date.now(),
-          });
-
           if (!approved) {
+            // Log the rejection with duration
+            auditTracker.reject();
+
             apiMessages.push({ role: 'assistant', content: `أردت استخدام ${toolCall.name} لكن المستخدم رفض.` });
             apiMessages.push({ role: 'user', content: `تم رفض العملية: ${toolCall.name}. يرجى المتابعة بدونها.` });
             continue;
           }
         }
 
-        // Execute the tool
+        // ── Execute the tool ──
         const executor = this.toolExecutors.get(toolCall.name);
         let result: ToolCallResult;
 
@@ -327,15 +348,9 @@ export class AgentService {
           result = { success: false, error: `Tool '${toolCall.name}' not registered` };
         }
 
-        this.auditLog.push({
-          id: uuidv4(),
-          toolName: toolCall.name,
-          args: toolCall.arguments,
-          result,
-          riskLevel,
-          approved: true,
-          timestamp: Date.now(),
-        });
+        // ── Log the result with duration ──
+        const approvedBy = riskLevel === 'confirm' ? 'user' : 'auto';
+        auditTracker.finish(result, true, approvedBy);
 
         // Add tool result to conversation
         apiMessages.push({ role: 'assistant', content: response.content || `[Calling tool: ${toolCall.name}]` });
