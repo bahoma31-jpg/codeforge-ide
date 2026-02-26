@@ -3,11 +3,12 @@
  * Agent tools for direct GitHub repository operations.
  * Uses GitHub REST API with Personal Access Token.
  *
- * 19 tools: create_repo, delete_repo, list_repos, push_file, push_files,
- *           read_file, delete_file, list_files, create_branch, list_branches,
- *           create_pull_request, list_pull_requests, merge_pull_request,
- *           create_issue, list_issues, add_comment, get_repo_info,
- *           get_user_info, search_repos.
+ * 25 tools: create_repo, delete_repo, list_repos, push_file, push_files,
+ *           read_file, edit_file, delete_file, list_files, create_branch,
+ *           list_branches, delete_branch, create_pull_request, list_pull_requests,
+ *           get_pull_request, merge_pull_request, create_issue, list_issues,
+ *           update_issue, add_comment, get_repo_info, get_user_info,
+ *           search_repos, search_code, get_commit_history.
  */
 
 import type { ToolDefinition, ToolCallResult } from '../types';
@@ -182,7 +183,7 @@ export const githubTools: ToolDefinition[] = [
       },
       required: ['owner', 'repo', 'path', 'content', 'message'],
     },
-    riskLevel: 'confirm',
+    riskLevel: 'notify',  // Fixed: was 'confirm', prompt says NOTIFY for create/update
     category: 'github',
   },
   {
@@ -227,6 +228,26 @@ export const githubTools: ToolDefinition[] = [
       required: ['owner', 'repo', 'path'],
     },
     riskLevel: 'auto',
+    category: 'github',
+  },
+  // ── NEW: github_edit_file ── Surgical edit with old_str/new_str ──
+  {
+    name: 'github_edit_file',
+    description: 'Edit an existing file by replacing a specific text section. Uses surgical old_str/new_str replacement instead of rewriting the entire file. ALWAYS read the file first with github_read_file before using this tool.',
+    parameters: {
+      type: 'object',
+      properties: {
+        owner: { type: 'string', description: 'Repository owner.' },
+        repo: { type: 'string', description: 'Repository name.' },
+        path: { type: 'string', description: 'File path in the repo (e.g., "src/index.ts").' },
+        old_str: { type: 'string', description: 'The exact text to find and replace. Must match the file content EXACTLY including whitespace and indentation.' },
+        new_str: { type: 'string', description: 'The replacement text that will replace old_str.' },
+        branch: { type: 'string', description: 'Branch to edit on. Defaults to "main".' },
+        message: { type: 'string', description: 'Commit message describing the change.' },
+      },
+      required: ['owner', 'repo', 'path', 'old_str', 'new_str', 'message'],
+    },
+    riskLevel: 'notify',
     category: 'github',
   },
   {
@@ -294,6 +315,22 @@ export const githubTools: ToolDefinition[] = [
     riskLevel: 'auto',
     category: 'github',
   },
+  // ── NEW: github_delete_branch ── Delete a branch ──
+  {
+    name: 'github_delete_branch',
+    description: 'Delete a branch from a GitHub repository. This is irreversible — verify the branch is merged or user acknowledges data loss before proceeding. REQUIRES user confirmation.',
+    parameters: {
+      type: 'object',
+      properties: {
+        owner: { type: 'string', description: 'Repository owner.' },
+        repo: { type: 'string', description: 'Repository name.' },
+        branch: { type: 'string', description: 'Branch name to delete. Cannot delete the default branch.' },
+      },
+      required: ['owner', 'repo', 'branch'],
+    },
+    riskLevel: 'confirm',
+    category: 'github',
+  },
 
   // ============== PULL REQUEST TOOLS ==============
   {
@@ -308,10 +345,11 @@ export const githubTools: ToolDefinition[] = [
         body: { type: 'string', description: 'PR description.' },
         head: { type: 'string', description: 'Branch with changes.' },
         base: { type: 'string', description: 'Target branch (e.g., "main").' },
+        draft: { type: 'boolean', description: 'Create as draft PR. Defaults to false.' },
       },
       required: ['owner', 'repo', 'title', 'head', 'base'],
     },
-    riskLevel: 'confirm',
+    riskLevel: 'notify',  // Fixed: was 'confirm', prompt says NOTIFY for PR creation
     category: 'github',
   },
   {
@@ -325,6 +363,22 @@ export const githubTools: ToolDefinition[] = [
         state: { type: 'string', description: 'Filter by state: "open", "closed", "all".', enum: ['open', 'closed', 'all'] },
       },
       required: ['owner', 'repo'],
+    },
+    riskLevel: 'auto',
+    category: 'github',
+  },
+  // ── NEW: github_get_pull_request ── Single PR details ──
+  {
+    name: 'github_get_pull_request',
+    description: 'Get detailed information about a specific pull request including title, body, status, diff stats, review status, and merge info.',
+    parameters: {
+      type: 'object',
+      properties: {
+        owner: { type: 'string', description: 'Repository owner.' },
+        repo: { type: 'string', description: 'Repository name.' },
+        pullNumber: { type: 'number', description: 'Pull request number.' },
+      },
+      required: ['owner', 'repo', 'pullNumber'],
     },
     riskLevel: 'auto',
     category: 'github',
@@ -384,6 +438,27 @@ export const githubTools: ToolDefinition[] = [
     riskLevel: 'auto',
     category: 'github',
   },
+  // ── NEW: github_update_issue ── Update existing issue ──
+  {
+    name: 'github_update_issue',
+    description: 'Update an existing issue properties: title, body, state (open/closed), labels, or assignees.',
+    parameters: {
+      type: 'object',
+      properties: {
+        owner: { type: 'string', description: 'Repository owner.' },
+        repo: { type: 'string', description: 'Repository name.' },
+        issueNumber: { type: 'number', description: 'Issue number to update.' },
+        title: { type: 'string', description: 'New title. Optional.' },
+        body: { type: 'string', description: 'New body/description. Optional.' },
+        state: { type: 'string', description: 'New state: "open" or "closed". Optional.', enum: ['open', 'closed'] },
+        labels: { type: 'array', items: { type: 'string' }, description: 'Updated labels array. Replaces all existing labels.' },
+        assignees: { type: 'array', items: { type: 'string' }, description: 'Updated assignees (GitHub usernames).' },
+      },
+      required: ['owner', 'repo', 'issueNumber'],
+    },
+    riskLevel: 'notify',
+    category: 'github',
+  },
   {
     name: 'github_add_comment',
     description: 'Add a comment to an issue or pull request in a GitHub repository.',
@@ -398,6 +473,47 @@ export const githubTools: ToolDefinition[] = [
       required: ['owner', 'repo', 'issueNumber', 'body'],
     },
     riskLevel: 'notify',
+    category: 'github',
+  },
+
+  // ============== SEARCH TOOLS ==============
+  // ── NEW: github_search_code ── Search code within repository ──
+  {
+    name: 'github_search_code',
+    description: 'Search for code patterns, function names, class definitions, or text across a GitHub repository. Returns matching files with code snippets.',
+    parameters: {
+      type: 'object',
+      properties: {
+        owner: { type: 'string', description: 'Repository owner.' },
+        repo: { type: 'string', description: 'Repository name.' },
+        query: { type: 'string', description: 'Search query — code pattern, function name, variable, or text to find.' },
+        fileExtension: { type: 'string', description: 'Filter by file extension (e.g., "ts", "py", "js"). Optional.' },
+        path: { type: 'string', description: 'Filter by directory path (e.g., "src/components"). Optional.' },
+        perPage: { type: 'number', description: 'Number of results (max 30). Defaults to 10.' },
+      },
+      required: ['owner', 'repo', 'query'],
+    },
+    riskLevel: 'auto',
+    category: 'github',
+  },
+
+  // ============== HISTORY TOOLS ==============
+  // ── NEW: github_get_commit_history ── View commit history ──
+  {
+    name: 'github_get_commit_history',
+    description: 'Retrieve commit history for a branch. Shows commit messages, authors, dates, and SHAs. Useful for understanding recent changes and development timeline.',
+    parameters: {
+      type: 'object',
+      properties: {
+        owner: { type: 'string', description: 'Repository owner.' },
+        repo: { type: 'string', description: 'Repository name.' },
+        branch: { type: 'string', description: 'Branch name. Defaults to "main".' },
+        path: { type: 'string', description: 'Filter commits by file path. Optional.' },
+        perPage: { type: 'number', description: 'Number of commits to return (max 100). Defaults to 10.' },
+      },
+      required: ['owner', 'repo'],
+    },
+    riskLevel: 'auto',
     category: 'github',
   },
 
@@ -589,6 +705,69 @@ export function registerGitHubExecutors(service: AgentService): void {
     } catch (error) { return { success: false, error: (error as Error).message }; }
   });
 
+  // ── NEW EXECUTOR: github_edit_file ──
+  service.registerToolExecutor('github_edit_file', async (args) => {
+    try {
+      const owner = args.owner as string;
+      const repo = args.repo as string;
+      const path = args.path as string;
+      const oldStr = args.old_str as string;
+      const newStr = args.new_str as string;
+      const branch = (args.branch as string) || 'main';
+      const message = args.message as string;
+
+      // Step 1: Read current file content + SHA
+      const fileData = await githubFetch(`/repos/${owner}/${repo}/contents/${path}?ref=${branch}`);
+      const sha = fileData.sha as string;
+      const currentContentB64 = fileData.content as string;
+      const currentContent = decodeURIComponent(escape(atob(currentContentB64.replace(/\n/g, ''))));
+
+      // Step 2: Verify old_str exists in the file
+      if (!currentContent.includes(oldStr)) {
+        return {
+          success: false,
+          error: `النص المطلوب استبداله غير موجود في الملف ${path}. تأكد من مطابقة النص تماماً بما في ذلك المسافات والسطور.`,
+        };
+      }
+
+      // Step 3: Check for multiple matches (ambiguity)
+      const matchCount = currentContent.split(oldStr).length - 1;
+      if (matchCount > 1) {
+        return {
+          success: false,
+          error: `تم العثور على ${matchCount} تطابقات للنص المطلوب في ${path}. يرجى تقديم نص أطول وأكثر تحديداً لتجنب الغموض.`,
+        };
+      }
+
+      // Step 4: Apply the replacement
+      const newContent = currentContent.replace(oldStr, newStr);
+      const base64Content = btoa(unescape(encodeURIComponent(newContent)));
+
+      // Step 5: Commit the change
+      const result = await githubFetch(`/repos/${owner}/${repo}/contents/${path}`, {
+        method: 'PUT',
+        body: JSON.stringify({ message, content: base64Content, branch, sha }),
+      });
+
+      const commitData = result.commit as Record<string, unknown> | undefined;
+      const linesChanged = newStr.split('\n').length - oldStr.split('\n').length;
+
+      await sendNotification(`🤖 تم تعديل ${path} — ${Math.abs(linesChanged)} سطر ${linesChanged >= 0 ? 'أُضيف' : 'أُزيل'}`, 'success');
+      return {
+        success: true,
+        data: {
+          path,
+          action: 'edited',
+          linesAdded: newStr.split('\n').length,
+          linesRemoved: oldStr.split('\n').length,
+          netChange: linesChanged,
+          commitSha: commitData?.sha || '',
+          commitUrl: commitData?.html_url || '',
+        },
+      };
+    } catch (error) { return { success: false, error: (error as Error).message }; }
+  });
+
   service.registerToolExecutor('github_delete_file', async (args) => {
     try {
       const owner = args.owner as string;
@@ -661,6 +840,31 @@ export function registerGitHubExecutors(service: AgentService): void {
     } catch (error) { return { success: false, error: (error as Error).message }; }
   });
 
+  // ── NEW EXECUTOR: github_delete_branch ──
+  service.registerToolExecutor('github_delete_branch', async (args) => {
+    try {
+      const owner = args.owner as string;
+      const repo = args.repo as string;
+      const branch = args.branch as string;
+
+      // Safety check: prevent deleting default branch
+      const repoInfo = await githubFetch(`/repos/${owner}/${repo}`);
+      if (repoInfo.default_branch === branch) {
+        return {
+          success: false,
+          error: `لا يمكن حذف الفرع الافتراضي "${branch}". يرجى تغيير الفرع الافتراضي أولاً من إعدادات المستودع.`,
+        };
+      }
+
+      await githubFetch(`/repos/${owner}/${repo}/git/refs/heads/${branch}`, {
+        method: 'DELETE',
+      });
+
+      await sendNotification(`🤖 ⚠️ تم حذف الفرع: ${branch} من ${owner}/${repo}`, 'success');
+      return { success: true, data: { deleted: branch, repo: `${owner}/${repo}` } };
+    } catch (error) { return { success: false, error: (error as Error).message }; }
+  });
+
   // ============== PULL REQUEST EXECUTORS ==============
 
   service.registerToolExecutor('github_create_pull_request', async (args) => {
@@ -672,6 +876,7 @@ export function registerGitHubExecutors(service: AgentService): void {
         body: JSON.stringify({
           title: args.title as string, body: (args.body as string) || '',
           head: args.head as string, base: args.base as string,
+          draft: (args.draft as boolean) ?? false,
         }),
       });
       await sendNotification(`🤖 تم إنشاء PR #${result.number}: ${result.title}`, 'success');
@@ -690,6 +895,46 @@ export function registerGitHubExecutors(service: AgentService): void {
         author: (pr.user as Record<string, unknown>)?.login || '', createdAt: pr.created_at,
       }));
       return { success: true, data: { count: prs.length, pullRequests: prs } };
+    } catch (error) { return { success: false, error: (error as Error).message }; }
+  });
+
+  // ── NEW EXECUTOR: github_get_pull_request ──
+  service.registerToolExecutor('github_get_pull_request', async (args) => {
+    try {
+      const owner = args.owner as string;
+      const repo = args.repo as string;
+      const pullNumber = args.pullNumber as number;
+
+      const pr = await githubFetch(`/repos/${owner}/${repo}/pulls/${pullNumber}`);
+      const user = pr.user as Record<string, unknown> || {};
+      const head = pr.head as Record<string, unknown> || {};
+      const base = pr.base as Record<string, unknown> || {};
+
+      return {
+        success: true,
+        data: {
+          number: pr.number,
+          title: pr.title,
+          body: pr.body || '',
+          state: pr.state,
+          url: pr.html_url,
+          author: user.login || '',
+          headBranch: head.ref || '',
+          baseBranch: base.ref || '',
+          isDraft: pr.draft || false,
+          mergeable: pr.mergeable,
+          mergeableState: pr.mergeable_state,
+          additions: pr.additions,
+          deletions: pr.deletions,
+          changedFiles: pr.changed_files,
+          commits: pr.commits,
+          reviewComments: pr.review_comments,
+          createdAt: pr.created_at,
+          updatedAt: pr.updated_at,
+          mergedAt: pr.merged_at,
+          closedAt: pr.closed_at,
+        },
+      };
     } catch (error) { return { success: false, error: (error as Error).message }; }
   });
 
@@ -761,6 +1006,45 @@ export function registerGitHubExecutors(service: AgentService): void {
     } catch (error) { return { success: false, error: (error as Error).message }; }
   });
 
+  // ── NEW EXECUTOR: github_update_issue ──
+  service.registerToolExecutor('github_update_issue', async (args) => {
+    try {
+      const owner = args.owner as string;
+      const repo = args.repo as string;
+      const issueNumber = args.issueNumber as number;
+
+      // Build update payload with only provided fields
+      const updatePayload: Record<string, unknown> = {};
+      if (args.title !== undefined) updatePayload.title = args.title;
+      if (args.body !== undefined) updatePayload.body = args.body;
+      if (args.state !== undefined) updatePayload.state = args.state;
+      if (args.labels !== undefined) updatePayload.labels = args.labels;
+      if (args.assignees !== undefined) updatePayload.assignees = args.assignees;
+
+      if (Object.keys(updatePayload).length === 0) {
+        return { success: false, error: 'لم يتم تقديم أي حقول للتحديث. يرجى تحديد title أو body أو state أو labels أو assignees.' };
+      }
+
+      const result = await githubFetch(`/repos/${owner}/${repo}/issues/${issueNumber}`, {
+        method: 'PATCH',
+        body: JSON.stringify(updatePayload),
+      });
+
+      const updatedFields = Object.keys(updatePayload).join(', ');
+      await sendNotification(`🤖 تم تحديث Issue #${issueNumber} (${updatedFields})`, 'success');
+      return {
+        success: true,
+        data: {
+          number: result.number,
+          title: result.title,
+          state: result.state,
+          url: result.html_url,
+          updatedFields,
+        },
+      };
+    } catch (error) { return { success: false, error: (error as Error).message }; }
+  });
+
   service.registerToolExecutor('github_add_comment', async (args) => {
     try {
       const owner = args.owner as string;
@@ -775,6 +1059,98 @@ export function registerGitHubExecutors(service: AgentService): void {
 
       await sendNotification(`🤖 تم إضافة تعليق على #${issueNumber}`, 'success');
       return { success: true, data: { id: result.id, url: result.html_url, issueNumber } };
+    } catch (error) { return { success: false, error: (error as Error).message }; }
+  });
+
+  // ============== SEARCH EXECUTORS ==============
+
+  // ── NEW EXECUTOR: github_search_code ──
+  service.registerToolExecutor('github_search_code', async (args) => {
+    try {
+      const owner = args.owner as string;
+      const repo = args.repo as string;
+      const query = args.query as string;
+      const fileExtension = args.fileExtension as string | undefined;
+      const path = args.path as string | undefined;
+      const perPage = (args.perPage as number) || 10;
+
+      // Build search query with repo scope
+      let searchQuery = `${query}+repo:${owner}/${repo}`;
+      if (fileExtension) searchQuery += `+extension:${fileExtension}`;
+      if (path) searchQuery += `+path:${path}`;
+
+      const result = await githubFetch(
+        `/search/code?q=${encodeURIComponent(searchQuery)}&per_page=${perPage}`,
+        {
+          headers: {
+            Accept: 'application/vnd.github.text-match+json',
+          },
+        }
+      );
+
+      const items = ((result.items || []) as Array<Record<string, unknown>>).map((item) => {
+        const textMatches = (item.text_matches as Array<Record<string, unknown>> || []);
+        return {
+          name: item.name,
+          path: item.path,
+          url: item.html_url,
+          matches: textMatches.map((m) => ({
+            fragment: m.fragment,
+            property: m.property,
+          })),
+        };
+      });
+
+      return {
+        success: true,
+        data: {
+          totalCount: result.total_count,
+          resultCount: items.length,
+          query,
+          items,
+        },
+      };
+    } catch (error) { return { success: false, error: (error as Error).message }; }
+  });
+
+  // ============== HISTORY EXECUTORS ==============
+
+  // ── NEW EXECUTOR: github_get_commit_history ──
+  service.registerToolExecutor('github_get_commit_history', async (args) => {
+    try {
+      const owner = args.owner as string;
+      const repo = args.repo as string;
+      const branch = (args.branch as string) || 'main';
+      const path = args.path as string | undefined;
+      const perPage = (args.perPage as number) || 10;
+
+      let url = `/repos/${owner}/${repo}/commits?sha=${branch}&per_page=${perPage}`;
+      if (path) url += `&path=${encodeURIComponent(path)}`;
+
+      const result = await githubFetch(url);
+      const commits = (result as unknown as Array<Record<string, unknown>>).map((c) => {
+        const commit = c.commit as Record<string, unknown> || {};
+        const author = commit.author as Record<string, unknown> || {};
+        const committer = commit.committer as Record<string, unknown> || {};
+        return {
+          sha: (c.sha as string || '').slice(0, 7),
+          fullSha: c.sha,
+          message: commit.message,
+          author: author.name || (c.author as Record<string, unknown>)?.login || '',
+          authorEmail: author.email,
+          date: author.date || committer.date,
+          url: c.html_url,
+        };
+      });
+
+      return {
+        success: true,
+        data: {
+          branch,
+          count: commits.length,
+          commits,
+        },
+      };
     } catch (error) { return { success: false, error: (error as Error).message }; }
   });
 
