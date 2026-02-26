@@ -59,6 +59,7 @@ interface AgentState {
   setProvider: (provider: ProviderId) => void;
   setApiKey: (key: string) => void;
   setModel: (model: string) => void;
+  setGitHubToken: (token: string) => void;
   updateConfig: (partial: Partial<AgentConfig>) => void;
 
   // Actions — Approvals
@@ -72,7 +73,7 @@ interface AgentState {
 
 const approvalResolvers = new Map<string, ApprovalResolver>();
 
-// ─── Service Instance ─────────────────────────────────────────
+// ─── Service Instance ───────────────────────────────────────
 
 let agentService: AgentService | null = null;
 
@@ -86,7 +87,7 @@ function getOrCreateService(config: AgentConfig): AgentService {
   return agentService;
 }
 
-// ─── Default Config ───────────────────────────────────────────
+// ─── Default Config ─────────────────────────────────────────
 
 const defaultConfig: AgentConfig = {
   provider: 'groq',
@@ -95,6 +96,7 @@ const defaultConfig: AgentConfig = {
   temperature: 0.3,
   maxTokens: 4096,
   language: 'ar',
+  githubToken: '',
 };
 
 // ─── Store ────────────────────────────────────────────────────
@@ -203,7 +205,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     }
   },
 
-  // ─── Approval Actions (real resolvers) ───────────────────
+  // ─── Approval Actions (real resolvers) ─────────────────────
   approveAction: (approvalId: string) => {
     const resolver = approvalResolvers.get(approvalId);
     if (resolver) {
@@ -232,16 +234,16 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     }));
   },
 
-  // ─── Panel Actions ───────────────────────────────────────
+  // ─── Panel Actions ─────────────────────────────────────────
   openPanel: () => set({ isPanelOpen: true }),
   closePanel: () => set({ isPanelOpen: false }),
   togglePanel: () => set((s) => ({ isPanelOpen: !s.isPanelOpen })),
 
-  // ─── Message Actions ─────────────────────────────────────
+  // ─── Message Actions ───────────────────────────────────────
   clearMessages: () => set({ messages: [], pendingApprovals: [], auditLog: [] }),
   clearError: () => set({ error: null }),
 
-  // ─── Config Actions (persist to localStorage) ────────────
+  // ─── Config Actions (persist to localStorage) ────────────────
   setProvider: (provider: ProviderId) => {
     // FIX: Auto-select first model from the new provider
     let firstModel = '';
@@ -276,6 +278,15 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       return { config };
     });
     agentService = null;
+  },
+
+  setGitHubToken: (githubToken: string) => {
+    set((s) => {
+      const config = { ...s.config, githubToken };
+      localStorage.setItem(AGENT_CONFIG_KEY, JSON.stringify(config));
+      return { config };
+    });
+    // No need to reset agentService — token is read at tool execution time
   },
 
   updateConfig: (partial: Partial<AgentConfig>) => {
