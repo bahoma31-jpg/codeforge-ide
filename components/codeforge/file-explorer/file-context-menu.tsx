@@ -22,9 +22,11 @@ import {
   Trash2,
   Copy,
   FileText,
+  AlertTriangle,
 } from 'lucide-react';
 import type { FileNode } from '@/lib/db/schema';
 import { useFilesStore } from '@/lib/stores/files-store';
+import { useNotificationStore } from '@/lib/stores/notification-store';
 import { FileDialog } from './file-dialog';
 
 interface FileContextMenuProps {
@@ -38,6 +40,7 @@ export function FileContextMenu({ node, children }: FileContextMenuProps) {
     'file'
   );
   const { deleteNode } = useFilesStore();
+  const { addNotification } = useNotificationStore();
   const isFolder = node.type === 'folder';
 
   const handleNewFile = () => {
@@ -72,6 +75,23 @@ export function FileContextMenu({ node, children }: FileContextMenuProps) {
 
   const handleCopyPath = () => {
     navigator.clipboard.writeText(node.path);
+    addNotification({
+      type: 'success',
+      title: 'Path Copied',
+      message: `Copied: ${node.path}`,
+      autoDismiss: true,
+      dismissAfterMs: 2000,
+    });
+  };
+
+  const handleViewFile = () => {
+    addNotification({
+      type: 'warning',
+      title: 'قيد التطوير',
+      message: 'ميزة "View File" لم تُبنَ بعد — ستتوفر في إصدار قادم.',
+      autoDismiss: true,
+      dismissAfterMs: 4000,
+    });
   };
 
   return (
@@ -99,12 +119,16 @@ export function FileContextMenu({ node, children }: FileContextMenuProps) {
             </>
           )}
 
-          {/* View (files only) */}
+          {/* View (files only) — unimplemented, marked red */}
           {!isFolder && (
             <>
-              <DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={handleViewFile}
+                className="text-red-400 focus:text-red-400"
+              >
                 <FileText className="mr-2 h-4 w-4" />
                 <span>View File</span>
+                <AlertTriangle className="ml-auto h-3 w-3 text-red-500" />
               </DropdownMenuItem>
 
               <DropdownMenuSeparator />

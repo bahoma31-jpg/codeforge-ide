@@ -1,14 +1,15 @@
-﻿'use client';
+'use client';
 
 import { useUIStore } from '@/lib/stores/ui-store';
-import { Files, Search, GitBranch, Package, Settings } from 'lucide-react';
+import { Files, Search, GitBranch, Terminal, Settings } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const views = [
-  { id: 'explorer', icon: Files, label: 'Explorer' },
-  { id: 'search', icon: Search, label: 'Search' },
-  { id: 'git', icon: GitBranch, label: 'Source Control' },
-  { id: 'extensions', icon: Package, label: 'Extensions' },
-  { id: 'settings', icon: Settings, label: 'Settings' },
+  { id: 'explorer', icon: Files, label: 'Explorer', shortcut: 'Ctrl+Shift+E' },
+  { id: 'search', icon: Search, label: 'Search', shortcut: 'Ctrl+Shift+F' },
+  { id: 'git', icon: GitBranch, label: 'Source Control', shortcut: 'Ctrl+Shift+G' },
+  { id: 'terminal', icon: Terminal, label: 'Terminal', shortcut: 'Ctrl+`' },
+  { id: 'settings', icon: Settings, label: 'Settings', shortcut: 'Ctrl+,' },
 ] as const;
 
 export default function ActivityBar() {
@@ -25,26 +26,34 @@ export default function ActivityBar() {
   };
 
   return (
-    <aside className="flex w-12 flex-col items-center gap-2 border-r border-border bg-[hsl(var(--cf-activitybar))] py-3">
+    <nav
+      role="navigation"
+      aria-label="Primary navigation"
+      className="flex w-12 flex-col items-center gap-2 border-r border-border bg-[hsl(var(--cf-activitybar))] py-3"
+    >
       {views.map((view) => {
-        const ActiveIcon = view.icon;
+        const Icon = view.icon;
         const active = activityBarView === view.id;
         return (
           <button
             key={view.id}
             onClick={() => onClick(view.id)}
-            className={[
-              'rounded p-2 transition-colors',
-              'hover:bg-secondary',
-              active ? 'bg-secondary text-primary' : 'text-muted-foreground',
-            ].join(' ')}
-            title={view.label}
+            aria-label={view.label}
+            aria-keyshortcuts={view.shortcut}
             aria-pressed={active}
+            title={`${view.label} (${view.shortcut})`}
+            className={cn(
+              'w-10 h-10 flex items-center justify-center rounded-lg',
+              'hover:bg-secondary transition-colors',
+              'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+              active && 'bg-secondary text-primary'
+            )}
           >
-            <ActiveIcon className="h-6 w-6" />
+            <Icon className="h-5 w-5" aria-hidden="true" />
+            <span className="sr-only">{view.label}</span>
           </button>
         );
       })}
-    </aside>
+    </nav>
   );
 }

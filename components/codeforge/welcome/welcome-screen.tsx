@@ -10,11 +10,53 @@ import {
   Keyboard,
   Github,
   Clock,
+  AlertTriangle,
 } from 'lucide-react';
 import { useEditorStore } from '@/lib/stores/editor-store';
+import { useNotificationStore } from '@/lib/stores/notification-store';
+
+/** Docs that can be opened inside the editor */
+const DOCS = {
+  architecture: {
+    name: 'architecture.md',
+    path: '/docs/architecture.md',
+    language: 'markdown',
+  },
+  git: {
+    name: 'git-integration.md',
+    path: '/docs/git-integration.md',
+    language: 'markdown',
+  },
+  shortcuts: {
+    name: 'keyboard-shortcuts.md',
+    path: '/docs/keyboard-shortcuts.md',
+    language: 'markdown',
+  },
+} as const;
 
 export function WelcomeScreen() {
   const { openFile } = useEditorStore();
+  const { addNotification } = useNotificationStore();
+
+  const notifyUnimplemented = (feature: string) => {
+    addNotification({
+      type: 'warning',
+      title: 'قيد التطوير',
+      message: `ميزة "${feature}" لم تُبنى بعد — ستتوفر في إصدار قادم.`,
+      autoDismiss: true,
+      dismissAfterMs: 4000,
+    });
+  };
+
+  const openDocInEditor = (doc: (typeof DOCS)[keyof typeof DOCS]) => {
+    openFile({
+      id: `doc-${doc.path}`,
+      name: doc.name,
+      content: `# ${doc.name}\n\nLoading documentation...`,
+      language: doc.language,
+      path: doc.path,
+    });
+  };
 
   const recentProjects = [
     {
@@ -74,23 +116,21 @@ export function WelcomeScreen() {
             <div className="space-y-2">
               <Button
                 variant="outline"
-                className="w-full justify-start"
-                onClick={() => {
-                  /* Open folder dialog */
-                }}
+                className="w-full justify-start border-red-500/40 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                onClick={() => notifyUnimplemented('Open Folder')}
               >
                 <FolderOpen className="w-4 h-4 mr-2" />
                 Open Folder
+                <AlertTriangle className="w-3 h-3 ml-auto text-red-500" />
               </Button>
               <Button
                 variant="outline"
-                className="w-full justify-start"
-                onClick={() => {
-                  /* Clone repository dialog */
-                }}
+                className="w-full justify-start border-red-500/40 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                onClick={() => notifyUnimplemented('Clone Repository')}
               >
                 <GitBranch className="w-4 h-4 mr-2" />
                 Clone Repository
+                <AlertTriangle className="w-3 h-3 ml-auto text-red-500" />
               </Button>
               <Button
                 variant="outline"
@@ -122,19 +162,17 @@ export function WelcomeScreen() {
                 <Button
                   key={project.path}
                   variant="ghost"
-                  className="w-full justify-start"
-                  onClick={() => {
-                    /* Open project */
-                  }}
+                  className="w-full justify-start border border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                  onClick={() => notifyUnimplemented(`Open project: ${project.name}`)}
                 >
                   <FolderOpen className="w-4 h-4 mr-2" />
                   <div className="flex-1 text-left">
                     <p className="font-medium">{project.name}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-red-400/60">
                       {project.path}
                     </p>
                   </div>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-red-400/60">
                     {project.lastOpened}
                   </span>
                 </Button>
@@ -142,7 +180,7 @@ export function WelcomeScreen() {
             </div>
           </Card>
 
-          {/* Getting Started */}
+          {/* Getting Started — opens docs in editor */}
           <Card className="p-6 space-y-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <Book className="w-5 h-5" />
@@ -152,7 +190,7 @@ export function WelcomeScreen() {
               <Button
                 variant="ghost"
                 className="w-full justify-start"
-                onClick={() => window.open('/docs/architecture.md', '_blank')}
+                onClick={() => openDocInEditor(DOCS.architecture)}
               >
                 <Book className="w-4 h-4 mr-2" />
                 Architecture Guide
@@ -160,9 +198,7 @@ export function WelcomeScreen() {
               <Button
                 variant="ghost"
                 className="w-full justify-start"
-                onClick={() =>
-                  window.open('/docs/git-integration.md', '_blank')
-                }
+                onClick={() => openDocInEditor(DOCS.git)}
               >
                 <GitBranch className="w-4 h-4 mr-2" />
                 Git Integration Guide
@@ -170,9 +206,7 @@ export function WelcomeScreen() {
               <Button
                 variant="ghost"
                 className="w-full justify-start"
-                onClick={() =>
-                  window.open('/docs/keyboard-shortcuts.md', '_blank')
-                }
+                onClick={() => openDocInEditor(DOCS.shortcuts)}
               >
                 <Keyboard className="w-4 h-4 mr-2" />
                 Keyboard Shortcuts
@@ -190,13 +224,12 @@ export function WelcomeScreen() {
               قم بتسجيل الدخول لمزامنة المشاريع والوصول إلى المستودعات
             </p>
             <Button
-              className="w-full"
-              onClick={() => {
-                /* Sign in with GitHub */
-              }}
+              className="w-full border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300"
+              onClick={() => notifyUnimplemented('Sign in with GitHub')}
             >
               <Github className="w-4 h-4 mr-2" />
               Sign in with GitHub
+              <AlertTriangle className="w-3 h-3 ml-2 text-red-500" />
             </Button>
           </Card>
         </div>
@@ -213,6 +246,10 @@ export function WelcomeScreen() {
               ?
             </kbd>{' '}
             for Keyboard Shortcuts
+          </p>
+          <p className="text-xs text-red-400/70 flex items-center justify-center gap-1">
+            <AlertTriangle className="w-3 h-3" />
+            الأزرار باللون الأحمر لم تُبنَ بعد — ستتوفر في إصدار قادم
           </p>
         </div>
       </div>

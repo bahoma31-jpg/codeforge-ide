@@ -1,29 +1,33 @@
-﻿'use client';
+'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useCallback } from 'react';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { useEditorStore } from '@/lib/stores/editor-store';
-import { ChevronRight, File, Folder } from 'lucide-react';
+import { useFilesStore, getChildrenFromState } from '@/lib/stores/files-store';
+import { ChevronRight, File, Folder, FolderOpen, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import type { FileNode } from '@/lib/db/schema';
 
 type SidebarProps = { width: number };
 
-const explorerNodes = [
-  {
-    type: 'folder' as const,
-    name: 'src',
-    children: ['index.ts', 'app.tsx', 'styles.css'],
-  },
-  {
-    type: 'folder' as const,
-    name: 'public',
-    children: ['favicon.ico'],
-  },
-  { type: 'file' as const, name: 'README.md' },
-];
-
 export default function Sidebar({ width }: SidebarProps) {
   const { activityBarView } = useUIStore();
-  const { addTab } = useEditorStore();
+  const { openFile } = useEditorStore();
+  const {
+    rootNodes,
+    expandedFolders,
+    isLoading,
+    isInitialized,
+    initialize,
+    toggleFolder,
+  } = useFilesStore();
+
+  // Initialize file system on mount
+  useEffect(() => {
+    if (!isInitialized) {
+      initialize();
+    }
+  }, [isInitialized, initialize]);
 
   const title = useMemo(() => {
     switch (activityBarView) {
@@ -33,8 +37,8 @@ export default function Sidebar({ width }: SidebarProps) {
         return 'Search';
       case 'git':
         return 'Source Control';
-      case 'extensions':
-        return 'Extensions';
+      case 'terminal':
+        return 'Terminal';
       case 'settings':
         return 'Settings';
       default:
@@ -42,24 +46,78 @@ export default function Sidebar({ width }: SidebarProps) {
     }
   }, [activityBarView]);
 
-  const openFile = (filePath: string) => {
-    const fileName = filePath.split('/').pop() ?? filePath;
-    addTab({
-      id: `tab-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      filePath,
-      fileName,
-      language: fileName.endsWith('.ts')
-        ? 'typescript'
-        : fileName.endsWith('.tsx')
-          ? 'typescriptreact'
-          : fileName.endsWith('.css')
-            ? 'css'
-            : 'plaintext',
-      content: '',
-      isDirty: false,
-      isActive: true,
-    });
-  };
+  const handleOpenFile = useCallback(
+    (node: FileNode) => {
+      openFile({
+        id: node.id,
+        name: node.name,
+        content: node.content || '',
+        language: node.language || 'plaintext',
+        path: node.path,
+      });
+    },
+    [openFile]
+  );
+
+  /** Render a single file/folder node recursively */
+  const renderNode = useCallback(
+    (node: FileNode, level: number = 0) => {
+      const isFolder = node.type === 'folder';
+      const isExpanded = expandedFolders.has(node.id);
+      const children = isFolder ? getChildrenFromState(node.id) : [];
+
+      return (
+        <div key={node.id}>
+          <button
+            onClick={() => {
+              if (isFolder) {
+                toggleFolder(node.id);
+              } else {
+                handleOpenFile(node);
+              }
+            }}
+            className={cn(
+              'flex w-full items-center gap-1.5 rounded px-2 py-1 text-left text-sm',
+              'hover:bg-secondary transition-colors',
+              'focus-visible:ring-2 focus-visible:ring-ring'
+            )}
+            style={{ paddingLeft: `${level * 12 + 8}px` }}
+          >
+            {isFolder && (
+              <ChevronRight
+                className={cn(
+                  'h-3.5 w-3.5 shrink-0 transition-transform text-muted-foreground',
+                  isExpanded && 'rotate-90'
+                )}
+              />
+            )}
+            {isFolder ? (
+              isExpanded ? (
+                <FolderOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
+              ) : (
+                <Folder className="h-4 w-4 shrink-0 text-muted-foreground" />
+              )
+            ) : (
+              <File className="h-4 w-4 shrink-0 text-muted-foreground ml-[18px]" />
+            )}
+            <span className="truncate">{node.name}</span>
+          </button>
+
+          {isFolder && isExpanded && children.length > 0 && (
+            <div>
+              {children
+                .sort((a, b) => {
+                  if (a.type === b.type) return a.name.localeCompare(b.name);
+                  return a.type === 'folder' ? -1 : 1;
+                })
+                .map((child) => renderNode(child, level + 1))}
+            </div>
+          )}
+        </div>
+      );
+    },
+    [expandedFolders, toggleFolder, handleOpenFile]
+  );
 
   return (
     <aside
@@ -74,43 +132,23 @@ export default function Sidebar({ width }: SidebarProps) {
 
       <div className="flex-1 overflow-y-auto p-2">
         {activityBarView === 'explorer' && (
-          <div className="space-y-2">
-            {explorerNodes.map((node) => {
-              if (node.type === 'file') {
-                return (
-                  <button
-                    key={node.name}
-                    onClick={() => openFile(`/${node.name}`)}
-                    className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm hover:bg-secondary"
-                  >
-                    <File className="h-4 w-4 text-muted-foreground" />
-                    <span>{node.name}</span>
-                  </button>
-                );
-              }
-
-              return (
-                <div key={node.name} className="space-y-1">
-                  <div className="flex items-center gap-2 rounded px-2 py-1 text-sm text-muted-foreground">
-                    <ChevronRight className="h-4 w-4" />
-                    <Folder className="h-4 w-4" />
-                    <span>{node.name}/</span>
-                  </div>
-                  <div className="space-y-1 pl-6">
-                    {node.children.map((child) => (
-                      <button
-                        key={child}
-                        onClick={() => openFile(`/${node.name}/${child}`)}
-                        className="flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm hover:bg-secondary"
-                      >
-                        <File className="h-4 w-4 text-muted-foreground" />
-                        <span>{child}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
+          <div className="space-y-0.5">
+            {isLoading && !isInitialized ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : rootNodes.length > 0 ? (
+              rootNodes
+                .sort((a, b) => {
+                  if (a.type === b.type) return a.name.localeCompare(b.name);
+                  return a.type === 'folder' ? -1 : 1;
+                })
+                .map((node) => renderNode(node))
+            ) : (
+              <p className="px-2 py-4 text-center text-sm text-muted-foreground">
+                No files yet. Create a new file to get started.
+              </p>
+            )}
           </div>
         )}
 
@@ -126,9 +164,9 @@ export default function Sidebar({ width }: SidebarProps) {
           </p>
         )}
 
-        {activityBarView === 'extensions' && (
+        {activityBarView === 'terminal' && (
           <p className="text-sm text-muted-foreground">
-            Extensions view placeholder.
+            Terminal controls will appear here.
           </p>
         )}
 
