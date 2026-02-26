@@ -6,127 +6,130 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 ![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=next.js&logoColor=white)
+![AI Agent](https://img.shields.io/badge/AI_Agent-Standalone-green?style=for-the-badge&logo=openai&logoColor=white)
 
-**محرر أكواد متكامل في المتصفح مع دعم كامل لـ Git و GitHub**
+**محرر أكواد متكامل في المتصفح مع وكيل ذكاء اصطناعي مستقل ودعم كامل لـ Git و GitHub**
 
-[Live Demo](#) • [Documentation](./docs) • [Report Bug](https://github.com/bahoma31-jpg/codeforge-ide/issues) • [Request Feature](https://github.com/bahoma31-jpg/codeforge-ide/issues)
+[Live Demo](#) • [Architecture](./docs/ARCHITECTURE.md) • [Changelog](./CHANGELOG.md) • [Report Bug](https://github.com/bahoma31-jpg/codeforge-ide/issues)
 
 </div>
 
 ---
 
-## 🌟 Features
+## 🌟 الميزات الرئيسية
 
-### محرر الأكواد المتقدم
+### 🤖 وكيل الذكاء الاصطناعي المستقل (جديد!)
 
-- ✨ **Monaco Editor** - نفس محرر VS Code مع دعم كامل للغات البرمجة
-- 🎨 **Syntax Highlighting** - تلوين تلقائي لأكثر من 60 لغة برمجة
-- 💡 **IntelliSense** - إكمال تلقائي ذكي واقتراحات
-- 🔍 **Find & Replace** - بحث واستبدال قوي مع Regex
-- 📝 **Multi-cursor Editing** - تعديل متعدد النقاط
-- 🎯 **Code Formatting** - تنسيق تلقائي للكود
+وكيل ذكي مستقل بالكامل — ليس تكاملاً مع GitHub Copilot — بل نظام مبني من الصفر يتصل مباشرة بأي مزوّد LLM ويدير المستودع عبر GitHub REST API.
 
-### تكامل Git و GitHub
+- 🧠 **Multi-Provider** — يدعم OpenAI، Anthropic (Claude)، Google Gemini، و Groq
+- 🔧 **45 أداة ذكية** — عمليات GitHub API (25) + نظام ملفات محلي (9) + Git (8) + أدوات مساعدة (3)
+- 🛡️ **نظام أمان ثلاثي الطبقات**:
+  - 🟢 **AUTO** — القراءة فقط، ينفّذ تلقائياً بلا تدخل
+  - 🟡 **NOTIFY** — الكتابة والتعديل، ينفّذ مع إشعار Toast
+  - 🔴 **CONFIRM** — الحذف والعمليات الخطرة، يحتاج موافقة صريحة
+- 📊 **سجل تدقيق متقدم** — تسجيل كل عملية مع مدة التنفيذ، التصنيف، الإحصائيات، والتصدير (JSON/CSV)
+- 🔄 **وضعان تشغيل** — PLAN MODE للمهام المعقدة، ACT MODE للتنفيذ المباشر
+- 🛑 **حماية من التكرار** — يوقف الحلقات اللانهائية تلقائياً بعد 3 محاولات
+- 🌐 **System Prompt ديناميكي** — يحقن متغيرات المشروع (repo, branch, model) تلقائياً
 
-- 🔐 **GitHub OAuth** - مصادقة آمنة مع GitHub
-- 📦 **Repository Management** - إدارة كاملة للمستودعات
-- 🌿 **Branch Operations** - إنشاء، تبديل، ودمج الفروع
-- 💾 **Local Git** - عمليات Git محلية (commit, push, pull, merge)
-- 🔄 **Sync Status** - مزامنة فورية مع GitHub
-- 🔀 **Conflict Resolution** - حل التعارضات بصريًا
+### ✏️ محرر الأكواد المتقدم
 
-### نظام الملفات المتقدم
+- ✨ **Monaco Editor** — نفس محرر VS Code مع دعم كامل للغات البرمجة
+- 🎨 **Syntax Highlighting** — تلوين تلقائي لأكثر من 60 لغة برمجة
+- 💡 **IntelliSense** — إكمال تلقائي ذكي واقتراحات
+- 🔍 **Find & Replace** — بحث واستبدال قوي مع Regex
+- 📝 **Multi-cursor Editing** — تعديل متعدد النقاط
+- 🎯 **Code Formatting** — تنسيق تلقائي للكود
 
-- 💿 **IndexedDB Storage** - تخزين محلي قوي وسريع
-- 📂 **File Explorer** - مستكشف ملفات تفاعلي
-- 📄 **Multi-file Tabs** - فتح ملفات متعددة في نفس الوقت
-- 🗂️ **Folder Structure** - دعم كامل للمجلدات والملفات
-- 📋 **Copy/Paste/Rename** - عمليات الملفات الأساسية
+### 🔗 تكامل Git و GitHub
 
-### محطة طرفية متكاملة
+- 🔐 **GitHub OAuth** — مصادقة آمنة مع GitHub
+- 📦 **Repository Management** — إدارة كاملة للمستودعات
+- 🌿 **Branch Operations** — إنشاء، تبديل، ودمج الفروع
+- 💾 **Local Git** — عمليات Git محلية (commit, push, pull, merge)
+- 🔄 **Sync Status** — مزامنة فورية مع GitHub
+- 🔀 **Conflict Resolution** — حل التعارضات بصريًا
 
-- 💻 **xterm.js Terminal** - محطة طرفية حقيقية في المتصفح
-- 🖥️ **Multiple Terminals** - فتح محطات متعددة
-- ⚡ **Built-in Commands** - أوامر مدمجة (ls, cd, mkdir, cat...)
-- 🔧 **Git Commands** - أوامر Git كاملة
-- 📊 **Command History** - سجل الأوامر المستخدمة
+### 📁 نظام الملفات المتقدم
 
-### تخصيص واجهة المستخدم
+- 💿 **IndexedDB Storage** — تخزين محلي قوي وسريع
+- 📂 **File Explorer** — مستكشف ملفات تفاعلي
+- 📄 **Multi-file Tabs** — فتح ملفات متعددة في نفس الوقت
+- 🗂️ **Folder Structure** — دعم كامل للمجلدات والملفات
 
-- 🎨 **Themes** - ثيمات قابلة للتخصيص (Light/Dark)
-- 🔤 **Font Customization** - تخصيص الخطوط والأحجام
-- ⌨️ **Keyboard Shortcuts** - اختصارات لوحة مفاتيح قابلة للتعديل
-- 📱 **Responsive Design** - تصميم متجاوب لجميع الأجهزة
+### 💻 محطة طرفية متكاملة
+
+- 💻 **xterm.js Terminal** — محطة طرفية حقيقية في المتصفح
+- 🖥️ **Multiple Terminals** — فتح محطات متعددة
+- ⚡ **Built-in Commands** — أوامر مدمجة (ls, cd, mkdir, cat...)
+- 🔧 **Git Commands** — أوامر Git كاملة
 
 ---
 
-## 🚀 Quick Start
+## 🚀 البدء السريع
 
 ### المتطلبات المسبقة
 
-قبل البدء، تأكد من تثبيت:
-
 - **Node.js** ≥ 18.x ([تحميل](https://nodejs.org/))
 - **pnpm** ≥ 9.x ([تحميل](https://pnpm.io/installation)) — يمكن تفعيله عبر: `corepack enable pnpm`
-- **Git** (اختياري، للنشر) ([تحميل](https://git-scm.com/))
 
 ### التثبيت
 
 ```bash
 # 1. استنساخ المستودع
 git clone https://github.com/bahoma31-jpg/codeforge-ide.git
-
-# 2. الدخول إلى المجلد
 cd codeforge-ide
 
-# 3. تثبيت المكتبات
+# 2. تثبيت المكتبات
 pnpm install
 
-# 4. تشغيل في وضع التطوير
+# 3. تشغيل في وضع التطوير
 pnpm dev
 ```
 
 سيعمل التطبيق على `http://localhost:3000`
 
+### إعداد وكيل الذكاء الاصطناعي
+
+1. افتح **الإعدادات** (⚙️) في الشريط الجانبي
+2. اختر **مزوّد LLM** (OpenAI / Anthropic / Google / Groq)
+3. أدخل **مفتاح API** الخاص بالمزوّد
+4. أدخل **GitHub Personal Access Token** (لعمليات المستودع)
+5. اختر النموذج المناسب وابدأ المحادثة!
+
 ### البناء للإنتاج
 
 ```bash
-# بناء التطبيق
 pnpm build
-
-# تشغيل نسخة الإنتاج
 pnpm start
 ```
 
 ---
 
-## 📖 Documentation
-
-### دليل المستخدم
-
-- 📐 [**نظرة عامة على البنية**](./docs/architecture.md) - تفاصيل معمارية التطبيق
-- 🔗 [**دليل تكامل Git**](./docs/git-integration.md) - كيفية استخدام Git و GitHub
-- 💻 [**أوامر المحطة الطرفية**](./docs/terminal-commands.md) - قائمة كاملة بالأوامر المدعومة
-- ⌨️ [**اختصارات لوحة المفاتيح**](./docs/keyboard-shortcuts.md) - جميع الاختصارات المتاحة
-- 🤝 [**دليل المساهمة**](./CONTRIBUTING.md) - كيفية المساهمة في المشروع
-
-### مقالات تعليمية
-
-- 🎯 [Getting Started Guide](./docs/getting-started.md)
-- 🔧 [Configuration Guide](./docs/configuration.md)
-- 🎨 [Customization Guide](./docs/customization.md)
-- 🐛 [Troubleshooting](./docs/troubleshooting.md)
-
----
-
-## 🏗️ Architecture
+## 🏗️ البنية المعمارية
 
 ```
 CodeForge IDE
+├── 🤖 AI Agent Layer (lib/agent/)
+│   ├── agent-service.ts      → المحرك الأساسي (conversation loop + tool execution)
+│   ├── types.ts               → جميع الأنواع TypeScript
+│   ├── constants.ts           → ثوابت (providers, models, limits)
+│   ├── audit-logger.ts        → سجل تدقيق مع localStorage
+│   ├── providers/             → مهايئات المزوّدين (OpenAI, Anthropic, Google, Groq)
+│   ├── tools/                 → 45 أداة (github/, filesystem/, git/, utility/)
+│   ├── safety/                → نظام الأمان الثلاثي (risk-classifier + approval-manager)
+│   ├── bridge/                → ربط الأدوات بالأنظمة الفعلية
+│   ├── hooks/                 → React hooks (useAgentChat, useAuditLog)
+│   └── __tests__/             → اختبارات التكامل (13 حالة)
+│
 ├── 🎨 Frontend (Next.js + React)
-│   ├── Monaco Editor (Code Editing)
-│   ├── xterm.js (Terminal)
-│   └── shadcn/ui (Components)
+│   ├── Monaco Editor          → تحرير الأكواد
+│   ├── xterm.js               → المحطة الطرفية
+│   ├── Agent Panel            → واجهة المحادثة مع الوكيل
+│   ├── Approval Dialog        → حوار الموافقة على العمليات الخطرة
+│   ├── Notify Toast           → إشعارات العمليات المتوسطة
+│   └── Tool Call Status       → عرض حالة 45 أداة مع أيقونات
 │
 ├── 💾 State Management (Zustand)
 │   ├── Editor Store
@@ -141,148 +144,137 @@ CodeForge IDE
 │   └── Terminal Service
 │
 └── 🗄️ Storage Layer
-    ├── IndexedDB (File Storage)
-    ├── LocalStorage (Settings)
+    ├── IndexedDB (Files)
+    ├── LocalStorage (Settings + Audit Log)
     └── Session Storage (Auth Tokens)
 ```
 
 ### Technology Stack
 
-| Category             | Technology                         |
-| -------------------- | ---------------------------------- |
-| **Frontend**         | Next.js 14.2, React 18, TypeScript |
-| **Editor**           | Monaco Editor                      |
-| **Terminal**         | xterm.js                           |
-| **UI Library**       | shadcn/ui, Tailwind CSS            |
-| **State Management** | Zustand                            |
-| **Git Integration**  | isomorphic-git                     |
-| **Storage**          | IndexedDB, LightningFS             |
-| **Authentication**   | NextAuth.js (GitHub OAuth)         |
-| **Package Manager**  | pnpm                               |
+| الفئة | التقنية |
+|---|---|
+| **Frontend** | Next.js 14.2, React 18, TypeScript |
+| **Editor** | Monaco Editor |
+| **Terminal** | xterm.js |
+| **UI Library** | shadcn/ui, Tailwind CSS, Framer Motion |
+| **State** | Zustand |
+| **Git** | isomorphic-git |
+| **Storage** | IndexedDB, LightningFS, localStorage |
+| **Auth** | NextAuth.js (GitHub OAuth) |
+| **AI Agent** | Custom engine, Multi-provider (4 LLMs) |
+| **AI Tools** | 45 tools, Triple-layer safety |
+| **Testing** | Jest / Vitest, 13 integration tests |
+| **Package Manager** | pnpm |
 
 ---
 
-## 🧪 Testing
+## 🛡️ نظام الأمان الثلاثي
+
+كل أداة من الـ 45 مصنّفة في أحد ثلاث مستويات:
+
+| المستوى | الأدوات | السلوك | مثال |
+|---|---|---|---|
+| 🟢 **AUTO** | 15 أداة | ينفّذ فوراً بلا تدخل | `github_read_file`, `git_status`, `fs_list_files` |
+| 🟡 **NOTIFY** | 17 أداة | ينفّذ + يظهر Toast إشعاري | `github_push_file`, `github_edit_file`, `git_commit` |
+| 🔴 **CONFIRM** | 13 أداة | يوقف وينتظر موافقة صريحة | `github_delete_file`, `github_merge_pull_request`, `git_push` |
+
+راجع [ARCHITECTURE.md](./docs/ARCHITECTURE.md) للقائمة الكاملة.
+
+---
+
+## 🧪 الاختبارات
 
 ```bash
-# تشغيل الاختبارات
+# تشغيل اختبارات التكامل
+npx vitest run lib/agent/__tests__/integration.test.ts
+
+# تشغيل جميع الاختبارات
 pnpm test
 
-# تشغيل الاختبارات مع التغطية
+# مع التغطية
 pnpm test:coverage
-
-# تشغيل الاختبارات في وضع المراقبة
-pnpm test:ui
 ```
 
-### أنواع الاختبارات
+### حالات الاختبار (13 اختبار)
 
-- ✅ **Unit Tests** - اختبارات الوحدات للمكونات الفردية
-- 🔗 **Integration Tests** - اختبارات التكامل بين الخدمات
-- 🎭 **E2E Tests** - اختبارات شاملة للمستخدم النهائي
+| المجموعة | العدد | يختبر |
+|---|---|---|
+| Type Compatibility | 3 | توافق `ApprovalSource` و `RiskLevel` عبر الوحدات |
+| Safety Classification | 4 | تصنيف AUTO/NOTIFY/CONFIRM + fallback |
+| Audit Logger | 6 | log, logStart, reject, filter, stats, CSV export |
+| Safety→Audit Integration | 2 | التدفق الكامل: safety → execute → audit |
 
 ---
 
-## 🤝 Contributing
+## 📖 التوثيق
 
-نرحب بجميع المساهمات! يرجى قراءة [دليل المساهمة](./CONTRIBUTING.md) قبل البدء.
-
-### خطوات المساهمة
-
-1. **Fork** المشروع
-2. **Create** فرع للميزة الجديدة (`git checkout -b feature/AmazingFeature`)
-3. **Commit** التغييرات (`git commit -m 'Add some AmazingFeature'`)
-4. **Push** إلى الفرع (`git push origin feature/AmazingFeature`)
-5. **Open** Pull Request
-
-### قواعد Commit Messages
-
-نستخدم [Conventional Commits](https://www.conventionalcommits.org/):
-
-```
-feat: add new feature
-fix: bug fix
-docs: documentation changes
-style: formatting, missing semi colons, etc
-refactor: code refactoring
-test: adding tests
-chore: maintain
-```
+- 🏗️ [**البنية المعمارية**](./docs/ARCHITECTURE.md) — توثيق كامل لنظام الوكيل
+- 📋 [**سجل التغييرات**](./CHANGELOG.md) — كل التحديثات مرحلة بمرحلة
+- 🔗 [**دليل تكامل Git**](./docs/git-integration.md) — كيفية استخدام Git و GitHub
+- 💻 [**أوامر المحطة الطرفية**](./docs/terminal-commands.md) — قائمة الأوامر المدعومة
+- ⌨️ [**اختصارات لوحة المفاتيح**](./docs/keyboard-shortcuts.md) — الاختصارات المتاحة
 
 ---
 
-## 📝 Roadmap
+## 🤝 المساهمة
 
-### Version 1.0 (Current)
+نرحب بجميع المساهمات! راجع [دليل المساهمة](./CONTRIBUTING.md).
 
-- [x] Monaco Editor Integration
-- [x] GitHub OAuth
-- [x] Basic Git Operations
-- [x] Terminal Emulator
-- [x] File System
-- [x] PWA Support
-- [x] Performance Monitoring
-- [x] CI/CD Pipeline
+```bash
+# 1. Fork المشروع
+# 2. أنشئ فرعاً: git checkout -b feature/MyFeature
+# 3. احفظ: git commit -m 'feat: add MyFeature'
+# 4. ادفع: git push origin feature/MyFeature
+# 5. افتح Pull Request
+```
 
-### Version 1.1 (Next)
+nستخدم [Conventional Commits](https://www.conventionalcommits.org/):
+`feat:` | `fix:` | `docs:` | `refactor:` | `test:` | `chore:`
 
-- [ ] Extensions System
-- [ ] Themes Marketplace
-- [ ] Collaborative Editing
-- [ ] Cloud Sync
-- [ ] Mobile Support
+---
 
-### Version 2.0 (Future)
+## 📝 خارطة الطريق
 
-- [ ] AI Code Assistant
+### Version 1.0 ✅ (الحالي)
+
+- [x] Monaco Editor + Terminal + File System
+- [x] GitHub OAuth + Git Operations
+- [x] **وكيل ذكاء اصطناعي مستقل (Multi-Provider)**
+- [x] **45 أداة ذكية (4 فئات)**
+- [x] **نظام أمان ثلاثي الطبقات**
+- [x] **سجل تدقيق مع تصدير**
+- [x] **13 اختبار تكامل**
+- [x] PWA Support + CI/CD
+
+### Version 1.1 (التالي)
+
+- [ ] Streaming responses (SSE)
+- [ ] Extensions / Plugins system
+- [ ] Agent memory (cross-session context)
+- [ ] Voice commands
+- [ ] Collaborative editing
+
+### Version 2.0 (المستقبل)
+
+- [ ] Multi-agent orchestration
 - [ ] Live Share
 - [ ] Debugging Tools
-- [ ] Performance Profiler
 - [ ] Container Support
+- [ ] Mobile app
 
 ---
 
-## 📄 License
+## 📄 الرخصة
 
-هذا المشروع مرخص بموجب **MIT License** - راجع ملف [LICENSE](./LICENSE) للتفاصيل.
-
-```
-MIT License
-
-Copyright (c) 2026 CodeForge IDE Contributors
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction...
-```
+مرخص بموجب **MIT License** — راجع [LICENSE](./LICENSE) للتفاصيل.
 
 ---
-
-## 👥 Team
 
 <div align="center">
 
-تم التطوير بواسطة **bahoma31-jpg** وفريق المساهمين الرائعين
+**تم التطوير بواسطة [bahoma31-jpg](https://github.com/bahoma31-jpg)**
 
 [![GitHub](https://img.shields.io/github/followers/bahoma31-jpg?label=Follow&style=social)](https://github.com/bahoma31-jpg)
-
-</div>
-
----
-
-## 🙏 Acknowledgments
-
-شكر خاص لـ:
-
-- [Monaco Editor](https://microsoft.github.io/monaco-editor/) - Microsoft
-- [xterm.js](https://xtermjs.org/) - SourceLair
-- [isomorphic-git](https://isomorphic-git.org/) - William Hilton
-- [shadcn/ui](https://ui.shadcn.com/) - shadcn
-- [Next.js](https://nextjs.org/) - Vercel
-
----
-
-<div align="center">
 
 **⭐ إذا أعجبك المشروع، لا تنسى إضافة نجمة! ⭐**
 
