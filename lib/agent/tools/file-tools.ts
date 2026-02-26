@@ -1,25 +1,29 @@
 /**
- * CodeForge IDE — File System Tools
- * Agent tools for local file operations (IndexedDB).
+ * CodeForge IDE — File System Tools (with Store Bridge)
+ * Agent tools for local file operations.
+ * All WRITE operations sync with File Explorer and Editor via store-bridge.
+ * All READ operations use direct DB calls for speed.
+ *
  * 9 tools: list, read, search, create, update, createFolder, delete, rename, move.
  */
 
 import type { ToolDefinition, ToolCallResult } from '../types';
 import type { AgentService } from '../agent-service';
 import {
-  createFile as dbCreateFile,
-  createFolder as dbCreateFolder,
   readFile as dbReadFile,
-  updateFile as dbUpdateFile,
-  deleteNode as dbDeleteNode,
-  renameNode as dbRenameNode,
-  moveNode as dbMoveNode,
   getAllNodes as dbGetAllNodes,
   searchFiles as dbSearchFiles,
   getChildren as dbGetChildren,
   readFileByPath as dbReadFileByPath,
 } from '@/lib/db/file-operations';
 import type { FileNode } from '@/lib/db/schema';
+import {
+  refreshFileTree,
+  refreshOpenFile,
+  closeDeletedFileTab,
+  expandParentFolder,
+  sendNotification,
+} from '../bridge';
 
 // ─── Tool Definitions ─────────────────────────────────────────
 
@@ -62,7 +66,7 @@ export const fileTools: ToolDefinition[] = [
   },
   {
     name: 'search_files',
-    description: 'Search for files by name. Returns matching files with their paths and types.',
+    description: 'Search for files by name or content. Returns matching files with their paths and types.',
     parameters: {
       type: 'object',
       properties: {
@@ -78,7 +82,7 @@ export const fileTools: ToolDefinition[] = [
   },
   {
     name: 'create_file',
-    description: 'Create a new file with the specified name, content, and language. The file is created in the specified parent folder.',
+    description: 'Create a new file with the specified name, content, and language. The file appears immediately in the File Explorer.',
     parameters: {
       type: 'object',
       properties: {
@@ -107,7 +111,7 @@ export const fileTools: ToolDefinition[] = [
   },
   {
     name: 'update_file',
-    description: 'Update the content of an existing file. Shows a diff of the changes.',
+    description: 'Update the content of an existing file. The editor tab refreshes automatically if the file is open.',
     parameters: {
       type: 'object',
       properties: {
@@ -115,19 +119,23 @@ export const fileTools: ToolDefinition[] = [
           type: 'string',
           description: 'The UUID of the file to update.',
         },
+        filePath: {
+          type: 'string',
+          description: 'The path of the file to update (alternative to fileId).',
+        },
         newContent: {
           type: 'string',
           description: 'The new content to replace the file content with.',
         },
       },
-      required: ['fileId', 'newContent'],
+      required: ['newContent'],
     },
     riskLevel: 'notify',
     category: 'filesystem',
   },
   {
     name: 'create_folder',
-    description: 'Create a new folder in the project.',
+    description: 'Create a new folder in the project. Appears immediately in the File Explorer.',
     parameters: {
       type: 'object',
       properties: {
@@ -148,7 +156,7 @@ export const fileTools: ToolDefinition[] = [
   },
   {
     name: 'delete_file',
-    description: 'Delete a file or folder (and all its children if folder). This is a destructive operation that requires user confirmation.',
+    description: 'Delete a file or folder (and all its children). Closes the editor tab if open. Requires user confirmation.',
     parameters: {
       type: 'object',
       properties: {
@@ -164,7 +172,7 @@ export const fileTools: ToolDefinition[] = [
   },
   {
     name: 'rename_file',
-    description: 'Rename a file or folder.',
+    description: 'Rename a file or folder. Updates the File Explorer immediately.',
     parameters: {
       type: 'object',
       properties: {
@@ -184,7 +192,7 @@ export const fileTools: ToolDefinition[] = [
   },
   {
     name: 'move_file',
-    description: 'Move a file or folder to a different parent folder.',
+    description: 'Move a file or folder to a different parent folder. Updates the File Explorer.',
     parameters: {
       type: 'object',
       properties: {
@@ -205,7 +213,7 @@ export const fileTools: ToolDefinition[] = [
   },
 ];
 
-// ─── Tool Executors ───────────────────────────────────────────
+// ─── Helper ───────────────────────────────────────────────────
 
 function formatNode(node: FileNode): Record<string, unknown> {
   return {
@@ -219,7 +227,11 @@ function formatNode(node: FileNode): Record<string, unknown> {
   };
 }
 
+// ─── Tool Executors (with Store Bridge) ───────────────────────
+
 export function registerFileExecutors(service: AgentService): void {
+  // ── READ OPERATIONS (direct DB — fast path) ─────────────
+
   // list_files
   service.registerToolExecutor('list_files', async (args) => {
     try {
@@ -232,8 +244,7 @@ export function registerFileExecutors(service: AgentService): void {
         nodes = await dbGetAllNodes();
       }
 
-      const formatted = nodes.map(formatNode);
-      return { success: true, data: formatted };
+      return { success: true, data: nodes.map(formatNode) };
     } catch (error) {
       return { success: false, error: (error as Error).message };
     }
@@ -253,10 +264,7 @@ export function registerFileExecutors(service: AgentService): void {
 
       return {
         success: true,
-        data: {
-          ...formatNode(file),
-          content: file.content || '',
-        },
+        data: { ...formatNode(file), content: file.content || '' },
       };
     } catch (error) {
       return { success: false, error: (error as Error).message };
@@ -273,15 +281,27 @@ export function registerFileExecutors(service: AgentService): void {
     }
   });
 
-  // create_file
+  // ── WRITE OPERATIONS (via Files Store → auto-syncs UI) ──
+
+  // create_file — uses filesStore to auto-refresh File Explorer
   service.registerToolExecutor('create_file', async (args) => {
     try {
-      const file = await dbCreateFile(
+      const { useFilesStore } = await import('@/lib/stores/files-store');
+      const store = useFilesStore.getState();
+
+      const file = await store.createFile(
         args.name as string,
         (args.parentId as string) || null,
         (args.content as string) || '',
         args.language as string | undefined
       );
+
+      // Expand parent folder so the new file is visible
+      await expandParentFolder((args.parentId as string) || null);
+
+      // Notify user
+      await sendNotification(`🤖 تم إنشاء ملف: ${file.name}`, 'success');
+
       return {
         success: true,
         data: formatNode(file),
@@ -297,16 +317,35 @@ export function registerFileExecutors(service: AgentService): void {
     }
   });
 
-  // update_file
+  // update_file — uses filesStore + refreshes open editor tab
   service.registerToolExecutor('update_file', async (args) => {
     try {
-      const oldFile = await dbReadFile(args.fileId as string);
+      // Resolve file ID from path if needed
+      let fileId = args.fileId as string;
+      if (!fileId && args.filePath) {
+        const file = await dbReadFileByPath(args.filePath as string);
+        fileId = file.id;
+      }
+      if (!fileId) {
+        return { success: false, error: 'Either fileId or filePath is required' };
+      }
+
+      // Read old content for diff
+      const oldFile = await dbReadFile(fileId);
       const oldContent = oldFile.content || '';
       const newContent = args.newContent as string;
 
-      const updated = await dbUpdateFile(args.fileId as string, {
+      // Update via filesStore (auto-syncs file tree)
+      const { useFilesStore } = await import('@/lib/stores/files-store');
+      const updated = await useFilesStore.getState().updateFile(fileId, {
         content: newContent,
       });
+
+      // ★ KEY: Refresh the editor tab if this file is currently open
+      await refreshOpenFile(fileId, newContent);
+
+      // Notify user
+      await sendNotification(`🤖 تم تحديث: ${updated.name}`, 'info');
 
       return {
         success: true,
@@ -323,24 +362,43 @@ export function registerFileExecutors(service: AgentService): void {
     }
   });
 
-  // create_folder
+  // create_folder — uses filesStore to auto-refresh
   service.registerToolExecutor('create_folder', async (args) => {
     try {
-      const folder = await dbCreateFolder(
+      const { useFilesStore } = await import('@/lib/stores/files-store');
+      const store = useFilesStore.getState();
+
+      const folder = await store.createFolder(
         args.name as string,
         (args.parentId as string) || null
       );
+
+      await sendNotification(`🤖 تم إنشاء مجلد: ${folder.name}`, 'success');
+
       return { success: true, data: formatNode(folder) };
     } catch (error) {
       return { success: false, error: (error as Error).message };
     }
   });
 
-  // delete_file
+  // delete_file — uses filesStore + closes editor tab
   service.registerToolExecutor('delete_file', async (args) => {
     try {
-      const node = await dbReadFile(args.nodeId as string);
-      await dbDeleteNode(args.nodeId as string);
+      const nodeId = args.nodeId as string;
+
+      // Read file info before deleting (for diff)
+      const node = await dbReadFile(nodeId);
+
+      // Delete via filesStore (auto-refreshes tree)
+      const { useFilesStore } = await import('@/lib/stores/files-store');
+      await useFilesStore.getState().deleteNode(nodeId);
+
+      // ★ KEY: Close the editor tab if this file was open
+      await closeDeletedFileTab(nodeId);
+
+      // Notify user
+      await sendNotification(`🤖 تم حذف: ${node.name}`, 'warning');
+
       return {
         success: true,
         data: { deleted: formatNode(node) },
@@ -356,45 +414,35 @@ export function registerFileExecutors(service: AgentService): void {
     }
   });
 
-  // rename_file
+  // rename_file — uses filesStore to auto-refresh
   service.registerToolExecutor('rename_file', async (args) => {
     try {
-      const renamed = await dbRenameNode(
+      const { useFilesStore } = await import('@/lib/stores/files-store');
+      const renamed = await useFilesStore.getState().renameNode(
         args.nodeId as string,
         args.newName as string
       );
-      return {
-        success: true,
-        data: formatNode(renamed),
-        diff: {
-          filePath: renamed.path,
-          oldContent: '',
-          newContent: '',
-          type: 'rename' as const,
-        },
-      };
+
+      await sendNotification(`🤖 تمت إعادة التسمية إلى: ${renamed.name}`, 'info');
+
+      return { success: true, data: formatNode(renamed) };
     } catch (error) {
       return { success: false, error: (error as Error).message };
     }
   });
 
-  // move_file
+  // move_file — uses filesStore to auto-refresh
   service.registerToolExecutor('move_file', async (args) => {
     try {
-      const moved = await dbMoveNode(
+      const { useFilesStore } = await import('@/lib/stores/files-store');
+      const moved = await useFilesStore.getState().moveNode(
         args.nodeId as string,
         (args.newParentId as string) || null
       );
-      return {
-        success: true,
-        data: formatNode(moved),
-        diff: {
-          filePath: moved.path,
-          oldContent: '',
-          newContent: '',
-          type: 'move' as const,
-        },
-      };
+
+      await sendNotification(`🤖 تم نقل: ${moved.name}`, 'info');
+
+      return { success: true, data: formatNode(moved) };
     } catch (error) {
       return { success: false, error: (error as Error).message };
     }

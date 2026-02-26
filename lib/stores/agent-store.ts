@@ -1,7 +1,9 @@
 /**
- * CodeForge IDE — Agent Store
+ * CodeForge IDE — Agent Store (with Real Approval System)
  * Zustand store for AI agent state management.
- * Manages messages, config, approvals, and agent lifecycle.
+ *
+ * KEY FIX: Approval system now uses real async Promise resolvers
+ * instead of setTimeout auto-approve hack.
  */
 
 import { create } from 'zustand';
@@ -9,163 +11,131 @@ import { v4 as uuidv4 } from 'uuid';
 import type {
   AgentConfig,
   AgentMessage,
-  ToolCall,
   PendingApproval,
   AuditLogEntry,
+  ToolCall,
   ProviderId,
-} from '../agent/types';
-import { AgentService, DEFAULT_SYSTEM_PROMPT } from '../agent/agent-service';
-import { getDefaultModel } from '../agent/providers';
+} from '@/lib/agent/types';
+import { AgentService } from '@/lib/agent/agent-service';
+import { allTools } from '@/lib/agent/tools';
+import { registerFileExecutors } from '@/lib/agent/tools/file-tools';
+import { registerGitExecutors } from '@/lib/agent/tools/git-tools';
+import { AGENT_CONFIG_KEY, MAX_HISTORY_MESSAGES } from '@/lib/agent/constants';
 
-// ─── Storage Keys ─────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────
 
-const CONFIG_KEY = 'codeforge-agent-config';
-const HISTORY_KEY = 'codeforge-agent-history';
+interface ApprovalResolver {
+  resolve: (approved: boolean) => void;
+  approval: PendingApproval;
+}
+
+interface AgentState {
+  // Core
+  messages: AgentMessage[];
+  isProcessing: boolean;
+  isPanelOpen: boolean;
+  error: string | null;
+  isConfigured: boolean;
+
+  // Config
+  config: AgentConfig;
+
+  // Approvals
+  pendingApprovals: PendingApproval[];
+  auditLog: AuditLogEntry[];
+  currentToolCall: ToolCall | null;
+
+  // Actions — Core
+  initialize: () => void;
+  sendMessage: (content: string) => Promise<void>;
+  clearMessages: () => void;
+  clearError: () => void;
+
+  // Actions — Panel
+  openPanel: () => void;
+  closePanel: () => void;
+  togglePanel: () => void;
+
+  // Actions — Config
+  setProvider: (provider: ProviderId) => void;
+  setApiKey: (key: string) => void;
+  setModel: (model: string) => void;
+  updateConfig: (partial: Partial<AgentConfig>) => void;
+
+  // Actions — Approvals
+  approveAction: (approvalId: string) => void;
+  rejectAction: (approvalId: string) => void;
+}
+
+// ─── Approval Resolver Map ────────────────────────────────────
+// This lives outside the store to avoid serialization issues.
+// Maps approval IDs to their Promise resolvers.
+
+const approvalResolvers = new Map<string, ApprovalResolver>();
+
+// ─── Service Instance ─────────────────────────────────────────
+
+let agentService: AgentService | null = null;
+
+function getOrCreateService(config: AgentConfig): AgentService {
+  if (!agentService) {
+    agentService = new AgentService(config, allTools);
+    registerFileExecutors(agentService);
+    registerGitExecutors(agentService);
+  } else {
+    agentService.updateConfig(config);
+  }
+  return agentService;
+}
 
 // ─── Default Config ───────────────────────────────────────────
 
-const DEFAULT_CONFIG: AgentConfig = {
+const defaultConfig: AgentConfig = {
   provider: 'groq',
   apiKey: '',
-  model: getDefaultModel('groq').id,
-  systemPrompt: DEFAULT_SYSTEM_PROMPT,
+  model: 'llama-3.3-70b-versatile',
   temperature: 0.3,
   maxTokens: 4096,
   language: 'ar',
 };
 
-// ─── Store Interface ──────────────────────────────────────────
-
-interface AgentState {
-  // State
-  messages: AgentMessage[];
-  config: AgentConfig;
-  isConfigured: boolean;
-  isProcessing: boolean;
-  isPanelOpen: boolean;
-  error: string | null;
-  pendingApprovals: PendingApproval[];
-  auditLog: AuditLogEntry[];
-  currentToolCall: ToolCall | null;
-
-  // Service
-  service: AgentService | null;
-
-  // Actions — Config
-  setProvider: (provider: ProviderId) => void;
-  setApiKey: (apiKey: string) => void;
-  setModel: (model: string) => void;
-  updateConfig: (updates: Partial<AgentConfig>) => void;
-  loadConfig: () => void;
-  saveConfig: () => void;
-
-  // Actions — Messaging
-  sendMessage: (content: string) => Promise<void>;
-  addMessage: (message: AgentMessage) => void;
-  clearMessages: () => void;
-  loadHistory: () => void;
-  saveHistory: () => void;
-
-  // Actions — Approvals
-  approveAction: (approvalId: string) => void;
-  rejectAction: (approvalId: string) => void;
-
-  // Actions — UI
-  togglePanel: () => void;
-  openPanel: () => void;
-  closePanel: () => void;
-  clearError: () => void;
-
-  // Actions — Lifecycle
-  initialize: () => void;
-  reset: () => void;
-}
-
-// ─── Store Implementation ─────────────────────────────────────
+// ─── Store ────────────────────────────────────────────────────
 
 export const useAgentStore = create<AgentState>((set, get) => ({
-  // Initial State
+  // Initial state
   messages: [],
-  config: DEFAULT_CONFIG,
-  isConfigured: false,
   isProcessing: false,
   isPanelOpen: false,
   error: null,
+  isConfigured: false,
+  config: defaultConfig,
   pendingApprovals: [],
   auditLog: [],
   currentToolCall: null,
-  service: null,
 
-  // ── Config Actions ────────────────────────────────────────
-
-  setProvider: (provider) => {
-    const model = getDefaultModel(provider).id;
-    set((state) => ({
-      config: { ...state.config, provider, model },
-    }));
-    get().saveConfig();
-  },
-
-  setApiKey: (apiKey) => {
-    set((state) => ({
-      config: { ...state.config, apiKey },
-      isConfigured: apiKey.length > 0,
-    }));
-    get().saveConfig();
-  },
-
-  setModel: (model) => {
-    set((state) => ({
-      config: { ...state.config, model },
-    }));
-    get().saveConfig();
-  },
-
-  updateConfig: (updates) => {
-    set((state) => ({
-      config: { ...state.config, ...updates },
-    }));
-    get().saveConfig();
-  },
-
-  loadConfig: () => {
-    if (typeof window === 'undefined') return;
-    const saved = localStorage.getItem(CONFIG_KEY);
-    if (saved) {
-      try {
+  // ─── Initialize ──────────────────────────────────────────
+  initialize: () => {
+    try {
+      const saved = localStorage.getItem(AGENT_CONFIG_KEY);
+      if (saved) {
         const parsed = JSON.parse(saved) as Partial<AgentConfig>;
-        set((state) => ({
-          config: { ...state.config, ...parsed },
-          isConfigured: Boolean(parsed.apiKey && parsed.apiKey.length > 0),
-        }));
-      } catch {
-        console.error('Failed to parse saved agent config');
+        const config = { ...defaultConfig, ...parsed };
+        set({
+          config,
+          isConfigured: !!config.apiKey,
+        });
       }
+    } catch (error) {
+      console.error('[AgentStore] Failed to load config:', error);
     }
   },
 
-  saveConfig: () => {
-    if (typeof window === 'undefined') return;
-    const { config } = get();
-    // Save config but mask API key (store only first/last 4 chars)
-    const safeConfig = {
-      ...config,
-      apiKey: config.apiKey, // In production, consider encrypting
-    };
-    localStorage.setItem(CONFIG_KEY, JSON.stringify(safeConfig));
-  },
+  // ─── Send Message (main loop) ────────────────────────────
+  sendMessage: async (content: string) => {
+    const state = get();
+    if (!state.isConfigured || state.isProcessing) return;
 
-  // ── Messaging Actions ─────────────────────────────────────
-
-  sendMessage: async (content) => {
-    const { config, messages, service } = get();
-
-    if (!config.apiKey) {
-      set({ error: 'يرجى إدخال مفتاح API أولاً في الإعدادات.' });
-      return;
-    }
-
-    // Create user message
+    // Add user message
     const userMessage: AgentMessage = {
       id: uuidv4(),
       role: 'user',
@@ -173,155 +143,126 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       createdAt: Date.now(),
     };
 
-    set((state) => ({
-      messages: [...state.messages, userMessage],
+    set((s) => ({
+      messages: [...s.messages, userMessage],
       isProcessing: true,
       error: null,
     }));
 
     try {
-      // Initialize service if needed
-      let agentService = service;
-      if (!agentService) {
-        const { getAllTools } = await import('../agent/tools');
-        const tools = getAllTools();
-        agentService = new AgentService(config, tools);
+      const service = getOrCreateService(get().config);
+      const allMessages = get().messages;
 
-        // Register tool executors
-        const { registerAllExecutors } = await import('../agent/tools');
-        registerAllExecutors(agentService);
-
-        set({ service: agentService });
-      } else {
-        agentService.updateConfig(config);
-      }
-
-      // Send message to agent
-      const allMessages = [...messages, userMessage];
-      const response = await agentService.sendMessage(
+      const response = await service.sendMessage(
         allMessages,
-        undefined, // projectContext — will be enhanced later
-        // onToolCall callback
-        (toolCall) => {
+        undefined,
+        // onToolCall — update current tool indicator
+        (toolCall: ToolCall) => {
           set({ currentToolCall: toolCall });
         },
-        // onApprovalRequired callback
-        async (approval) => {
+        // onApprovalRequired — show dialog and wait for real user input
+        async (approval: PendingApproval): Promise<boolean> => {
           return new Promise<boolean>((resolve) => {
-            set((state) => ({
-              pendingApprovals: [
-                ...state.pendingApprovals,
-                {
-                  ...approval,
-                  // Store resolve function reference via ID
-                },
-              ],
-            }));
+            // Store the resolver
+            approvalResolvers.set(approval.id, { resolve, approval });
 
-            // For now, auto-approve (will be replaced with UI)
-            // TODO: Wire up to approval UI component
-            setTimeout(() => resolve(true), 100);
+            // Add to pending approvals in UI
+            set((s) => ({
+              pendingApprovals: [...s.pendingApprovals, approval],
+            }));
           });
         }
       );
 
-      set((state) => ({
-        messages: [...state.messages, response],
-        isProcessing: false,
+      // Add assistant response
+      set((s) => ({
+        messages: [...s.messages, response].slice(-MAX_HISTORY_MESSAGES),
         currentToolCall: null,
+        auditLog: service.getAuditLog(),
       }));
-
-      get().saveHistory();
     } catch (error) {
-      const message = error instanceof Error
-        ? error.message
-        : 'فشل في التواصل مع الوكيل الذكي';
-      set({
-        error: message,
-        isProcessing: false,
-        currentToolCall: null,
-      });
+      const message = error instanceof Error ? error.message : 'حدث خطأ غير متوقع';
+      set({ error: message, currentToolCall: null });
+    } finally {
+      set({ isProcessing: false });
     }
   },
 
-  addMessage: (message) => {
-    set((state) => ({
-      messages: [...state.messages, message],
-    }));
-  },
-
-  clearMessages: () => {
-    set({ messages: [] });
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(HISTORY_KEY);
+  // ─── Approval Actions (real resolvers) ───────────────────
+  approveAction: (approvalId: string) => {
+    const resolver = approvalResolvers.get(approvalId);
+    if (resolver) {
+      resolver.resolve(true);
+      approvalResolvers.delete(approvalId);
     }
-  },
 
-  loadHistory: () => {
-    if (typeof window === 'undefined') return;
-    const saved = localStorage.getItem(HISTORY_KEY);
-    if (saved) {
-      try {
-        const messages = JSON.parse(saved) as AgentMessage[];
-        set({ messages });
-      } catch {
-        console.error('Failed to parse saved agent history');
-      }
-    }
-  },
-
-  saveHistory: () => {
-    if (typeof window === 'undefined') return;
-    const { messages } = get();
-    // Keep last 50 messages to avoid storage bloat
-    const recent = messages.slice(-50);
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(recent));
-  },
-
-  // ── Approval Actions ──────────────────────────────────────
-
-  approveAction: (approvalId) => {
-    set((state) => ({
-      pendingApprovals: state.pendingApprovals.map((a) =>
+    // Update UI state
+    set((s) => ({
+      pendingApprovals: s.pendingApprovals.map((a) =>
         a.id === approvalId ? { ...a, status: 'approved' as const } : a
       ),
     }));
   },
 
-  rejectAction: (approvalId) => {
-    set((state) => ({
-      pendingApprovals: state.pendingApprovals.map((a) =>
+  rejectAction: (approvalId: string) => {
+    const resolver = approvalResolvers.get(approvalId);
+    if (resolver) {
+      resolver.resolve(false);
+      approvalResolvers.delete(approvalId);
+    }
+
+    // Update UI state
+    set((s) => ({
+      pendingApprovals: s.pendingApprovals.map((a) =>
         a.id === approvalId ? { ...a, status: 'rejected' as const } : a
       ),
     }));
   },
 
-  // ── UI Actions ────────────────────────────────────────────
-
-  togglePanel: () => set((state) => ({ isPanelOpen: !state.isPanelOpen })),
+  // ─── Panel Actions ───────────────────────────────────────
   openPanel: () => set({ isPanelOpen: true }),
   closePanel: () => set({ isPanelOpen: false }),
+  togglePanel: () => set((s) => ({ isPanelOpen: !s.isPanelOpen })),
+
+  // ─── Message Actions ─────────────────────────────────────
+  clearMessages: () => set({ messages: [], pendingApprovals: [], auditLog: [] }),
   clearError: () => set({ error: null }),
 
-  // ── Lifecycle Actions ─────────────────────────────────────
-
-  initialize: () => {
-    get().loadConfig();
-    get().loadHistory();
+  // ─── Config Actions (persist to localStorage) ────────────
+  setProvider: (provider: ProviderId) => {
+    set((s) => {
+      const config = { ...s.config, provider, apiKey: '', model: '' };
+      localStorage.setItem(AGENT_CONFIG_KEY, JSON.stringify(config));
+      return { config, isConfigured: false };
+    });
+    // Reset service to pick up new provider
+    agentService = null;
   },
 
-  reset: () => {
-    set({
-      messages: [],
-      isProcessing: false,
-      error: null,
-      pendingApprovals: [],
-      auditLog: [],
-      currentToolCall: null,
-      service: null,
+  setApiKey: (apiKey: string) => {
+    set((s) => {
+      const config = { ...s.config, apiKey };
+      localStorage.setItem(AGENT_CONFIG_KEY, JSON.stringify(config));
+      return { config, isConfigured: !!apiKey };
     });
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(HISTORY_KEY);
-    }
+    agentService = null;
+  },
+
+  setModel: (model: string) => {
+    set((s) => {
+      const config = { ...s.config, model };
+      localStorage.setItem(AGENT_CONFIG_KEY, JSON.stringify(config));
+      return { config };
+    });
+    agentService = null;
+  },
+
+  updateConfig: (partial: Partial<AgentConfig>) => {
+    set((s) => {
+      const config = { ...s.config, ...partial };
+      localStorage.setItem(AGENT_CONFIG_KEY, JSON.stringify(config));
+      return { config, isConfigured: !!config.apiKey };
+    });
+    agentService = null;
   },
 }));
