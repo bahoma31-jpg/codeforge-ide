@@ -8,6 +8,7 @@ import type { ToolDefinition } from '../types';
 import type { AgentService } from '../agent-service';
 import { fileTools, registerFileExecutors } from './file-tools';
 import { gitTools, registerGitExecutors } from './git-tools';
+import { githubTools, registerGitHubExecutors } from './github-tools';
 import { utilityTools, registerUtilityExecutors } from './utility-tools';
 
 /**
@@ -17,6 +18,7 @@ export function getAllTools(): ToolDefinition[] {
   return [
     ...fileTools,
     ...gitTools,
+    ...githubTools,
     ...utilityTools,
   ];
 }
@@ -27,6 +29,7 @@ export function getAllTools(): ToolDefinition[] {
 export const allTools: ToolDefinition[] = [
   ...fileTools,
   ...gitTools,
+  ...githubTools,
   ...utilityTools,
 ];
 
@@ -36,13 +39,16 @@ export const allTools: ToolDefinition[] = [
 export function registerAllExecutors(service: AgentService): void {
   registerFileExecutors(service);
   registerGitExecutors(service);
+  registerGitHubExecutors(service);
   registerUtilityExecutors(service);
 }
 
 /**
  * Get tools by category
  */
-export function getToolsByCategory(category: 'filesystem' | 'git' | 'utility'): ToolDefinition[] {
+export function getToolsByCategory(
+  category: 'filesystem' | 'git' | 'github' | 'utility'
+): ToolDefinition[] {
   return getAllTools().filter((t) => t.category === category);
 }
 

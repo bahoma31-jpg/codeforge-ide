@@ -32,6 +32,8 @@ export interface AgentConfig {
   temperature: number;
   maxTokens: number;
   language: 'ar' | 'en';
+  /** GitHub Personal Access Token for repo operations */
+  githubToken?: string;
 }
 
 // ─── Tool Types ───────────────────────────────────────────────
@@ -43,7 +45,7 @@ export interface ToolDefinition {
   description: string;
   parameters: Record<string, unknown>;
   riskLevel: RiskLevel;
-  category: 'filesystem' | 'git' | 'utility';
+  category: 'filesystem' | 'git' | 'github' | 'utility';
 }
 
 export interface ToolCall {
