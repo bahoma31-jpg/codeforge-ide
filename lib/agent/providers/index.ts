@@ -41,6 +41,13 @@ const OPENAI_MODELS: AgentModel[] = [
 
 const GOOGLE_MODELS: AgentModel[] = [
   {
+    id: 'gemini-2.5-flash',
+    name: 'Gemini 2.5 Flash',
+    contextWindow: 1048576,
+    supportsToolCalling: true,
+    supportsStreaming: true,
+  },
+  {
     id: 'gemini-2.0-flash',
     name: 'Gemini 2.0 Flash',
     contextWindow: 1048576,
@@ -118,7 +125,7 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
   google: {
     id: 'google',
     name: 'Google Gemini',
-    description: 'Gemini 2.0 — سياق طويل ومجاني جزئياً',
+    description: 'Gemini 2.5 Flash — سياق طويل ومجاني جزئياً',
     models: GOOGLE_MODELS,
     apiKeyPlaceholder: 'AIza...',
     apiKeyUrl: 'https://aistudio.google.com/apikey',
@@ -186,16 +193,12 @@ export function validateApiKeyFormat(providerId: ProviderId, apiKey: string): bo
 
   switch (providerId) {
     case 'openai':
-      // OpenAI keys: sk-... or sk-proj-... or sess-... (formats change)
       return key.length > 20;
     case 'google':
-      // Google AI Studio keys: AIza... (39 chars typically)
       return key.length > 20;
     case 'groq':
-      // Groq keys: gsk_... but format has changed, some keys don't have prefix
       return key.length > 20;
     case 'anthropic':
-      // Anthropic keys: sk-ant-...
       return key.length > 20;
     default:
       return key.length > 10;
