@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
@@ -10,11 +11,99 @@ import {
   Keyboard,
   Github,
   Clock,
+  Loader2,
+  User,
 } from 'lucide-react';
 import { useEditorStore } from '@/lib/stores/editor-store';
+import { useAuthStore } from '@/lib/stores/auth-store';
+import { useNotificationStore } from '@/lib/stores/notification-store';
+import { openFolder } from '@/lib/services/file-system.service';
+import { AuthDialog } from '@/components/codeforge/dialogs/auth-dialog';
+import { CloneDialog } from '@/components/codeforge/dialogs/clone-dialog';
+
+/** Docs that can be opened inside the editor */
+const DOCS = {
+  architecture: {
+    name: 'architecture.md',
+    path: '/docs/architecture.md',
+    language: 'markdown',
+  },
+  git: {
+    name: 'git-integration.md',
+    path: '/docs/git-integration.md',
+    language: 'markdown',
+  },
+  shortcuts: {
+    name: 'keyboard-shortcuts.md',
+    path: '/docs/keyboard-shortcuts.md',
+    language: 'markdown',
+  },
+} as const;
 
 export function WelcomeScreen() {
   const { openFile } = useEditorStore();
+  const { addNotification } = useNotificationStore();
+  const { isAuthenticated, user, restoreSession } = useAuthStore();
+
+  const [authOpen, setAuthOpen] = useState(false);
+  const [cloneOpen, setCloneOpen] = useState(false);
+  const [isOpeningFolder, setIsOpeningFolder] = useState(false);
+
+  // Restore GitHub session on mount
+  useEffect(() => {
+    restoreSession();
+  }, [restoreSession]);
+
+  const handleOpenFolder = async () => {
+    setIsOpeningFolder(true);
+    try {
+      const result = await openFolder();
+      addNotification({
+        type: 'success',
+        title: 'تم فتح المجلد',
+        message: `تم استيراد ${result.imported} ملف من "${result.rootName}"`,
+        autoDismiss: true,
+        dismissAfterMs: 5000,
+      });
+    } catch (err) {
+      if (err instanceof Error && err.message.includes('cancelled')) return;
+      addNotification({
+        type: 'error',
+        title: 'فشل فتح المجلد',
+        message: err instanceof Error ? err.message : 'خطأ غير متوقع',
+        autoDismiss: false,
+      });
+    } finally {
+      setIsOpeningFolder(false);
+    }
+  };
+
+  const handleCloneRepository = () => {
+    if (!isAuthenticated) {
+      addNotification({
+        type: 'warning',
+        title: 'تسجيل الدخول مطلوب',
+        message: 'يجب تسجيل الدخول بـ GitHub أولاً لاستنساخ المستودعات.',
+        autoDismiss: true,
+        action: {
+          label: 'تسجيل الدخول',
+          onClick: () => setAuthOpen(true),
+        },
+      });
+      return;
+    }
+    setCloneOpen(true);
+  };
+
+  const openDocInEditor = (doc: (typeof DOCS)[keyof typeof DOCS]) => {
+    openFile({
+      id: `doc-${doc.path}`,
+      name: doc.name,
+      content: `# ${doc.name}\n\nLoading documentation...`,
+      language: doc.language,
+      path: doc.path,
+    });
+  };
 
   const recentProjects = [
     {
@@ -75,19 +164,20 @@ export function WelcomeScreen() {
               <Button
                 variant="outline"
                 className="w-full justify-start"
-                onClick={() => {
-                  /* Open folder dialog */
-                }}
+                onClick={handleOpenFolder}
+                disabled={isOpeningFolder}
               >
-                <FolderOpen className="w-4 h-4 mr-2" />
+                {isOpeningFolder ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <FolderOpen className="w-4 h-4 mr-2" />
+                )}
                 Open Folder
               </Button>
               <Button
                 variant="outline"
                 className="w-full justify-start"
-                onClick={() => {
-                  /* Clone repository dialog */
-                }}
+                onClick={handleCloneRepository}
               >
                 <GitBranch className="w-4 h-4 mr-2" />
                 Clone Repository
@@ -123,9 +213,14 @@ export function WelcomeScreen() {
                   key={project.path}
                   variant="ghost"
                   className="w-full justify-start"
-                  onClick={() => {
-                    /* Open project */
-                  }}
+                  onClick={() =>
+                    addNotification({
+                      type: 'info',
+                      title: 'قريباً',
+                      message: `فتح المشاريع السابقة سيتوفر في إصدار قادم.`,
+                      autoDismiss: true,
+                    })
+                  }
                 >
                   <FolderOpen className="w-4 h-4 mr-2" />
                   <div className="flex-1 text-left">
@@ -142,7 +237,7 @@ export function WelcomeScreen() {
             </div>
           </Card>
 
-          {/* Getting Started */}
+          {/* Getting Started — opens docs in editor */}
           <Card className="p-6 space-y-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <Book className="w-5 h-5" />
@@ -152,7 +247,7 @@ export function WelcomeScreen() {
               <Button
                 variant="ghost"
                 className="w-full justify-start"
-                onClick={() => window.open('/docs/architecture.md', '_blank')}
+                onClick={() => openDocInEditor(DOCS.architecture)}
               >
                 <Book className="w-4 h-4 mr-2" />
                 Architecture Guide
@@ -160,9 +255,7 @@ export function WelcomeScreen() {
               <Button
                 variant="ghost"
                 className="w-full justify-start"
-                onClick={() =>
-                  window.open('/docs/git-integration.md', '_blank')
-                }
+                onClick={() => openDocInEditor(DOCS.git)}
               >
                 <GitBranch className="w-4 h-4 mr-2" />
                 Git Integration Guide
@@ -170,9 +263,7 @@ export function WelcomeScreen() {
               <Button
                 variant="ghost"
                 className="w-full justify-start"
-                onClick={() =>
-                  window.open('/docs/keyboard-shortcuts.md', '_blank')
-                }
+                onClick={() => openDocInEditor(DOCS.shortcuts)}
               >
                 <Keyboard className="w-4 h-4 mr-2" />
                 Keyboard Shortcuts
@@ -184,20 +275,42 @@ export function WelcomeScreen() {
           <Card className="p-6 space-y-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <Github className="w-5 h-5" />
-              Connect to GitHub
+              {isAuthenticated ? 'GitHub Connected' : 'Connect to GitHub'}
             </h2>
-            <p className="text-sm text-muted-foreground">
-              قم بتسجيل الدخول لمزامنة المشاريع والوصول إلى المستودعات
-            </p>
-            <Button
-              className="w-full"
-              onClick={() => {
-                /* Sign in with GitHub */
-              }}
-            >
-              <Github className="w-4 h-4 mr-2" />
-              Sign in with GitHub
-            </Button>
+            {isAuthenticated && user ? (
+              <div className="flex items-center gap-3">
+                <img
+                  src={user.avatar_url}
+                  alt={user.login}
+                  className="h-8 w-8 rounded-full"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    {user.name || user.login}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    @{user.login}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setAuthOpen(true)}
+                >
+                  <User className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  قم بتسجيل الدخول لمزامنة المشاريع والوصول إلى المستودعات
+                </p>
+                <Button className="w-full" onClick={() => setAuthOpen(true)}>
+                  <Github className="w-4 h-4 mr-2" />
+                  Sign in with GitHub
+                </Button>
+              </>
+            )}
           </Card>
         </div>
 
@@ -216,6 +329,10 @@ export function WelcomeScreen() {
           </p>
         </div>
       </div>
+
+      {/* Dialogs */}
+      <AuthDialog open={authOpen} onOpenChange={setAuthOpen} />
+      <CloneDialog open={cloneOpen} onOpenChange={setCloneOpen} />
     </div>
   );
 }

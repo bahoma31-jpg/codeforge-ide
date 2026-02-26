@@ -1,16 +1,33 @@
-﻿'use client';
+'use client';
 
 import { useUIStore } from '@/lib/stores/ui-store';
+import { useNotificationStore } from '@/lib/stores/notification-store';
 import { setTheme as persistTheme, toggleTheme } from '@/lib/utils/theme';
-import { GitBranch, Moon, Sun } from 'lucide-react';
+import { GitBranch, Moon, Sun, AlertCircle, CheckCircle } from 'lucide-react';
 
-export default function StatusBar() {
-  const { theme, setTheme } = useUIStore();
+interface StatusBarProps {
+  errors?: number;
+  warnings?: number;
+}
+
+export default function StatusBar({ errors = 0, warnings = 0 }: StatusBarProps) {
+  const { theme, setTheme, panelVisible, togglePanel } = useUIStore();
+  const { addNotification } = useNotificationStore();
 
   const onToggleTheme = () => {
     const next = toggleTheme(theme);
     setTheme(next);
     persistTheme(next);
+  };
+
+  const handleErrorClick = () => {
+    if (!panelVisible) togglePanel();
+    addNotification({
+      type: 'info',
+      title: 'Problems Panel',
+      message: 'فتح لوحة المشاكل — سيتم تفعيل التحليل في إصدار قادم.',
+      autoDismiss: true,
+    });
   };
 
   return (
@@ -20,6 +37,32 @@ export default function StatusBar() {
           <GitBranch className="h-3 w-3" />
           <span>main</span>
         </div>
+
+        {errors > 0 ? (
+          <button
+            onClick={handleErrorClick}
+            className="flex items-center gap-1 text-red-400 hover:opacity-80"
+            aria-label={`${errors} error${errors !== 1 ? 's' : ''}. Click to view.`}
+          >
+            <AlertCircle className="h-3 w-3" aria-hidden="true" />
+            <span>{errors}</span>
+          </button>
+        ) : warnings > 0 ? (
+          <button
+            onClick={handleErrorClick}
+            className="flex items-center gap-1 text-yellow-400 hover:opacity-80"
+            aria-label={`${warnings} warning${warnings !== 1 ? 's' : ''}. Click to view.`}
+          >
+            <AlertCircle className="h-3 w-3" aria-hidden="true" />
+            <span>{warnings}</span>
+          </button>
+        ) : (
+          <div className="flex items-center gap-1">
+            <CheckCircle className="h-3 w-3" />
+            <span>No problems</span>
+          </div>
+        )}
+
         <span>UTF-8</span>
         <span>Ln 1, Col 1</span>
       </div>

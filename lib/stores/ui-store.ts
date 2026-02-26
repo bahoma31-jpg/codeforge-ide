@@ -4,7 +4,7 @@ export type ActivityBarView =
   | 'explorer'
   | 'search'
   | 'git'
-  | 'extensions'
+  | 'terminal'
   | 'settings';
 
 export type CodeforgeTheme = 'light' | 'dark' | 'high-contrast';

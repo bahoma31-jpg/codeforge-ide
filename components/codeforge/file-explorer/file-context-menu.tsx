@@ -25,6 +25,8 @@ import {
 } from 'lucide-react';
 import type { FileNode } from '@/lib/db/schema';
 import { useFilesStore } from '@/lib/stores/files-store';
+import { useEditorStore } from '@/lib/stores/editor-store';
+import { useNotificationStore } from '@/lib/stores/notification-store';
 import { FileDialog } from './file-dialog';
 
 interface FileContextMenuProps {
@@ -38,6 +40,8 @@ export function FileContextMenu({ node, children }: FileContextMenuProps) {
     'file'
   );
   const { deleteNode } = useFilesStore();
+  const { openFile } = useEditorStore();
+  const { addNotification } = useNotificationStore();
   const isFolder = node.type === 'folder';
 
   const handleNewFile = () => {
@@ -72,6 +76,25 @@ export function FileContextMenu({ node, children }: FileContextMenuProps) {
 
   const handleCopyPath = () => {
     navigator.clipboard.writeText(node.path);
+    addNotification({
+      type: 'success',
+      title: 'Path Copied',
+      message: `Copied: ${node.path}`,
+      autoDismiss: true,
+      dismissAfterMs: 2000,
+    });
+  };
+
+  const handleViewFile = () => {
+    if (node.type === 'file') {
+      openFile({
+        id: node.id,
+        name: node.name,
+        content: node.content || '',
+        language: node.language || 'plaintext',
+        path: node.path,
+      });
+    }
   };
 
   return (
@@ -99,10 +122,10 @@ export function FileContextMenu({ node, children }: FileContextMenuProps) {
             </>
           )}
 
-          {/* View (files only) */}
+          {/* View File — opens in editor */}
           {!isFolder && (
             <>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={handleViewFile}>
                 <FileText className="mr-2 h-4 w-4" />
                 <span>View File</span>
               </DropdownMenuItem>
