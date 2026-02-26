@@ -129,6 +129,14 @@ export interface ProjectContext {
 
 // ─── Audit Types ──────────────────────────────────────────────
 
+/**
+ * approvedBy:
+ *  - 'auto'   → AUTO-level tool, executed without any user interaction
+ *  - 'notify' → NOTIFY-level tool, user was notified but didn't need to approve
+ *  - 'user'   → CONFIRM-level tool, user explicitly approved the operation
+ */
+export type ApprovalSource = 'auto' | 'notify' | 'user';
+
 export interface AuditLogEntry {
   id: string;
   toolName: string;
@@ -136,6 +144,6 @@ export interface AuditLogEntry {
   result?: ToolCallResult;
   riskLevel?: RiskLevel;
   approved?: boolean;
-  approvedBy?: 'auto' | 'user';
+  approvedBy?: ApprovalSource;
   timestamp: number;
 }
