@@ -3,11 +3,16 @@
 /**
  * CodeForge IDE — Chat Message
  * Renders a single chat message with markdown support,
- * tool call indicators, and diff previews.
+ * tool call indicators, diff previews, and clickable file paths.
  */
 
 import React, { useState } from 'react';
 import type { AgentMessage, ToolCall } from '@/lib/agent/types';
+import { useEditorStore } from '@/lib/stores/editor-store';
+import {
+  parseFilePathsFromText,
+  type TextSegment,
+} from '@/lib/utils/file-path-detect';
 import {
   User,
   Bot,
@@ -18,6 +23,7 @@ import {
   XCircle,
   Clock,
   Loader2,
+  FileCode2,
 } from 'lucide-react';
 
 interface ChatMessageProps {
@@ -27,7 +33,6 @@ interface ChatMessageProps {
 export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === 'user';
   const isTool = message.role === 'tool';
-  const isAssistant = message.role === 'assistant';
 
   if (isTool) {
     return <ToolResultMessage message={message} />;
@@ -59,7 +64,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
               : 'bg-[#313244] text-[#cdd6f4] rounded-tl-sm'
           }`}
         >
-          {/* Message content with basic markdown */}
+          {/* Message content with basic markdown + clickable file paths */}
           <div className="whitespace-pre-wrap break-words agent-message-content">
             <MessageContent content={message.content} />
           </div>
@@ -92,6 +97,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
 
 /**
  * Render message content with basic markdown formatting
+ * AND clickable file paths
  */
 function MessageContent({ content }: { content: string }) {
   if (!content) return null;
@@ -124,14 +130,34 @@ function MessageContent({ content }: { content: string }) {
           );
         }
 
-        // Inline code
+        // Inline code — check if it's a file path
         if (part.startsWith('`') && part.endsWith('`')) {
+          const codeText = part.slice(1, -1);
+          // Try to detect if the inline code is a file path
+          const segments = parseFilePathsFromText(codeText);
+          const isFilePath =
+            segments.length === 1 &&
+            segments[0].type === 'filepath' &&
+            segments[0].filePath;
+
+          if (isFilePath && segments[0].filePath) {
+            return (
+              <FilePathButton
+                key={i}
+                filePath={segments[0].filePath}
+                language={segments[0].language || 'plaintext'}
+                displayText={codeText}
+                isInlineCode
+              />
+            );
+          }
+
           return (
             <code
               key={i}
               className="px-1.5 py-0.5 rounded bg-[#181825] text-[#f9e2af] text-xs font-mono"
             >
-              {part.slice(1, -1)}
+              {codeText}
             </code>
           );
         }
@@ -145,9 +171,94 @@ function MessageContent({ content }: { content: string }) {
           );
         }
 
-        return <span key={i}>{part}</span>;
+        // Regular text — check for file paths within it
+        return <TextWithFilePaths key={i} text={part} />;
       })}
     </>
+  );
+}
+
+/**
+ * Render plain text with file paths converted to clickable buttons
+ */
+function TextWithFilePaths({ text }: { text: string }) {
+  const segments = parseFilePathsFromText(text);
+
+  // If no file paths found, return plain text
+  if (segments.every((s) => s.type === 'text')) {
+    return <span>{text}</span>;
+  }
+
+  return (
+    <>
+      {segments.map((segment, i) => {
+        if (segment.type === 'filepath' && segment.filePath) {
+          return (
+            <FilePathButton
+              key={i}
+              filePath={segment.filePath}
+              language={segment.language || 'plaintext'}
+              displayText={segment.value}
+              isInlineCode={false}
+            />
+          );
+        }
+        return <span key={i}>{segment.value}</span>;
+      })}
+    </>
+  );
+}
+
+/**
+ * Clickable file path button that opens the file in the editor
+ */
+function FilePathButton({
+  filePath,
+  language,
+  displayText,
+  isInlineCode,
+}: {
+  filePath: string;
+  language: string;
+  displayText: string;
+  isInlineCode: boolean;
+}) {
+  const [isLoading, setIsLoading] = useState(false);
+  const openFileFromPath = useEditorStore((s) => s.openFileFromPath);
+
+  const handleClick = async () => {
+    setIsLoading(true);
+    try {
+      await openFileFromPath(filePath, language);
+    } catch (error) {
+      console.error('[ChatMessage] Failed to open file:', filePath, error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={isLoading}
+      title={`فتح ${filePath} في المحرر`}
+      className={`inline-flex items-center gap-1 rounded transition-all cursor-pointer
+        ${
+          isInlineCode
+            ? 'px-1.5 py-0.5 bg-[#181825] text-xs font-mono hover:bg-[#89b4fa]/20 hover:text-[#89b4fa] border border-transparent hover:border-[#89b4fa]/30'
+            : 'px-1 py-0 text-sm hover:text-[#89b4fa] hover:underline'
+        }
+        ${isLoading ? 'opacity-60' : 'text-[#89b4fa]'}
+        focus-visible:ring-2 focus-visible:ring-[#89b4fa] focus-visible:ring-offset-1 focus-visible:ring-offset-[#1e1e2e]
+      `}
+    >
+      {isLoading ? (
+        <Loader2 size={10} className="animate-spin" />
+      ) : (
+        <FileCode2 size={10} className="flex-shrink-0" />
+      )}
+      <span>{displayText}</span>
+    </button>
   );
 }
 
