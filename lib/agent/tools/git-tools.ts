@@ -1,9 +1,13 @@
 /**
  * CodeForge IDE — Git Tools (with Store Bridge)
- * Agent tools for Git and GitHub operations.
+ * Agent tools for Git version control operations.
  * All operations sync git-store state after execution.
  *
- * 7 tools: status, diff, stage, commit, push, createBranch, createPR.
+ * v2.0 — Added git_log tool to match System Prompt v2.0.
+ *         All tool names now aligned with prompt sections.
+ *
+ * 8 tools: git_status, git_diff, git_log, git_stage, git_commit,
+ *          git_push, git_create_branch, git_create_pr.
  */
 
 import type { ToolDefinition, ToolCallResult } from '../types';
@@ -29,6 +33,23 @@ export const gitTools: ToolDefinition[] = [
         filePath: {
           type: 'string',
           description: 'Path of specific file to diff. Omit for all files.',
+        },
+      },
+      required: [],
+    },
+    riskLevel: 'auto',
+    category: 'git',
+  },
+  // ── NEW: git_log — Show recent commit history ──
+  {
+    name: 'git_log',
+    description: 'Show recent commit log from the local Git repository. Returns commit messages, SHAs, authors, and dates.',
+    parameters: {
+      type: 'object',
+      properties: {
+        maxCount: {
+          type: 'number',
+          description: 'Maximum number of commits to return. Defaults to 10.',
         },
       },
       required: [],
@@ -87,7 +108,7 @@ export const gitTools: ToolDefinition[] = [
   },
   {
     name: 'git_create_branch',
-    description: 'Create a new Git branch from the current branch or a specified base.',
+    description: 'Create a new local Git branch from the current branch or a specified base.',
     parameters: {
       type: 'object',
       properties: {
@@ -107,7 +128,7 @@ export const gitTools: ToolDefinition[] = [
   },
   {
     name: 'git_create_pr',
-    description: 'Create a Pull Request on GitHub. Requires user confirmation.',
+    description: 'Create a Pull Request on GitHub from a local branch. Requires user confirmation.',
     parameters: {
       type: 'object',
       properties: {
@@ -197,6 +218,41 @@ export function registerGitExecutors(service: AgentService): void {
         data: {
           totalModified: modifiedFiles.length,
           files: diffs,
+        },
+      };
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // ── NEW EXECUTOR: git_log — Show recent commit history ──
+  service.registerToolExecutor('git_log', async (args) => {
+    try {
+      const { useGitStore } = await import('@/lib/stores/git-store');
+      const store = useGitStore.getState();
+      const maxCount = (args.maxCount as number) || 10;
+
+      const history = (store.commitHistory || []).slice(0, maxCount);
+
+      const commits = history.map((c: any) => {
+        const commit = c.commit || c;
+        const author = commit.author || c.author || {};
+        return {
+          sha: (c.sha || c.oid || '').slice(0, 7),
+          fullSha: c.sha || c.oid || '',
+          message: commit.message || c.message || '',
+          author: author.name || author.login || '',
+          email: author.email || '',
+          date: author.date || author.timestamp || c.date || '',
+        };
+      });
+
+      return {
+        success: true,
+        data: {
+          branch: store.currentBranch || 'unknown',
+          count: commits.length,
+          commits,
         },
       };
     } catch (error) {

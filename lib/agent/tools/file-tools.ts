@@ -4,7 +4,12 @@
  * All WRITE operations sync with File Explorer and Editor via store-bridge.
  * All READ operations use direct DB calls for speed.
  *
- * 9 tools: list, read, search, create, update, createFolder, delete, rename, move.
+ * v2.0 — All tools renamed with fs_* prefix to avoid collision with
+ *         github_* tools. Names now match System Prompt v2.0 exactly.
+ *
+ * 9 tools: fs_list_files, fs_read_file, fs_search_files, fs_create_file,
+ *          fs_update_file, fs_create_folder, fs_delete_file, fs_rename_file,
+ *          fs_move_file.
  */
 
 import type { ToolDefinition, ToolCallResult } from '../types';
@@ -29,8 +34,8 @@ import {
 
 export const fileTools: ToolDefinition[] = [
   {
-    name: 'list_files',
-    description: 'List all files and folders in the project, or list children of a specific folder. Returns file tree with names, paths, types, and sizes.',
+    name: 'fs_list_files',
+    description: 'List all files and folders in the local project workspace, or list children of a specific folder. Returns file tree with names, paths, types, and sizes.',
     parameters: {
       type: 'object',
       properties: {
@@ -45,8 +50,8 @@ export const fileTools: ToolDefinition[] = [
     category: 'filesystem',
   },
   {
-    name: 'read_file',
-    description: 'Read the content of a file by its ID or path. Returns the full file content, language, and metadata.',
+    name: 'fs_read_file',
+    description: 'Read the content of a local file by its ID or path. Returns the full file content, language, and metadata.',
     parameters: {
       type: 'object',
       properties: {
@@ -65,8 +70,8 @@ export const fileTools: ToolDefinition[] = [
     category: 'filesystem',
   },
   {
-    name: 'search_files',
-    description: 'Search for files by name or content. Returns matching files with their paths and types.',
+    name: 'fs_search_files',
+    description: 'Search for files by name in the local project workspace. Returns matching files with their paths and types.',
     parameters: {
       type: 'object',
       properties: {
@@ -81,8 +86,8 @@ export const fileTools: ToolDefinition[] = [
     category: 'filesystem',
   },
   {
-    name: 'create_file',
-    description: 'Create a new file with the specified name, content, and language. The file appears immediately in the File Explorer.',
+    name: 'fs_create_file',
+    description: 'Create a new file in the local workspace with the specified name, content, and language. The file appears immediately in the File Explorer.',
     parameters: {
       type: 'object',
       properties: {
@@ -110,8 +115,8 @@ export const fileTools: ToolDefinition[] = [
     category: 'filesystem',
   },
   {
-    name: 'update_file',
-    description: 'Update the content of an existing file. The editor tab refreshes automatically if the file is open.',
+    name: 'fs_update_file',
+    description: 'Update the content of an existing local file. The editor tab refreshes automatically if the file is open.',
     parameters: {
       type: 'object',
       properties: {
@@ -134,8 +139,8 @@ export const fileTools: ToolDefinition[] = [
     category: 'filesystem',
   },
   {
-    name: 'create_folder',
-    description: 'Create a new folder in the project. Appears immediately in the File Explorer.',
+    name: 'fs_create_folder',
+    description: 'Create a new folder in the local project workspace. Appears immediately in the File Explorer.',
     parameters: {
       type: 'object',
       properties: {
@@ -155,8 +160,8 @@ export const fileTools: ToolDefinition[] = [
     category: 'filesystem',
   },
   {
-    name: 'delete_file',
-    description: 'Delete a file or folder (and all its children). Closes the editor tab if open. Requires user confirmation.',
+    name: 'fs_delete_file',
+    description: 'Delete a local file or folder (and all its children). Closes the editor tab if open. Requires user confirmation.',
     parameters: {
       type: 'object',
       properties: {
@@ -171,8 +176,8 @@ export const fileTools: ToolDefinition[] = [
     category: 'filesystem',
   },
   {
-    name: 'rename_file',
-    description: 'Rename a file or folder. Updates the File Explorer immediately.',
+    name: 'fs_rename_file',
+    description: 'Rename a local file or folder. Updates the File Explorer immediately.',
     parameters: {
       type: 'object',
       properties: {
@@ -191,8 +196,8 @@ export const fileTools: ToolDefinition[] = [
     category: 'filesystem',
   },
   {
-    name: 'move_file',
-    description: 'Move a file or folder to a different parent folder. Updates the File Explorer.',
+    name: 'fs_move_file',
+    description: 'Move a local file or folder to a different parent folder. Updates the File Explorer.',
     parameters: {
       type: 'object',
       properties: {
@@ -232,8 +237,8 @@ function formatNode(node: FileNode): Record<string, unknown> {
 export function registerFileExecutors(service: AgentService): void {
   // ── READ OPERATIONS (direct DB — fast path) ─────────────
 
-  // list_files
-  service.registerToolExecutor('list_files', async (args) => {
+  // fs_list_files
+  service.registerToolExecutor('fs_list_files', async (args) => {
     try {
       const parentId = (args.parentId as string) || null;
       let nodes: FileNode[];
@@ -250,8 +255,8 @@ export function registerFileExecutors(service: AgentService): void {
     }
   });
 
-  // read_file
-  service.registerToolExecutor('read_file', async (args) => {
+  // fs_read_file
+  service.registerToolExecutor('fs_read_file', async (args) => {
     try {
       let file: FileNode;
       if (args.fileId) {
@@ -271,8 +276,8 @@ export function registerFileExecutors(service: AgentService): void {
     }
   });
 
-  // search_files
-  service.registerToolExecutor('search_files', async (args) => {
+  // fs_search_files
+  service.registerToolExecutor('fs_search_files', async (args) => {
     try {
       const results = await dbSearchFiles(args.query as string);
       return { success: true, data: results.map(formatNode) };
@@ -283,8 +288,8 @@ export function registerFileExecutors(service: AgentService): void {
 
   // ── WRITE OPERATIONS (via Files Store → auto-syncs UI) ──
 
-  // create_file — uses filesStore to auto-refresh File Explorer
-  service.registerToolExecutor('create_file', async (args) => {
+  // fs_create_file — uses filesStore to auto-refresh File Explorer
+  service.registerToolExecutor('fs_create_file', async (args) => {
     try {
       const { useFilesStore } = await import('@/lib/stores/files-store');
       const store = useFilesStore.getState();
@@ -317,8 +322,8 @@ export function registerFileExecutors(service: AgentService): void {
     }
   });
 
-  // update_file — uses filesStore + refreshes open editor tab
-  service.registerToolExecutor('update_file', async (args) => {
+  // fs_update_file — uses filesStore + refreshes open editor tab
+  service.registerToolExecutor('fs_update_file', async (args) => {
     try {
       // Resolve file ID from path if needed
       let fileId = args.fileId as string;
@@ -362,8 +367,8 @@ export function registerFileExecutors(service: AgentService): void {
     }
   });
 
-  // create_folder — uses filesStore to auto-refresh
-  service.registerToolExecutor('create_folder', async (args) => {
+  // fs_create_folder — uses filesStore to auto-refresh
+  service.registerToolExecutor('fs_create_folder', async (args) => {
     try {
       const { useFilesStore } = await import('@/lib/stores/files-store');
       const store = useFilesStore.getState();
@@ -381,8 +386,8 @@ export function registerFileExecutors(service: AgentService): void {
     }
   });
 
-  // delete_file — uses filesStore + closes editor tab
-  service.registerToolExecutor('delete_file', async (args) => {
+  // fs_delete_file — uses filesStore + closes editor tab
+  service.registerToolExecutor('fs_delete_file', async (args) => {
     try {
       const nodeId = args.nodeId as string;
 
@@ -414,8 +419,8 @@ export function registerFileExecutors(service: AgentService): void {
     }
   });
 
-  // rename_file — uses filesStore to auto-refresh
-  service.registerToolExecutor('rename_file', async (args) => {
+  // fs_rename_file — uses filesStore to auto-refresh
+  service.registerToolExecutor('fs_rename_file', async (args) => {
     try {
       const { useFilesStore } = await import('@/lib/stores/files-store');
       const renamed = await useFilesStore.getState().renameNode(
@@ -431,8 +436,8 @@ export function registerFileExecutors(service: AgentService): void {
     }
   });
 
-  // move_file — uses filesStore to auto-refresh
-  service.registerToolExecutor('move_file', async (args) => {
+  // fs_move_file — uses filesStore to auto-refresh
+  service.registerToolExecutor('fs_move_file', async (args) => {
     try {
       const { useFilesStore } = await import('@/lib/stores/files-store');
       const moved = await useFilesStore.getState().moveNode(
