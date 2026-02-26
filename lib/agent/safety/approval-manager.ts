@@ -1,7 +1,9 @@
 /**
- * CodeForge IDE — Approval Manager v2.0
+ * CodeForge IDE — Approval Manager v2.1
  * Manages the approval & notification flow for tool calls.
  *
+ * v2.1 — Added resolveOwnerRepo() fallback for when LLM omits owner/repo.
+ *         Reads from localStorage config to auto-fill missing values.
  * v2.0 — Rewritten to support all 45 tools (fs_*, git_*, github_*, utility).
  *         Added createNotification() for NOTIFY-level ops.
  *         Added formatToolSummary() for UI display.
@@ -72,13 +74,15 @@ export class ApprovalManager {
    */
   createApproval(toolCall: ToolCall, toolDef?: ToolDefinition): PendingApproval {
     const risk = this.getEffectiveRisk(toolCall, toolDef);
+    // Ensure owner/repo are resolved before building description
+    const resolvedToolCall = this.resolveToolCallArgs(toolCall);
     return {
       id: uuidv4(),
-      toolCall,
+      toolCall: resolvedToolCall,
       toolName: toolCall.name,
-      description: this.generateDescription(toolCall),
+      description: this.generateDescription(resolvedToolCall),
       riskLevel: risk,
-      affectedFiles: this.extractAffectedFiles(toolCall),
+      affectedFiles: this.extractAffectedFiles(resolvedToolCall),
       status: 'pending',
       createdAt: Date.now(),
     };
@@ -88,13 +92,14 @@ export class ApprovalManager {
    * Create a notification object (for NOTIFY tools)
    */
   createNotification(toolCall: ToolCall): ToolNotification {
+    const resolvedToolCall = this.resolveToolCallArgs(toolCall);
     return {
       id: uuidv4(),
-      toolCall,
+      toolCall: resolvedToolCall,
       toolName: toolCall.name,
-      description: this.generateDescription(toolCall),
+      description: this.generateDescription(resolvedToolCall),
       riskLevel: 'notify',
-      affectedFiles: this.extractAffectedFiles(toolCall),
+      affectedFiles: this.extractAffectedFiles(resolvedToolCall),
       createdAt: Date.now(),
     };
   }
@@ -132,13 +137,107 @@ export class ApprovalManager {
   formatToolSummary(toolCall: ToolCall, toolDef?: ToolDefinition): string {
     const risk = this.getEffectiveRisk(toolCall, toolDef);
     const emoji = getRiskEmoji(risk);
-    const desc = this.generateDescription(toolCall);
-    const files = this.extractAffectedFiles(toolCall);
+    const resolvedToolCall = this.resolveToolCallArgs(toolCall);
+    const desc = this.generateDescription(resolvedToolCall);
+    const files = this.extractAffectedFiles(resolvedToolCall);
     const fileStr = files.length > 0 ? `\n📁 ${files.join(', ')}` : '';
     return `${emoji} ${desc}${fileStr}`;
   }
 
   // ─── Private Helpers ──────────────────────────────────────
+
+  /**
+   * Resolve missing owner/repo in tool call arguments.
+   * When the LLM omits owner or repo (or sends empty/unknown values),
+   * this fills them from the stored agent config or auth store.
+   *
+   * Returns a new ToolCall with resolved arguments (does NOT mutate original).
+   */
+  private resolveToolCallArgs(toolCall: ToolCall): ToolCall {
+    // Only resolve for github_* tools that need owner/repo
+    if (!toolCall.name.startsWith('github_')) return toolCall;
+
+    const args = { ...toolCall.arguments };
+    const currentOwner = (args.owner as string) || '';
+    const currentRepo = (args.repo as string) || '';
+
+    // Check if owner/repo need resolution
+    const ownerMissing = !currentOwner || currentOwner === 'unknown' || currentOwner === '?';
+    const repoMissing = !currentRepo || currentRepo === 'unknown' || currentRepo === '?';
+
+    if (!ownerMissing && !repoMissing) return toolCall;
+
+    // Try to resolve from stored config
+    const { owner: configOwner, repo: configRepo } = this.getStoredOwnerRepo();
+
+    if (ownerMissing && configOwner) {
+      args.owner = configOwner;
+    }
+    if (repoMissing && configRepo) {
+      args.repo = configRepo;
+    }
+
+    return { ...toolCall, arguments: args };
+  }
+
+  /**
+   * Read owner/repo from multiple sources (priority order):
+   * 1. codeforge-agent-config in localStorage (has repoUrl)
+   * 2. codeforge-project-context in localStorage
+   * 3. GitHub user info cached in localStorage
+   */
+  private getStoredOwnerRepo(): { owner: string; repo: string } {
+    let owner = '';
+    let repo = '';
+
+    try {
+      // Source 1: Agent config (may have repoUrl like "https://github.com/user/repo")
+      const configRaw = localStorage.getItem('codeforge-agent-config');
+      if (configRaw) {
+        const config = JSON.parse(configRaw);
+        if (config.repoUrl) {
+          const parts = config.repoUrl.replace(/\.git$/, '').split('/');
+          const idx = parts.indexOf('github.com');
+          if (idx !== -1 && parts[idx + 1] && parts[idx + 2]) {
+            owner = parts[idx + 1];
+            repo = parts[idx + 2];
+          }
+        }
+        // Direct owner/repo fields
+        if (!owner && config.owner) owner = config.owner;
+        if (!repo && config.repo) repo = config.repo;
+      }
+    } catch { /* ignore parse errors */ }
+
+    try {
+      // Source 2: Project context
+      const ctxRaw = localStorage.getItem('codeforge-project-context');
+      if (ctxRaw) {
+        const ctx = JSON.parse(ctxRaw);
+        if (!owner && ctx.owner) owner = ctx.owner;
+        if (!repo && ctx.repo) repo = ctx.repo;
+        if (ctx.repoUrl && (!owner || !repo)) {
+          const parts = ctx.repoUrl.replace(/\.git$/, '').split('/');
+          const idx = parts.indexOf('github.com');
+          if (idx !== -1) {
+            if (!owner && parts[idx + 1]) owner = parts[idx + 1];
+            if (!repo && parts[idx + 2]) repo = parts[idx + 2];
+          }
+        }
+      }
+    } catch { /* ignore parse errors */ }
+
+    try {
+      // Source 3: GitHub user info (owner only)
+      const userRaw = localStorage.getItem('codeforge-github-user');
+      if (userRaw && !owner) {
+        const user = JSON.parse(userRaw);
+        if (user.login) owner = user.login;
+      }
+    } catch { /* ignore parse errors */ }
+
+    return { owner, repo };
+  }
 
   /**
    * Extract affected file paths from tool arguments
@@ -181,7 +280,7 @@ export class ApprovalManager {
     const path = (args.path as string) || (args.filePath as string) || '';
     const owner = (args.owner as string) || '';
     const repo = (args.repo as string) || '';
-    const repoStr = owner && repo ? `${owner}/${repo}` : '';
+    const repoStr = owner && repo ? `${owner}/${repo}` : repo || '';
     const branch = (args.branch as string) || '';
 
     switch (toolCall.name) {
@@ -227,7 +326,7 @@ export class ApprovalManager {
       case 'github_create_repo':
         return `⚠️ إنشاء مستودع: ${(args.name as string) || '?'}`;
       case 'github_delete_repo':
-        return `🚨 حذف مستودع نهائياً: ${repoStr}`;
+        return `🚨 حذف مستودع نهائياً: ${repoStr || '?'}`;
       case 'github_list_repos':
         return 'عرض المستودعات';
       case 'github_get_repo_info':

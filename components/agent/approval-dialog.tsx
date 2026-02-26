@@ -66,8 +66,8 @@ export function ApprovalDialog({ approval }: ApprovalDialogProps) {
 
   // Format elapsed time
   const formatTime = (s: number) => {
-    if (s < 60) return `${s}\u062b`;
-    return `${Math.floor(s / 60)}\u062f ${s % 60}\u062b`;
+    if (s < 60) return `${s}ث`;
+    return `${Math.floor(s / 60)}د ${s % 60}ث`;
   };
 
   return (
@@ -77,7 +77,7 @@ export function ApprovalDialog({ approval }: ApprovalDialogProps) {
         <div className="flex items-center gap-2">
           <ShieldAlert size={14} className="text-[#f38ba8]" />
           <span className="text-xs font-semibold text-[#f38ba8]">
-            \ud83d\udd34 \u0639\u0645\u0644\u064a\u0629 \u062d\u0633\u0627\u0633\u0629 \u2014 \u062a\u062d\u062a\u0627\u062c \u062a\u0623\u0643\u064a\u062f\u0643
+            🔴 عملية حساسة — تحتاج تأكيدك
           </span>
         </div>
         <div className="flex items-center gap-1 text-[10px] text-[#6c7086]">
@@ -109,14 +109,14 @@ export function ApprovalDialog({ approval }: ApprovalDialogProps) {
         {(toolName.includes('delete') || toolName.includes('merge')) && (
           <div className="flex items-center gap-1.5 mt-2 text-[10px] text-[#f38ba8] bg-[#f38ba8]/5 rounded px-2 py-1">
             <AlertTriangle size={10} />
-            <span>\u0647\u0630\u0647 \u0627\u0644\u0639\u0645\u0644\u064a\u0629 \u0642\u062f \u0644\u0627 \u064a\u0645\u0643\u0646 \u0627\u0644\u062a\u0631\u0627\u062c\u0639 \u0639\u0646\u0647\u0627</span>
+            <span>هذه العملية قد لا يمكن التراجع عنها</span>
           </div>
         )}
 
         {/* Tool arguments preview */}
         {approval.toolCall.arguments && Object.keys(approval.toolCall.arguments).length > 0 && (
           <div className="mt-2 rounded-lg bg-[#181825] border border-[#313244] p-2">
-            <div className="text-[10px] text-[#45475a] mb-1">\u0627\u0644\u0645\u0639\u0637\u064a\u0627\u062a:</div>
+            <div className="text-[10px] text-[#45475a] mb-1">المعطيات:</div>
             {Object.entries(approval.toolCall.arguments).map(([key, value]) => (
               <div key={key} className="text-[10px] font-mono text-[#cdd6f4] mt-0.5">
                 <span className="text-[#89b4fa]">{key}</span>
@@ -136,7 +136,7 @@ export function ApprovalDialog({ approval }: ApprovalDialogProps) {
         {/* Affected files */}
         {approval.affectedFiles && approval.affectedFiles.length > 0 && (
           <div className="mt-2">
-            <div className="text-[10px] text-[#45475a] mb-1">\u0627\u0644\u0645\u0644\u0641\u0627\u062a \u0627\u0644\u0645\u062a\u0623\u062b\u0631\u0629:</div>
+            <div className="text-[10px] text-[#45475a] mb-1">الملفات المتأثرة:</div>
             {approval.affectedFiles.map((file) => (
               <div
                 key={file}
@@ -188,7 +188,7 @@ export function ApprovalDialog({ approval }: ApprovalDialogProps) {
           className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#a6e3a1]/20 hover:bg-[#a6e3a1]/30 text-[#a6e3a1] text-xs font-medium transition-colors"
         >
           <Check size={12} />
-          \u062a\u0623\u0643\u064a\u062f
+          تأكيد
           <span className="text-[9px] opacity-60 mr-1">(Enter)</span>
         </button>
         <button
@@ -196,7 +196,7 @@ export function ApprovalDialog({ approval }: ApprovalDialogProps) {
           className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#f38ba8]/20 hover:bg-[#f38ba8]/30 text-[#f38ba8] text-xs font-medium transition-colors"
         >
           <X size={12} />
-          \u0631\u0641\u0636
+          رفض
           <span className="text-[9px] opacity-60 mr-1">(Esc)</span>
         </button>
       </div>
