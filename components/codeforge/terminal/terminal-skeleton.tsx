@@ -8,3 +8,5 @@ export function TerminalSkeleton() {
     </div>
   );
 }
+
+export default TerminalSkeleton;

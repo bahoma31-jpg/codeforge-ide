@@ -15,7 +15,15 @@ import type { FileNode } from '@/lib/db/schema';
 import { FileContextMenu } from '@/components/codeforge/file-explorer/file-context-menu';
 import { GitPanel } from '@/components/codeforge/panels/git-panel';
 
-export default function Sidebar() {
+/**
+ * Props — 'width' is accepted for compatibility with main-layout.tsx
+ * but the actual width is controlled via inline style on the parent.
+ */
+interface SidebarProps {
+  width?: number;
+}
+
+export default function Sidebar({ width }: SidebarProps) {
   const { sidebarOpen, activeView } = useUIStore();
   const { fileTree, isLoading, loadFileTree } = useFilesStore();
   const { openFile } = useEditorStore();
@@ -153,7 +161,7 @@ export default function Sidebar() {
   };
 
   return (
-    <div className="flex h-full w-64 flex-col border-r bg-[hsl(var(--cf-sidebar))]">
+    <div className="flex h-full flex-col border-r bg-[hsl(var(--cf-sidebar))]">
       <div className="border-b px-4 py-2">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           {activeView === 'explorer' && 'Explorer'}
