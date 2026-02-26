@@ -1,181 +1,178 @@
+/**
+ * CodeForge IDE - Sidebar
+ * Dynamic sidebar that switches content based on active view.
+ */
+
 'use client';
 
-import { useEffect, useMemo, useCallback } from 'react';
-import { useUIStore } from '@/lib/stores/ui-store';
-import { useEditorStore } from '@/lib/stores/editor-store';
-import { useFilesStore, getChildrenFromState } from '@/lib/stores/files-store';
-import { ChevronRight, File, Folder, FolderOpen, Loader2 } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+import { ChevronRight, ChevronDown, FileText, Folder, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useUIStore } from '@/lib/stores/ui-store';
+import { useFilesStore } from '@/lib/stores/files-store';
+import { useEditorStore } from '@/lib/stores/editor-store';
 import type { FileNode } from '@/lib/db/schema';
+import { FileContextMenu } from '@/components/codeforge/file-explorer/file-context-menu';
+import { GitPanel } from '@/components/codeforge/panels/git-panel';
 
-type SidebarProps = { width: number };
-
-export default function Sidebar({ width }: SidebarProps) {
-  const { activityBarView } = useUIStore();
+export default function Sidebar() {
+  const { sidebarOpen, activeView } = useUIStore();
+  const { fileTree, isLoading, loadFileTree } = useFilesStore();
   const { openFile } = useEditorStore();
-  const {
-    rootNodes,
-    expandedFolders,
-    isLoading,
-    isInitialized,
-    initialize,
-    toggleFolder,
-  } = useFilesStore();
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
-  // Initialize file system on mount
   useEffect(() => {
-    if (!isInitialized) {
-      initialize();
-    }
-  }, [isInitialized, initialize]);
+    loadFileTree();
+  }, [loadFileTree]);
 
-  const title = useMemo(() => {
-    switch (activityBarView) {
-      case 'explorer':
-        return 'Explorer';
-      case 'search':
-        return 'Search';
-      case 'git':
-        return 'Source Control';
-      case 'terminal':
-        return 'Terminal';
-      case 'settings':
-        return 'Settings';
-      default:
-        return 'Explorer';
-    }
-  }, [activityBarView]);
+  const toggleFolder = useCallback((folderId: string) => {
+    setExpandedFolders((prev) => {
+      const next = new Set(prev);
+      if (next.has(folderId)) {
+        next.delete(folderId);
+      } else {
+        next.add(folderId);
+      }
+      return next;
+    });
+  }, []);
 
-  const handleOpenFile = useCallback(
+  const handleFileClick = useCallback(
     (node: FileNode) => {
-      openFile({
-        id: node.id,
-        name: node.name,
-        content: node.content || '',
-        language: node.language || 'plaintext',
-        path: node.path,
-      });
+      if (node.type === 'file') {
+        openFile({
+          id: node.id,
+          name: node.name,
+          content: node.content || '',
+          language: node.language || 'plaintext',
+          path: node.path,
+        });
+      }
     },
     [openFile]
   );
 
-  /** Render a single file/folder node recursively */
-  const renderNode = useCallback(
-    (node: FileNode, level: number = 0) => {
-      const isFolder = node.type === 'folder';
-      const isExpanded = expandedFolders.has(node.id);
-      const children = isFolder ? getChildrenFromState(node.id) : [];
+  if (!sidebarOpen) return null;
 
+  // ─── Render sidebar content based on active view ───
+  const renderContent = () => {
+    switch (activeView) {
+      case 'git':
+        return <GitPanel />;
+
+      case 'search':
+        return (
+          <div className="p-4 text-sm text-muted-foreground text-center">
+            Search — قريباً
+          </div>
+        );
+
+      case 'terminal':
+        return (
+          <div className="p-4 text-sm text-muted-foreground text-center">
+            Terminal — قريباً
+          </div>
+        );
+
+      case 'settings':
+        return (
+          <div className="p-4 text-sm text-muted-foreground text-center">
+            Settings — قريباً
+          </div>
+        );
+
+      case 'explorer':
+      default:
+        return renderExplorer();
+    }
+  };
+
+  const renderExplorer = () => {
+    if (isLoading) {
       return (
-        <div key={node.id}>
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      );
+    }
+
+    if (!fileTree || fileTree.length === 0) {
+      return (
+        <div className="p-4 text-center">
+          <p className="text-sm text-muted-foreground">
+            لا توجد ملفات — افتح مجلداً أو استنسخ مستودعاً
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="py-1">
+        {sortNodes(fileTree).map((node) => renderNode(node, 0))}
+      </div>
+    );
+  };
+
+  const renderNode = (node: FileNode & { children?: FileNode[] }, depth: number): React.ReactNode => {
+    const isFolder = node.type === 'folder';
+    const isExpanded = expandedFolders.has(node.id);
+
+    return (
+      <FileContextMenu key={node.id} node={node}>
+        <div>
           <button
-            onClick={() => {
-              if (isFolder) {
-                toggleFolder(node.id);
-              } else {
-                handleOpenFile(node);
-              }
-            }}
             className={cn(
-              'flex w-full items-center gap-1.5 rounded px-2 py-1 text-left text-sm',
-              'hover:bg-secondary transition-colors',
-              'focus-visible:ring-2 focus-visible:ring-ring'
+              'flex w-full items-center gap-1 px-2 py-1 text-sm hover:bg-accent/50',
+              'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
             )}
-            style={{ paddingLeft: `${level * 12 + 8}px` }}
+            style={{ paddingLeft: `${12 + depth * 16}px` }}
+            onClick={() => (isFolder ? toggleFolder(node.id) : handleFileClick(node))}
           >
-            {isFolder && (
-              <ChevronRight
-                className={cn(
-                  'h-3.5 w-3.5 shrink-0 transition-transform text-muted-foreground',
-                  isExpanded && 'rotate-90'
-                )}
-              />
-            )}
             {isFolder ? (
               isExpanded ? (
-                <FolderOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
               ) : (
-                <Folder className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
               )
             ) : (
-              <File className="h-4 w-4 shrink-0 text-muted-foreground ml-[18px]" />
+              <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
             )}
-            <span className="truncate">{node.name}</span>
+            {isFolder && <Folder className="h-4 w-4 shrink-0 text-blue-400" />}
+            <span className="truncate text-left">{node.name}</span>
           </button>
-
-          {isFolder && isExpanded && children.length > 0 && (
+          {isFolder && isExpanded && node.children && (
             <div>
-              {children
-                .sort((a, b) => {
-                  if (a.type === b.type) return a.name.localeCompare(b.name);
-                  return a.type === 'folder' ? -1 : 1;
-                })
-                .map((child) => renderNode(child, level + 1))}
+              {sortNodes(node.children).map((child: FileNode & { children?: FileNode[] }) =>
+                renderNode(child, depth + 1)
+              )}
             </div>
           )}
         </div>
-      );
-    },
-    [expandedFolders, toggleFolder, handleOpenFile]
-  );
+      </FileContextMenu>
+    );
+  };
 
   return (
-    <aside
-      style={{ width }}
-      className="flex h-full flex-col border-r border-border bg-[hsl(var(--cf-sidebar))]"
-    >
-      <div className="border-b border-border p-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          {title}
+    <div className="flex h-full w-64 flex-col border-r bg-[hsl(var(--cf-sidebar))]">
+      <div className="border-b px-4 py-2">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          {activeView === 'explorer' && 'Explorer'}
+          {activeView === 'search' && 'Search'}
+          {activeView === 'git' && 'Source Control'}
+          {activeView === 'terminal' && 'Terminal'}
+          {activeView === 'settings' && 'Settings'}
         </h2>
       </div>
-
-      <div className="flex-1 overflow-y-auto p-2">
-        {activityBarView === 'explorer' && (
-          <div className="space-y-0.5">
-            {isLoading && !isInitialized ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : rootNodes.length > 0 ? (
-              rootNodes
-                .sort((a, b) => {
-                  if (a.type === b.type) return a.name.localeCompare(b.name);
-                  return a.type === 'folder' ? -1 : 1;
-                })
-                .map((node) => renderNode(node))
-            ) : (
-              <p className="px-2 py-4 text-center text-sm text-muted-foreground">
-                No files yet. Create a new file to get started.
-              </p>
-            )}
-          </div>
-        )}
-
-        {activityBarView === 'search' && (
-          <p className="text-sm text-muted-foreground">
-            Search UI will be implemented later.
-          </p>
-        )}
-
-        {activityBarView === 'git' && (
-          <p className="text-sm text-muted-foreground">
-            Source Control placeholder (Agent 5 scope).
-          </p>
-        )}
-
-        {activityBarView === 'terminal' && (
-          <p className="text-sm text-muted-foreground">
-            Terminal controls will appear here.
-          </p>
-        )}
-
-        {activityBarView === 'settings' && (
-          <p className="text-sm text-muted-foreground">
-            Settings view placeholder.
-          </p>
-        )}
-      </div>
-    </aside>
+      <div className="flex-1 overflow-y-auto">{renderContent()}</div>
+    </div>
   );
+}
+
+/** Sort nodes: folders first, then alphabetically */
+function sortNodes(nodes: FileNode[]): FileNode[] {
+  return [...nodes].sort((a, b) => {
+    if (a.type === 'folder' && b.type !== 'folder') return -1;
+    if (a.type !== 'folder' && b.type === 'folder') return 1;
+    return a.name.localeCompare(b.name);
+  });
 }
