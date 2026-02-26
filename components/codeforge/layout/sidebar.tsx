@@ -1,6 +1,7 @@
 /**
- * CodeForge IDE - Sidebar
+ * CodeForge IDE - Sidebar v2.0
  * Dynamic sidebar that switches content based on active view.
+ * Now supports all 5 views: explorer, search, git, terminal, settings.
  */
 
 'use client';
@@ -14,6 +15,9 @@ import { useEditorStore } from '@/lib/stores/editor-store';
 import type { FileNode } from '@/lib/db/schema';
 import { FileContextMenu } from '@/components/codeforge/file-explorer/file-context-menu';
 import { GitPanel } from '@/components/codeforge/panels/git-panel';
+import { SettingsPanel } from '@/components/codeforge/panels/settings-panel';
+import { SearchPanel } from '@/components/codeforge/panels/search-panel';
+import { TerminalSidePanel } from '@/components/codeforge/panels/terminal-panel';
 
 /**
  * Props — 'width' is accepted for compatibility with main-layout.tsx
@@ -24,7 +28,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ width }: SidebarProps) {
-  const { sidebarOpen, activeView } = useUIStore();
+  const { sidebarVisible, activityBarView } = useUIStore();
   const { fileTree, isLoading, loadFileTree } = useFilesStore();
   const { openFile } = useEditorStore();
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
@@ -60,34 +64,31 @@ export default function Sidebar({ width }: SidebarProps) {
     [openFile]
   );
 
-  if (!sidebarOpen) return null;
+  if (!sidebarVisible) return null;
+
+  // ─── View titles ───
+  const viewTitles: Record<string, string> = {
+    explorer: 'المستكشف',
+    search: 'البحث',
+    git: 'التحكم بالمصدر',
+    terminal: 'الطرفية',
+    settings: 'الإعدادات',
+  };
 
   // ─── Render sidebar content based on active view ───
   const renderContent = () => {
-    switch (activeView) {
+    switch (activityBarView) {
       case 'git':
         return <GitPanel />;
 
       case 'search':
-        return (
-          <div className="p-4 text-sm text-muted-foreground text-center">
-            Search — قريباً
-          </div>
-        );
+        return <SearchPanel />;
 
       case 'terminal':
-        return (
-          <div className="p-4 text-sm text-muted-foreground text-center">
-            Terminal — قريباً
-          </div>
-        );
+        return <TerminalSidePanel />;
 
       case 'settings':
-        return (
-          <div className="p-4 text-sm text-muted-foreground text-center">
-            Settings — قريباً
-          </div>
-        );
+        return <SettingsPanel />;
 
       case 'explorer':
       default:
@@ -164,11 +165,7 @@ export default function Sidebar({ width }: SidebarProps) {
     <div className="flex h-full flex-col border-r bg-[hsl(var(--cf-sidebar))]">
       <div className="border-b px-4 py-2">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          {activeView === 'explorer' && 'Explorer'}
-          {activeView === 'search' && 'Search'}
-          {activeView === 'git' && 'Source Control'}
-          {activeView === 'terminal' && 'Terminal'}
-          {activeView === 'settings' && 'Settings'}
+          {viewTitles[activityBarView] || activityBarView}
         </h2>
       </div>
       <div className="flex-1 overflow-y-auto">{renderContent()}</div>
