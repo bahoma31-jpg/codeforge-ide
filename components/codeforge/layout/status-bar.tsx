@@ -1,87 +1,109 @@
+/**
+ * CodeForge IDE — Status Bar
+ * Bottom bar with file info, git branch, and agent toggle.
+ */
+
 'use client';
 
+import { useEditorStore } from '@/lib/stores/editor-store';
 import { useUIStore } from '@/lib/stores/ui-store';
-import { useNotificationStore } from '@/lib/stores/notification-store';
-import { setTheme as persistTheme, toggleTheme } from '@/lib/utils/theme';
-import { GitBranch, Moon, Sun, AlertCircle, CheckCircle } from 'lucide-react';
+import { useAgentStore } from '@/lib/stores/agent-store';
+import { Bot, Settings } from 'lucide-react';
+import { useState } from 'react';
+import dynamic from 'next/dynamic';
 
-interface StatusBarProps {
-  errors?: number;
-  warnings?: number;
-}
+const AgentSettings = dynamic(
+  () =>
+    import('@/components/agent/agent-settings').then((m) => ({
+      default: m.AgentSettings || m.default,
+    })),
+  { ssr: false }
+);
 
-export default function StatusBar({ errors = 0, warnings = 0 }: StatusBarProps) {
-  const { theme, setTheme, panelVisible, togglePanel } = useUIStore();
-  const { addNotification } = useNotificationStore();
+export default function StatusBar() {
+  const { tabs, activeTabId } = useEditorStore();
+  const { theme } = useUIStore();
+  const {
+    isPanelOpen: isAgentOpen,
+    togglePanel: toggleAgent,
+    pendingApprovals,
+    isProcessing,
+  } = useAgentStore();
+  const [showSettings, setShowSettings] = useState(false);
 
-  const onToggleTheme = () => {
-    const next = toggleTheme(theme);
-    setTheme(next);
-    persistTheme(next);
-  };
-
-  const handleErrorClick = () => {
-    if (!panelVisible) togglePanel();
-    addNotification({
-      type: 'info',
-      title: 'Problems Panel',
-      message: 'فتح لوحة المشاكل — سيتم تفعيل التحليل في إصدار قادم.',
-      autoDismiss: true,
-    });
-  };
+  const activeTab = tabs.find((t) => t.id === activeTabId);
+  const pendingCount = pendingApprovals.filter(
+    (a) => a.status === 'pending'
+  ).length;
 
   return (
-    <footer className="flex h-[22px] items-center justify-between border-t border-border bg-[hsl(var(--cf-statusbar))] px-3 text-xs text-white">
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-1">
-          <GitBranch className="h-3 w-3" />
-          <span>main</span>
+    <>
+      <div className="flex h-6 items-center justify-between border-t bg-[hsl(var(--cf-statusbar))] px-3 text-xs text-muted-foreground select-none">
+        {/* Left side */}
+        <div className="flex items-center gap-3">
+          {activeTab && (
+            <>
+              <span title="الملف الحالي">
+                {activeTab.fileName}
+                {activeTab.isDirty && ' •'}
+              </span>
+              <span className="text-[10px] opacity-60" title="اللغة">
+                {activeTab.language}
+              </span>
+              <span className="text-[10px] opacity-60" title="المسار">
+                {activeTab.filePath}
+              </span>
+            </>
+          )}
+          {!activeTab && <span>لا يوجد ملف مفتوح</span>}
         </div>
 
-        {errors > 0 ? (
-          <button
-            onClick={handleErrorClick}
-            className="flex items-center gap-1 text-red-400 hover:opacity-80"
-            aria-label={`${errors} error${errors !== 1 ? 's' : ''}. Click to view.`}
-          >
-            <AlertCircle className="h-3 w-3" aria-hidden="true" />
-            <span>{errors}</span>
-          </button>
-        ) : warnings > 0 ? (
-          <button
-            onClick={handleErrorClick}
-            className="flex items-center gap-1 text-yellow-400 hover:opacity-80"
-            aria-label={`${warnings} warning${warnings !== 1 ? 's' : ''}. Click to view.`}
-          >
-            <AlertCircle className="h-3 w-3" aria-hidden="true" />
-            <span>{warnings}</span>
-          </button>
-        ) : (
-          <div className="flex items-center gap-1">
-            <CheckCircle className="h-3 w-3" />
-            <span>No problems</span>
-          </div>
-        )}
+        {/* Right side */}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] opacity-60">
+            {theme === 'dark' ? '🌙' : theme === 'light' ? '☀️' : '🔵'}
+          </span>
 
-        <span>UTF-8</span>
-        <span>Ln 1, Col 1</span>
+          {/* Agent settings button */}
+          <button
+            onClick={() => setShowSettings(true)}
+            className="p-0.5 rounded hover:bg-[#313244] text-[#6c7086] hover:text-[#cdd6f4] transition-colors"
+            title="إعدادات الوكيل"
+          >
+            <Settings size={12} />
+          </button>
+
+          {/* Agent toggle button */}
+          <button
+            onClick={toggleAgent}
+            className={`relative flex items-center gap-1 px-1.5 py-0.5 rounded transition-all ${
+              isAgentOpen
+                ? 'bg-[#89b4fa]/20 text-[#89b4fa]'
+                : 'hover:bg-[#313244] text-[#6c7086] hover:text-[#cdd6f4]'
+            }`}
+            title={isAgentOpen ? 'إغلاق الوكيل (Ctrl+Shift+A)' : 'فتح الوكيل (Ctrl+Shift+A)'}
+          >
+            <Bot
+              size={13}
+              className={isProcessing ? 'animate-pulse' : ''}
+            />
+            <span className="text-[10px]">الوكيل</span>
+
+            {/* Pending approvals badge */}
+            {pendingCount > 0 && (
+              <span className="absolute -top-1.5 -right-1 w-3.5 h-3.5 rounded-full bg-[#f38ba8] text-[#1e1e2e] text-[8px] flex items-center justify-center font-bold">
+                {pendingCount}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        <span>TypeScript</span>
-        <button
-          onClick={onToggleTheme}
-          className="flex items-center gap-1 hover:opacity-80"
-          title="Toggle Theme"
-        >
-          {theme === 'light' ? (
-            <Moon className="h-3 w-3" />
-          ) : (
-            <Sun className="h-3 w-3" />
-          )}
-          <span>{theme === 'light' ? 'Dark' : 'Light'}</span>
-        </button>
-      </div>
-    </footer>
+      {/* Agent Settings Dialog */}
+      <AgentSettings
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
+    </>
   );
 }

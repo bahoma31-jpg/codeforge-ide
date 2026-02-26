@@ -1,6 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
+/**
+ * CodeForge IDE — Main Layout v3.0
+ * Three-panel layout: [ActivityBar | Sidebar | Editor | AgentPanel]
+ * The editor is always in the CENTER between the file tree and chat.
+ */
+
+import { useEffect, useRef, useCallback } from 'react';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { useAgentStore } from '@/lib/stores/agent-store';
 import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts';
@@ -19,8 +25,13 @@ import { NotificationToast } from '../notifications/notification-toast';
 
 // Lazy-load agent components (only loaded when needed)
 import dynamic from 'next/dynamic';
-const AgentPanel = dynamic(() => import('@/components/agent/agent-panel').then(m => ({ default: m.AgentPanel || m.default })), { ssr: false });
-const AgentToggleButton = dynamic(() => import('@/components/agent/agent-toggle-button').then(m => ({ default: m.AgentToggleButton || m.default })), { ssr: false });
+const AgentPanel = dynamic(
+  () =>
+    import('@/components/agent/agent-panel').then((m) => ({
+      default: m.AgentPanel || m.default,
+    })),
+  { ssr: false }
+);
 
 export default function MainLayout() {
   useKeyboardShortcuts();
@@ -30,8 +41,10 @@ export default function MainLayout() {
     panelVisible,
     sidebarWidth,
     panelHeight,
+    agentPanelWidth,
     setSidebarWidth,
     setPanelHeight,
+    setAgentPanelWidth,
     theme,
     setTheme,
   } = useUIStore();
@@ -40,12 +53,14 @@ export default function MainLayout() {
 
   const sidebarHandleRef = useRef<HTMLDivElement | null>(null);
   const panelHandleRef = useRef<HTMLDivElement | null>(null);
+  const agentHandleRef = useRef<HTMLDivElement | null>(null);
 
   // Initialize agent store on mount
   useEffect(() => {
     initAgent();
   }, [initAgent]);
 
+  // Theme initialization
   useEffect(() => {
     const initial = getTheme();
     setTheme(initial);
@@ -57,56 +72,91 @@ export default function MainLayout() {
     persistTheme(theme);
   }, [theme]);
 
-  useEffect(() => {
-    const handleSidebarResize = (e: MouseEvent) => {
-      const newWidth = Math.max(200, Math.min(e.clientX - 48, 600));
-      setSidebarWidth(newWidth);
-    };
+  // ─── Resize handlers ──────────────────────────────────────
 
-    const handlePanelResize = (e: MouseEvent) => {
-      const newHeight = Math.max(
-        150,
-        Math.min(window.innerHeight - e.clientY, 500)
-      );
-      setPanelHeight(newHeight);
-    };
+  const setupResize = useCallback(
+    (
+      ref: React.RefObject<HTMLDivElement | null>,
+      onMove: (e: MouseEvent) => void
+    ) => {
+      const handle = ref.current;
+      if (!handle) return;
 
-    const sidebarHandle = sidebarHandleRef.current;
-    const panelHandle = panelHandleRef.current;
+      const onMouseDown = () => {
+        // Prevent text selection during resize
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
 
-    const onSidebarMouseDown = () => {
-      document.addEventListener('mousemove', handleSidebarResize);
-      document.addEventListener(
-        'mouseup',
-        () => document.removeEventListener('mousemove', handleSidebarResize),
-        { once: true }
-      );
-    };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener(
+          'mouseup',
+          () => {
+            document.removeEventListener('mousemove', onMove);
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+          },
+          { once: true }
+        );
+      };
 
-    const onPanelMouseDown = () => {
-      document.addEventListener('mousemove', handlePanelResize);
-      document.addEventListener(
-        'mouseup',
-        () => document.removeEventListener('mousemove', handlePanelResize),
-        { once: true }
-      );
-    };
-
-    sidebarHandle?.addEventListener('mousedown', onSidebarMouseDown);
-    panelHandle?.addEventListener('mousedown', onPanelMouseDown);
-
-    return () => {
-      sidebarHandle?.removeEventListener('mousedown', onSidebarMouseDown);
-      panelHandle?.removeEventListener('mousedown', onPanelMouseDown);
-    };
-  }, [setSidebarWidth, setPanelHeight]);
-
-  const editorStyle = useMemo(
-    () => ({
-      width: sidebarVisible ? `calc(100% - ${sidebarWidth}px)` : '100%',
-    }),
-    [sidebarVisible, sidebarWidth]
+      handle.addEventListener('mousedown', onMouseDown);
+      return () => handle.removeEventListener('mousedown', onMouseDown);
+    },
+    []
   );
+
+  // Sidebar resize
+  useEffect(() => {
+    return setupResize(sidebarHandleRef, (e: MouseEvent) => {
+      // ActivityBar is ~48px wide
+      const newWidth = Math.max(200, Math.min(e.clientX - 48, 400));
+      setSidebarWidth(newWidth);
+    });
+  }, [setSidebarWidth, setupResize]);
+
+  // Bottom panel resize
+  useEffect(() => {
+    const handle = panelHandleRef.current;
+    if (!handle) return;
+
+    const onMouseDown = () => {
+      document.body.style.cursor = 'row-resize';
+      document.body.style.userSelect = 'none';
+
+      const onMove = (e: MouseEvent) => {
+        const newHeight = Math.max(
+          150,
+          Math.min(window.innerHeight - e.clientY, 400)
+        );
+        setPanelHeight(newHeight);
+      };
+
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener(
+        'mouseup',
+        () => {
+          document.removeEventListener('mousemove', onMove);
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+        },
+        { once: true }
+      );
+    };
+
+    handle.addEventListener('mousedown', onMouseDown);
+    return () => handle.removeEventListener('mousedown', onMouseDown);
+  }, [setPanelHeight]);
+
+  // Agent panel resize (drag from LEFT edge of agent panel)
+  useEffect(() => {
+    return setupResize(agentHandleRef, (e: MouseEvent) => {
+      const newWidth = Math.max(
+        300,
+        Math.min(window.innerWidth - e.clientX, 600)
+      );
+      setAgentPanelWidth(newWidth);
+    });
+  }, [setAgentPanelWidth, setupResize]);
 
   // Keyboard shortcut: Ctrl+Shift+A to toggle agent
   useEffect(() => {
@@ -121,43 +171,68 @@ export default function MainLayout() {
   }, []);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
-      <ActivityBar />
+    <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground">
+      {/* ─── Main Row: ActivityBar + Sidebar + Editor + Agent ─── */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* 1. Activity Bar (far left) */}
+        <ActivityBar />
 
-      {sidebarVisible && (
-        <>
-          <Sidebar width={sidebarWidth} />
-          <div
-            ref={sidebarHandleRef}
-            className="w-1 cursor-col-resize bg-border hover:bg-primary/50 transition-colors"
-          />
-        </>
-      )}
+        {/* 2. Sidebar (file tree) */}
+        {sidebarVisible && (
+          <>
+            <div style={{ width: sidebarWidth }} className="shrink-0">
+              <Sidebar width={sidebarWidth} />
+            </div>
+            <div
+              ref={sidebarHandleRef}
+              className="w-1 shrink-0 cursor-col-resize bg-border hover:bg-primary/50 transition-colors"
+              title="تغيير حجم الشريط الجانبي"
+            />
+          </>
+        )}
 
-      <div className="flex flex-1 flex-col overflow-hidden" style={editorStyle}>
-        <div className="flex-1 overflow-hidden">
-          <EditorArea />
+        {/* 3. Editor Area (CENTER — takes remaining space) */}
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex-1 overflow-hidden">
+            <EditorArea />
+          </div>
+
+          {/* Bottom Panel (Terminal, Problems, etc.) */}
+          {panelVisible && (
+            <>
+              <div
+                ref={panelHandleRef}
+                className="h-1 shrink-0 cursor-row-resize bg-border hover:bg-primary/50 transition-colors"
+                title="تغيير حجم اللوحة السفلية"
+              />
+              <Panel height={panelHeight} />
+            </>
+          )}
         </div>
 
-        {panelVisible && (
+        {/* 4. Agent Chat Panel (RIGHT side) */}
+        {isAgentOpen && (
           <>
             <div
-              ref={panelHandleRef}
-              className="h-1 cursor-row-resize bg-border hover:bg-primary/50 transition-colors"
+              ref={agentHandleRef}
+              className="w-1 shrink-0 cursor-col-resize bg-border hover:bg-primary/50 transition-colors"
+              title="تغيير حجم لوحة الوكيل"
             />
-            <Panel height={panelHeight} />
+            <div
+              style={{ width: agentPanelWidth }}
+              className="shrink-0 overflow-hidden"
+            >
+              <AgentPanel />
+            </div>
           </>
         )}
       </div>
 
+      {/* ─── Status Bar (bottom, full width) ─── */}
       <StatusBar />
 
       {/* Toast notifications — renders in bottom-right corner */}
       <NotificationToast />
-
-      {/* 🤖 AI Agent — Toggle button + sliding panel */}
-      <AgentToggleButton />
-      {isAgentOpen && <AgentPanel />}
     </div>
   );
 }

@@ -15,6 +15,7 @@ interface UIState {
   activityBarView: ActivityBarView;
   sidebarWidth: number;
   panelHeight: number;
+  agentPanelWidth: number;
   theme: CodeforgeTheme;
 
   toggleSidebar: () => void;
@@ -22,6 +23,7 @@ interface UIState {
   setActivityBarView: (view: ActivityBarView) => void;
   setSidebarWidth: (width: number) => void;
   setPanelHeight: (height: number) => void;
+  setAgentPanelWidth: (width: number) => void;
   setTheme: (theme: CodeforgeTheme) => void;
 }
 
@@ -34,6 +36,7 @@ export const useUIStore = create<UIState>((set) => ({
   activityBarView: 'explorer',
   sidebarWidth: 250,
   panelHeight: 200,
+  agentPanelWidth: 380,
   theme: 'dark',
 
   toggleSidebar: () => set((s) => ({ sidebarVisible: !s.sidebarVisible })),
@@ -43,5 +46,7 @@ export const useUIStore = create<UIState>((set) => ({
     set({ sidebarWidth: clamp(Math.round(width), 200, 400) }),
   setPanelHeight: (height) =>
     set({ panelHeight: clamp(Math.round(height), 150, 400) }),
+  setAgentPanelWidth: (width) =>
+    set({ agentPanelWidth: clamp(Math.round(width), 300, 600) }),
   setTheme: (theme) => set({ theme }),
 }));
