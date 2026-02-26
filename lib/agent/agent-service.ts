@@ -1,13 +1,14 @@
 /**
- * CodeForge IDE — Agent Service (Core Engine) v2.1
+ * CodeForge IDE — Agent Service (Core Engine) v2.2
  * Orchestrates the AI agent: sends messages, handles tool calls,
  * manages the conversation loop, and enforces safety rules.
  *
- * v2.1 — Full tool alignment update:
- *   - System Prompt now covers ALL 44 tools (25 GitHub + 9 FS + 7 Git + 3 Utility)
- *   - Tool names in prompt match actual code names exactly
- *   - Updated Tool Decision Matrix for complete coverage
- *   - Risk levels synchronized between prompt and tool definitions
+ * v2.2 — Triple-layer safety integration:
+ *   - Uses processToolSafety() from safety/index.ts
+ *   - Added onNotify callback for NOTIFY-level tools
+ *   - CONFIRM tools await onApprovalRequired() (unchanged API)
+ *   - AUTO tools execute silently (unchanged)
+ *   - Backward compatible: onNotify is optional
  */
 
 import { v4 as uuidv4 } from 'uuid';
@@ -24,6 +25,7 @@ import type {
 } from './types';
 import { MAX_TOOL_ITERATIONS } from './constants';
 import { getAuditLogger, type AuditLogger } from './audit-logger';
+import { processToolSafety, type ToolNotification } from './safety';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SYSTEM PROMPT — CodeForge Agent Constitution v2.0
@@ -68,10 +70,10 @@ Runtime Variables (injected at session start):
 - Session ID: {{session_id}}
 - Timestamp: {{current_timestamp}}
 
-You have access to 4 categories of tools (44 total):
+You have access to 4 categories of tools (45 total):
 - GitHub API Tools (25): Repository operations via REST API
 - Local Filesystem Tools (9): Project file operations in the workspace
-- Git Tools (7): Version control operations
+- Git Tools (8): Version control operations
 - Utility Tools (3): Code analysis and project context helpers
 
 You CAN:
@@ -85,7 +87,7 @@ You CAN:
 - Search code across the repository
 - View commit history and diffs
 - Manage repositories (create, get info, search)
-- Use Git operations (status, diff, stage, commit, push)
+- Use Git operations (status, diff, log, stage, commit, push)
 - Analyze code and suggest fixes
 
 You CANNOT:
@@ -253,49 +255,49 @@ These tools operate on the local project workspace (not GitHub API).
 
 ### fs_list_files
 List files and directories in the local project workspace.
-Parameters: path (optional, defaults to root), recursive (optional)
+Parameters: parentId (optional)
 
 ### fs_read_file
 Read the contents of a local file in the workspace.
-Parameters: path (required)
+Parameters: fileId or filePath (one required)
 
 ### fs_search_files
-Search for text patterns across local project files.
-Parameters: query (required), filePattern (optional glob), maxResults (optional)
+Search for files by name in the local project workspace.
+Parameters: query (required)
 
 ## 🟡 FS NOTIFY TOOLS
 
 ### fs_create_file
 Create a new file in the local workspace.
-Parameters: path, content (required)
+Parameters: name, content (required), parentId, language (optional)
 
 ### fs_update_file
 Update/overwrite an existing local file.
-Parameters: path, content (required)
+Parameters: newContent (required), fileId or filePath (one required)
 
 ### fs_create_folder
 Create a new directory in the local workspace.
-Parameters: path (required)
+Parameters: name (required), parentId (optional)
 
 ### fs_rename_file
 Rename a file or directory.
-Parameters: oldPath, newPath (required)
+Parameters: nodeId, newName (required)
 
 ### fs_move_file
 Move a file or directory to a new location.
-Parameters: sourcePath, destinationPath (required)
+Parameters: nodeId (required), newParentId (optional)
 
 ## 🔴 FS CONFIRM TOOLS
 
 ### fs_delete_file
 Delete a local file or directory permanently.
 ⚠️ REQUIRES USER CONFIRMATION.
-Parameters: path (required)
+Parameters: nodeId (required)
 
 </filesystem_tools>
 
 # ──────────────────────────────────────────────────────────────────────────
-# SECTION 2C: GIT TOOLS (7 tools)
+# SECTION 2C: GIT TOOLS (8 tools)
 # ──────────────────────────────────────────────────────────────────────────
 
 <git_tools>
@@ -310,7 +312,7 @@ Parameters: none
 
 ### git_diff
 Show differences between working directory and staged/committed state.
-Parameters: filePath (optional — specific file or all), staged (optional boolean)
+Parameters: filePath (optional — specific file or all)
 
 ### git_log
 Show recent commit log.
@@ -320,22 +322,27 @@ Parameters: maxCount (optional, defaults to 10)
 
 ### git_stage
 Stage files for commit (git add).
-Parameters: files (required — array of paths, or ["."] for all)
+Parameters: paths (required — array of paths, or ["."] for all)
 
 ### git_commit
 Commit staged changes with a message.
 Parameters: message (required)
 
 ### git_create_branch
-Create and optionally switch to a new local branch.
-Parameters: branchName (required), checkout (optional boolean)
+Create a new local branch.
+Parameters: name (required), fromBranch (optional)
 
 ## 🔴 GIT CONFIRM TOOLS
 
 ### git_push
 Push local commits to the remote repository.
 ⚠️ REQUIRES USER CONFIRMATION — show what will be pushed.
-Parameters: remote (optional, defaults to "origin"), branch (optional)
+Parameters: branch (optional)
+
+### git_create_pr
+Create a Pull Request on GitHub from a local branch.
+⚠️ REQUIRES USER CONFIRMATION.
+Parameters: title, base, head (required), body (optional)
 
 </git_tools>
 
@@ -359,7 +366,7 @@ Parameters: code (required), language (optional)
 
 ### suggest_fix
 Analyze code with an error and suggest a fix.
-Parameters: code (required), error (required), language (optional)
+Parameters: error (required), filePath, lineNumber (optional)
 
 </utility_tools>
 
@@ -430,6 +437,7 @@ Parameters: code (required), error (required), language (optional)
 | "Push all my changes"                | github_push_files           | —                        |
 | "What's the Git status?"             | git_status                  | —                        |
 | "Show me the diff"                   | git_diff                    | —                        |
+| "Show commit log"                    | git_log                     | —                        |
 | "Commit my changes"                  | git_commit                  | git_stage                |
 | "Push to remote"                     | git_push                    | git_commit               |
 | "Analyze this project"               | get_project_context         | —                        |
@@ -1026,15 +1034,21 @@ export class AgentService {
 
   /**
    * Send a message and get a response (with tool calling loop).
-   * Uses the full system prompt as the agent's constitution.
-   * All tool executions are logged to the persistent AuditLogger.
+   *
+   * v2.2 — Triple-layer safety:
+   *   - onToolCall: callback when any tool is invoked (for UI status)
+   *   - onNotify: callback for NOTIFY-level tools (shows notification, doesn't block)
+   *   - onApprovalRequired: callback for CONFIRM-level tools (blocks until user decides)
+   *
+   * onNotify is optional for backward compatibility.
    */
   async sendMessage(
     messages: AgentMessage[],
     systemPrompt?: string,
     onToolCall?: (toolCall: ToolCall) => void,
     onApprovalRequired?: (approval: PendingApproval) => Promise<boolean>,
-    projectContext?: ProjectContext
+    projectContext?: ProjectContext,
+    onNotify?: (notification: ToolNotification) => void
   ): Promise<AgentMessage> {
     // Reset anti-loop tracker for each new user message
     this.resetToolTracker();
@@ -1070,7 +1084,6 @@ export class AgentService {
         onToolCall?.(toolCall);
 
         const toolDef = this.tools.find((t) => t.name === toolCall.name);
-        const riskLevel: RiskLevel = toolDef?.riskLevel || 'notify';
         const category = toolDef?.category || 'utility';
 
         // ── Anti-loop check ──
@@ -1084,39 +1097,45 @@ export class AgentService {
           continue;
         }
 
+        // ══════════════════════════════════════════════════════
+        // TRIPLE-LAYER SAFETY — processToolSafety() decides
+        // ══════════════════════════════════════════════════════
+        const safetyAction = processToolSafety(toolCall, toolDef);
+
         // ── Start audit tracking (captures duration) ──
         const auditTracker = this.auditLogger.logStart(
           toolCall.name,
           toolCall.arguments,
-          riskLevel,
+          safetyAction.riskLevel,
           category
         );
 
-        // ── If high risk, request approval ──
-        if (riskLevel === 'confirm' && onApprovalRequired) {
-          const approval: PendingApproval = {
-            id: uuidv4(),
-            toolCall,
-            toolName: toolCall.name,
-            description: `الوكيل يريد تنفيذ: ${toolCall.name}`,
-            riskLevel,
-            status: 'pending',
-            createdAt: Date.now(),
-          };
-
-          const approved = await onApprovalRequired(approval);
+        // ── CONFIRM: Block and wait for user approval ──
+        if (safetyAction.type === 'confirm' && onApprovalRequired) {
+          const approved = await onApprovalRequired(safetyAction.approval);
 
           if (!approved) {
             // Log the rejection with duration
             auditTracker.reject();
 
-            apiMessages.push({ role: 'assistant', content: `أردت استخدام ${toolCall.name} لكن المستخدم رفض.` });
-            apiMessages.push({ role: 'user', content: `تم رفض العملية: ${toolCall.name}. يرجى المتابعة بدونها.` });
+            apiMessages.push({
+              role: 'assistant',
+              content: `أردت تنفيذ عملية حساسة (${toolCall.name}) لكن المستخدم رفض.`,
+            });
+            apiMessages.push({
+              role: 'user',
+              content: `تم رفض العملية: ${toolCall.name}. يرجى المتابعة بدونها.`,
+            });
             continue;
           }
         }
 
-        // ── Execute the tool ──
+        // ── NOTIFY: Show notification (non-blocking) then execute ──
+        if (safetyAction.type === 'notify' && onNotify) {
+          onNotify(safetyAction.notification);
+        }
+
+        // ── Execute the tool (AUTO, NOTIFY after notification, CONFIRM after approval) ──
         const executor = this.toolExecutors.get(toolCall.name);
         let result: ToolCallResult;
 
@@ -1131,12 +1150,20 @@ export class AgentService {
         }
 
         // ── Log the result with duration ──
-        const approvedBy = riskLevel === 'confirm' ? 'user' : 'auto';
+        const approvedBy: 'auto' | 'user' | 'notify' =
+          safetyAction.type === 'confirm' ? 'user' :
+          safetyAction.type === 'notify' ? 'notify' : 'auto';
         auditTracker.finish(result, true, approvedBy);
 
         // Add tool result to conversation
-        apiMessages.push({ role: 'assistant', content: response.content || `[Calling tool: ${toolCall.name}]` });
-        apiMessages.push({ role: 'user', content: `Tool ${toolCall.name} result: ${JSON.stringify(result)}` });
+        apiMessages.push({
+          role: 'assistant',
+          content: response.content || `[Calling tool: ${toolCall.name}]`,
+        });
+        apiMessages.push({
+          role: 'user',
+          content: `Tool ${toolCall.name} result: ${JSON.stringify(result)}`,
+        });
       }
     }
 
