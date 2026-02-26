@@ -17,6 +17,39 @@ import { sendNotification } from '../bridge';
 
 const GITHUB_API = 'https://api.github.com';
 
+// ═══════════════════════════════════════════════════════════════════════════
+// KNOWN LIMITATIONS — Operations that require special token scopes
+// or are restricted by GitHub API policies.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Maps tool names to user-friendly messages explaining why they might fail
+ * and what the user can do about it. Used by executors to provide clear
+ * guidance instead of cryptic API errors.
+ */
+export const TOOL_LIMITATIONS: Record<string, {
+  requiredScope: string;
+  userMessage: string;
+  fallbackInstructions: string;
+}> = {
+  github_delete_repo: {
+    requiredScope: 'delete_repo',
+    userMessage:
+      '⚠️ حذف المستودعات يتطلب صلاحية خاصة (delete_repo) في GitHub Token.\n' +
+      'هذه الصلاحية غير مفعّلة افتراضياً لأسباب أمنية.',
+    fallbackInstructions:
+      '**لحذف المستودع يدوياً:**\n' +
+      '1. افتح المستودع على GitHub\n' +
+      '2. اذهب إلى **Settings** → **Danger Zone**\n' +
+      '3. اضغط **Delete this repository**\n\n' +
+      '**أو عبر CLI:**\n' +
+      '```bash\n' +
+      'gh auth refresh -s delete_repo\n' +
+      'gh api -X DELETE repos/{owner}/{repo}\n' +
+      '```',
+  },
+};
+
 // ─── Helper: Get GitHub Token ─────────────────────────────────
 
 async function getGitHubToken(): Promise<string> {
@@ -59,12 +92,37 @@ async function githubFetch(
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
     const message = (error as { message?: string }).message || `HTTP ${response.status}`;
-    throw new Error(`GitHub API Error (${response.status}): ${message}`);
+    throw new GitHubApiError(response.status, message, endpoint);
   }
 
   if (response.status === 204) return { success: true };
 
   return response.json();
+}
+
+/**
+ * Custom error class for GitHub API errors.
+ * Carries the HTTP status code and endpoint for better error handling.
+ */
+class GitHubApiError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string,
+    public readonly endpoint: string
+  ) {
+    super(`GitHub API Error (${status}): ${message}`);
+    this.name = 'GitHubApiError';
+  }
+
+  /** Check if this is a permissions/scope error */
+  isPermissionError(): boolean {
+    return this.status === 403 || this.status === 401;
+  }
+
+  /** Check if the resource was not found */
+  isNotFound(): boolean {
+    return this.status === 404;
+  }
 }
 
 // Helper for raw text responses (file content)
@@ -111,7 +169,7 @@ export const githubTools: ToolDefinition[] = [
   },
   {
     name: 'github_delete_repo',
-    description: 'Delete a GitHub repository permanently. This action is IRREVERSIBLE and will delete all code, issues, PRs, and settings. Requires user confirmation.',
+    description: 'Delete a GitHub repository permanently. This action is IRREVERSIBLE and will delete all code, issues, PRs, and settings. Requires user confirmation. NOTE: This operation requires the "delete_repo" scope on the GitHub token — if unavailable, the agent will provide manual deletion instructions instead.',
     parameters: {
       type: 'object',
       properties: {
@@ -561,13 +619,60 @@ export function registerGitHubExecutors(service: AgentService): void {
   });
 
   service.registerToolExecutor('github_delete_repo', async (args) => {
+    const owner = args.owner as string;
+    const repo = args.repo as string;
+    const limitation = TOOL_LIMITATIONS.github_delete_repo;
+
     try {
-      const owner = args.owner as string;
-      const repo = args.repo as string;
       await githubFetch(`/repos/${owner}/${repo}`, { method: 'DELETE' });
       await sendNotification(`🤖 ⚠️ تم حذف المستودع: ${owner}/${repo} نهائياً`, 'success');
-      return { success: true, data: { deleted: `${owner}/${repo}`, message: `Repository ${owner}/${repo} has been permanently deleted.` } };
-    } catch (error) { return { success: false, error: (error as Error).message }; }
+      return {
+        success: true,
+        data: {
+          deleted: `${owner}/${repo}`,
+          message: `Repository ${owner}/${repo} has been permanently deleted.`,
+        },
+      };
+    } catch (error) {
+      // ── Enhanced error handling with clear user guidance ──
+      if (error instanceof GitHubApiError) {
+        // 403 = Token doesn't have delete_repo scope
+        if (error.isPermissionError()) {
+          await sendNotification(
+            `⚠️ لا يمكن حذف ${owner}/${repo} — صلاحية delete_repo غير متوفرة في التوكن`,
+            'error'
+          );
+          return {
+            success: false,
+            error:
+              `${limitation.userMessage}\n\n` +
+              `${limitation.fallbackInstructions}\n\n` +
+              `الخطأ الأصلي: ${error.message}`,
+          };
+        }
+
+        // 404 = Repo doesn't exist or token can't see it
+        if (error.isNotFound()) {
+          return {
+            success: false,
+            error:
+              `المستودع ${owner}/${repo} غير موجود، أو أن التوكن الحالي لا يملك صلاحية رؤيته.\n\n` +
+              `تأكد من:\n` +
+              `- اسم المستودع مكتوب بشكل صحيح\n` +
+              `- التوكن مرتبط بالحساب المالك للمستودع`,
+          };
+        }
+      }
+
+      // Generic fallback
+      return {
+        success: false,
+        error:
+          `فشل حذف المستودع ${owner}/${repo}.\n\n` +
+          `${limitation.fallbackInstructions}\n\n` +
+          `الخطأ: ${(error as Error).message}`,
+      };
+    }
   });
 
   service.registerToolExecutor('github_list_repos', async (args) => {
