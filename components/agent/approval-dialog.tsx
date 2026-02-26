@@ -1,12 +1,13 @@
 'use client';
 
 /**
- * CodeForge IDE — Approval Dialog
+ * CodeForge IDE — Approval Dialog v2.0
  * Inline dialog for confirming dangerous agent operations.
- * Shows affected files, diff preview, and approve/reject buttons.
+ * Shows risk level badge, affected files, diff preview,
+ * pending timer, and keyboard shortcuts (Enter/Escape).
  */
 
-import React from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import type { PendingApproval } from '@/lib/agent/types';
 import { useAgentStore } from '@/lib/stores/agent-store';
 import {
@@ -16,6 +17,8 @@ import {
   FileWarning,
   GitBranch,
   Github,
+  Clock,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface ApprovalDialogProps {
@@ -24,6 +27,36 @@ interface ApprovalDialogProps {
 
 export function ApprovalDialog({ approval }: ApprovalDialogProps) {
   const { approveAction, rejectAction } = useAgentStore();
+  const [elapsed, setElapsed] = useState(0);
+
+  // Pending timer
+  useEffect(() => {
+    if (approval.status !== 'pending') return;
+    const interval = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - approval.createdAt) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [approval.createdAt, approval.status]);
+
+  // Keyboard shortcuts: Enter = approve, Escape = reject
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (approval.status !== 'pending') return;
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        approveAction(approval.id);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        rejectAction(approval.id);
+      }
+    },
+    [approval.id, approval.status, approveAction, rejectAction]
+  );
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
 
   if (approval.status !== 'pending') return null;
 
@@ -31,14 +64,26 @@ export function ApprovalDialog({ approval }: ApprovalDialogProps) {
   const isGitOp = toolName.startsWith('git_');
   const isGitHubOp = toolName.startsWith('github_');
 
+  // Format elapsed time
+  const formatTime = (s: number) => {
+    if (s < 60) return `${s}\u062b`;
+    return `${Math.floor(s / 60)}\u062f ${s % 60}\u062b`;
+  };
+
   return (
-    <div className="mx-3 mb-3 rounded-xl border border-[#f9e2af]/40 bg-[#f9e2af]/5 overflow-hidden">
+    <div className="mx-3 mb-3 rounded-xl border border-[#f38ba8]/40 bg-[#f38ba8]/5 overflow-hidden shadow-lg">
       {/* Header */}
-      <div className="flex items-center gap-2 px-3 py-2 bg-[#f9e2af]/10 border-b border-[#f9e2af]/20">
-        <ShieldAlert size={14} className="text-[#f9e2af]" />
-        <span className="text-xs font-semibold text-[#f9e2af]">
-          عملية تتطلب تأكيدك
-        </span>
+      <div className="flex items-center justify-between px-3 py-2 bg-[#f38ba8]/10 border-b border-[#f38ba8]/20">
+        <div className="flex items-center gap-2">
+          <ShieldAlert size={14} className="text-[#f38ba8]" />
+          <span className="text-xs font-semibold text-[#f38ba8]">
+            \ud83d\udd34 \u0639\u0645\u0644\u064a\u0629 \u062d\u0633\u0627\u0633\u0629 \u2014 \u062a\u062d\u062a\u0627\u062c \u062a\u0623\u0643\u064a\u062f\u0643
+          </span>
+        </div>
+        <div className="flex items-center gap-1 text-[10px] text-[#6c7086]">
+          <Clock size={10} />
+          <span>{formatTime(elapsed)}</span>
+        </div>
       </div>
 
       {/* Content */}
@@ -56,21 +101,31 @@ export function ApprovalDialog({ approval }: ApprovalDialogProps) {
         </div>
 
         {/* Description */}
-        <p className="text-[11px] text-[#6c7086] mt-1.5">
+        <p className="text-[11px] text-[#a6adc8] mt-1.5">
           {approval.description}
         </p>
+
+        {/* Warning for destructive ops */}
+        {(toolName.includes('delete') || toolName.includes('merge')) && (
+          <div className="flex items-center gap-1.5 mt-2 text-[10px] text-[#f38ba8] bg-[#f38ba8]/5 rounded px-2 py-1">
+            <AlertTriangle size={10} />
+            <span>\u0647\u0630\u0647 \u0627\u0644\u0639\u0645\u0644\u064a\u0629 \u0642\u062f \u0644\u0627 \u064a\u0645\u0643\u0646 \u0627\u0644\u062a\u0631\u0627\u062c\u0639 \u0639\u0646\u0647\u0627</span>
+          </div>
+        )}
 
         {/* Tool arguments preview */}
         {approval.toolCall.arguments && Object.keys(approval.toolCall.arguments).length > 0 && (
           <div className="mt-2 rounded-lg bg-[#181825] border border-[#313244] p-2">
-            <div className="text-[10px] text-[#45475a] mb-1">المعطيات:</div>
+            <div className="text-[10px] text-[#45475a] mb-1">\u0627\u0644\u0645\u0639\u0637\u064a\u0627\u062a:</div>
             {Object.entries(approval.toolCall.arguments).map(([key, value]) => (
               <div key={key} className="text-[10px] font-mono text-[#cdd6f4] mt-0.5">
                 <span className="text-[#89b4fa]">{key}</span>
                 <span className="text-[#45475a]">: </span>
                 <span className="text-[#a6e3a1]">
                   {typeof value === 'string'
-                    ? value.length > 80 ? value.slice(0, 80) + '...' : value
+                    ? value.length > 80
+                      ? value.slice(0, 80) + '...'
+                      : value
                     : JSON.stringify(value)}
                 </span>
               </div>
@@ -81,7 +136,7 @@ export function ApprovalDialog({ approval }: ApprovalDialogProps) {
         {/* Affected files */}
         {approval.affectedFiles && approval.affectedFiles.length > 0 && (
           <div className="mt-2">
-            <div className="text-[10px] text-[#45475a] mb-1">الملفات المتأثرة:</div>
+            <div className="text-[10px] text-[#45475a] mb-1">\u0627\u0644\u0645\u0644\u0641\u0627\u062a \u0627\u0644\u0645\u062a\u0623\u062b\u0631\u0629:</div>
             {approval.affectedFiles.map((file) => (
               <div
                 key={file}
@@ -127,20 +182,22 @@ export function ApprovalDialog({ approval }: ApprovalDialogProps) {
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-2 px-3 py-2 border-t border-[#f9e2af]/20 bg-[#f9e2af]/5">
+      <div className="flex items-center gap-2 px-3 py-2 border-t border-[#f38ba8]/20 bg-[#f38ba8]/5">
         <button
           onClick={() => approveAction(approval.id)}
           className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#a6e3a1]/20 hover:bg-[#a6e3a1]/30 text-[#a6e3a1] text-xs font-medium transition-colors"
         >
           <Check size={12} />
-          تأكيد
+          \u062a\u0623\u0643\u064a\u062f
+          <span className="text-[9px] opacity-60 mr-1">(Enter)</span>
         </button>
         <button
           onClick={() => rejectAction(approval.id)}
           className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#f38ba8]/20 hover:bg-[#f38ba8]/30 text-[#f38ba8] text-xs font-medium transition-colors"
         >
           <X size={12} />
-          رفض
+          \u0631\u0641\u0636
+          <span className="text-[9px] opacity-60 mr-1">(Esc)</span>
         </button>
       </div>
     </div>

@@ -10,3 +10,4 @@ export { ChatMessage } from './chat-message';
 export { ChatInput } from './chat-input';
 export { ToolCallStatus } from './tool-call-status';
 export { ApprovalDialog } from './approval-dialog';
+export { NotifyToastStack } from './notify-toast';

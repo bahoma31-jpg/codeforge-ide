@@ -1,9 +1,10 @@
 'use client';
 
 /**
- * CodeForge IDE — Agent Panel
+ * CodeForge IDE — Agent Panel v2.2
  * Main container for the AI agent interface.
- * Includes chat, approvals, and audit log tabs.
+ * Includes chat, approvals, audit log tabs,
+ * and NOTIFY toast stack above chat input.
  */
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -12,16 +13,17 @@ import { ChatMessage } from './chat-message';
 import { ChatInput } from './chat-input';
 import { ToolCallStatus } from './tool-call-status';
 import { ApprovalDialog } from './approval-dialog';
+import { NotifyToastStack } from './notify-toast';
 import {
   Bot,
   X,
-  Settings,
   Trash2,
   MessageSquare,
   Shield,
   History,
   Loader2,
   AlertCircle,
+  Bell,
 } from 'lucide-react';
 
 type TabId = 'chat' | 'approvals' | 'audit';
@@ -33,6 +35,7 @@ export function AgentPanel() {
     isPanelOpen,
     error,
     pendingApprovals,
+    notifications,
     auditLog,
     currentToolCall,
     isConfigured,
@@ -58,15 +61,23 @@ export function AgentPanel() {
 
   if (!isPanelOpen) return null;
 
+  const pendingCount = pendingApprovals.filter((a) => a.status === 'pending').length;
+  const notifyCount = notifications.length;
+
   const tabs: { id: TabId; label: string; icon: React.ReactNode; count?: number }[] = [
-    { id: 'chat', label: 'محادثة', icon: <MessageSquare size={14} /> },
+    {
+      id: 'chat',
+      label: '\u0645\u062d\u0627\u062f\u062b\u0629',
+      icon: <MessageSquare size={14} />,
+      count: notifyCount > 0 ? notifyCount : undefined,
+    },
     {
       id: 'approvals',
-      label: 'تأكيدات',
+      label: '\u062a\u0623\u0643\u064a\u062f\u0627\u062a',
       icon: <Shield size={14} />,
-      count: pendingApprovals.filter((a) => a.status === 'pending').length,
+      count: pendingCount > 0 ? pendingCount : undefined,
     },
-    { id: 'audit', label: 'سجل', icon: <History size={14} /> },
+    { id: 'audit', label: '\u0633\u062c\u0644', icon: <History size={14} /> },
   ];
 
   return (
@@ -75,23 +86,29 @@ export function AgentPanel() {
       <div className="flex items-center justify-between px-3 py-2 border-b border-[#313244] bg-[#181825]">
         <div className="flex items-center gap-2">
           <Bot size={18} className="text-[#89b4fa]" />
-          <span className="text-sm font-semibold text-[#cdd6f4]">الوكيل الذكي</span>
+          <span className="text-sm font-semibold text-[#cdd6f4]">\u0627\u0644\u0648\u0643\u064a\u0644 \u0627\u0644\u0630\u0643\u064a</span>
           {isProcessing && (
             <Loader2 size={14} className="animate-spin text-[#89b4fa]" />
+          )}
+          {notifyCount > 0 && (
+            <span className="flex items-center gap-0.5 text-[9px] text-[#f9e2af] bg-[#f9e2af]/10 px-1.5 py-0.5 rounded-full">
+              <Bell size={8} />
+              {notifyCount}
+            </span>
           )}
         </div>
         <div className="flex items-center gap-1">
           <button
             onClick={clearMessages}
             className="p-1.5 rounded hover:bg-[#313244] text-[#6c7086] hover:text-[#f38ba8] transition-colors"
-            title="مسح المحادثة"
+            title="\u0645\u0633\u062d \u0627\u0644\u0645\u062d\u0627\u062f\u062b\u0629"
           >
             <Trash2 size={14} />
           </button>
           <button
             onClick={closePanel}
             className="p-1.5 rounded hover:bg-[#313244] text-[#6c7086] hover:text-[#cdd6f4] transition-colors"
-            title="إغلاق"
+            title="\u0625\u063a\u0644\u0627\u0642"
           >
             <X size={14} />
           </button>
@@ -130,7 +147,7 @@ export function AgentPanel() {
               <div className="mx-3 mt-3 p-3 rounded-lg bg-[#f9e2af]/10 border border-[#f9e2af]/30">
                 <div className="flex items-center gap-2 text-[#f9e2af] text-xs">
                   <AlertCircle size={14} />
-                  <span>يرجى إعداد مفتاح API أولاً في الإعدادات</span>
+                  <span>\u064a\u0631\u062c\u0649 \u0625\u0639\u062f\u0627\u062f \u0645\u0641\u062a\u0627\u062d API \u0623\u0648\u0644\u0627\u064b \u0641\u064a \u0627\u0644\u0625\u0639\u062f\u0627\u062f\u0627\u062a</span>
                 </div>
               </div>
             )}
@@ -157,10 +174,10 @@ export function AgentPanel() {
                   <Bot size={40} className="text-[#45475a]" />
                   <div>
                     <p className="text-sm text-[#6c7086]">
-                      مرحباً! أنا مساعدك البرمجي
+                      \u0645\u0631\u062d\u0628\u0627\u064b! \u0623\u0646\u0627 \u0645\u0633\u0627\u0639\u062f\u0643 \u0627\u0644\u0628\u0631\u0645\u062c\u064a
                     </p>
                     <p className="text-xs text-[#45475a] mt-1">
-                      اسألني عن الكود أو اطلب مني تعديل الملفات
+                      \u0627\u0633\u0623\u0644\u0646\u064a \u0639\u0646 \u0627\u0644\u0643\u0648\u062f \u0623\u0648 \u0627\u0637\u0644\u0628 \u0645\u0646\u064a \u062a\u0639\u062f\u064a\u0644 \u0627\u0644\u0645\u0644\u0641\u0627\u062a
                     </p>
                   </div>
                 </div>
@@ -183,6 +200,9 @@ export function AgentPanel() {
               <ApprovalDialog key={approval.id} approval={approval} />
             ))}
 
+            {/* NOTIFY Toast Stack — above the input */}
+            <NotifyToastStack />
+
             {/* Input */}
             <ChatInput
               onSend={sendMessage}
@@ -197,7 +217,7 @@ export function AgentPanel() {
             {pendingApprovals.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center gap-2">
                 <Shield size={32} className="text-[#45475a]" />
-                <p className="text-xs text-[#6c7086]">لا توجد تأكيدات معلقة</p>
+                <p className="text-xs text-[#6c7086]">\u0644\u0627 \u062a\u0648\u062c\u062f \u062a\u0623\u0643\u064a\u062f\u0627\u062a \u0645\u0639\u0644\u0642\u0629</p>
               </div>
             ) : (
               pendingApprovals.map((approval) => (
@@ -211,12 +231,12 @@ export function AgentPanel() {
                         : 'bg-[#f9e2af]/10 border-[#f9e2af]/30 text-[#f9e2af]'
                   }`}
                 >
-                  <div className="font-medium">{approval.toolCall.toolName}</div>
+                  <div className="font-medium">{approval.toolCall.name || approval.toolCall.toolName}</div>
                   <div className="mt-1 text-[#6c7086]">{approval.description}</div>
                   <div className="mt-1 text-[10px]">
                     {new Date(approval.createdAt).toLocaleTimeString('ar-DZ')}
-                    {' — '}
-                    {approval.status === 'pending' ? '⏳ معلق' : approval.status === 'approved' ? '✅ مقبول' : '❌ مرفوض'}
+                    {' \u2014 '}
+                    {approval.status === 'pending' ? '\u23f3 \u0645\u0639\u0644\u0642' : approval.status === 'approved' ? '\u2705 \u0645\u0642\u0628\u0648\u0644' : '\u274c \u0645\u0631\u0641\u0648\u0636'}
                   </div>
                 </div>
               ))
@@ -229,7 +249,7 @@ export function AgentPanel() {
             {auditLog.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center gap-2">
                 <History size={32} className="text-[#45475a]" />
-                <p className="text-xs text-[#6c7086]">سجل العمليات فارغ</p>
+                <p className="text-xs text-[#6c7086]">\u0633\u062c\u0644 \u0627\u0644\u0639\u0645\u0644\u064a\u0627\u062a \u0641\u0627\u0631\u063a</p>
               </div>
             ) : (
               auditLog.map((entry) => (
@@ -238,13 +258,29 @@ export function AgentPanel() {
                   className="p-2 rounded bg-[#181825] border border-[#313244] text-[10px] font-mono"
                 >
                   <div className="flex items-center justify-between">
-                    <span className={entry.result.success ? 'text-[#a6e3a1]' : 'text-[#f38ba8]'}>
-                      {entry.result.success ? '✓' : '✗'} {entry.toolName}
+                    <span className={entry.result?.success ? 'text-[#a6e3a1]' : 'text-[#f38ba8]'}>
+                      {entry.result?.success ? '\u2713' : '\u2717'} {entry.toolName}
                     </span>
                     <span className="text-[#45475a]">
                       {new Date(entry.timestamp).toLocaleTimeString('ar-DZ')}
                     </span>
                   </div>
+                  {entry.riskLevel && (
+                    <span className={`inline-block mt-0.5 px-1 py-0 rounded text-[8px] font-medium ${
+                      entry.riskLevel === 'confirm'
+                        ? 'bg-[#f38ba8]/10 text-[#f38ba8]'
+                        : entry.riskLevel === 'notify'
+                          ? 'bg-[#f9e2af]/10 text-[#f9e2af]'
+                          : 'bg-[#a6e3a1]/10 text-[#a6e3a1]'
+                    }`}>
+                      {entry.riskLevel === 'confirm' ? '\ud83d\udd34' : entry.riskLevel === 'notify' ? '\ud83d\udfe1' : '\ud83d\udfe2'} {entry.riskLevel}
+                    </span>
+                  )}
+                  {entry.approvedBy && (
+                    <span className="inline-block mt-0.5 mr-1 px-1 py-0 rounded text-[8px] bg-[#313244] text-[#6c7086]">
+                      {entry.approvedBy}
+                    </span>
+                  )}
                   <div className="text-[#6c7086] mt-0.5 truncate">
                     {JSON.stringify(entry.args).slice(0, 80)}
                   </div>
