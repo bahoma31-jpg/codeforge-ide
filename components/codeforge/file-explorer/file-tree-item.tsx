@@ -1,5 +1,14 @@
 'use client';
 
+/**
+ * CodeForge IDE — File Tree Item
+ * Single item (file or folder) in the file tree.
+ * Fully accessible with ARIA tree roles and keyboard navigation.
+ *
+ * FIX v2: Cleaned up HTML structure — removed extra wrapper div,
+ * fixed aria attributes for proper screen reader tree traversal.
+ */
+
 import { useRef, useEffect, KeyboardEvent } from 'react';
 import { ChevronRight, File, Folder, FolderOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -26,8 +35,7 @@ interface FileTreeItemProps {
 
 export function FileTreeItem({
   name,
-  // path is received but unused — keep in interface for future use
-  path: _path,
+  path,
   type,
   level,
   isExpanded = false,
@@ -44,11 +52,12 @@ export function FileTreeItem({
 }: FileTreeItemProps) {
   const itemRef = useRef<HTMLDivElement>(null);
   const isFolder = type === 'folder';
+  const hasChildren = isFolder && isExpanded && children;
 
-  // Auto-focus when this item becomes focused
+  // Auto-focus when this item becomes the focused item
   useEffect(() => {
     if (isFocused && itemRef.current) {
-      itemRef.current.focus();
+      itemRef.current.focus({ preventScroll: false });
     }
   }, [isFocused]);
 
@@ -70,7 +79,6 @@ export function FileTreeItem({
           if (!isExpanded) {
             onToggle?.();
           } else {
-            // Move to first child
             onNavigate?.('down');
           }
         }
@@ -81,7 +89,6 @@ export function FileTreeItem({
         if (isFolder && isExpanded) {
           onToggle?.();
         } else {
-          // Move to parent
           onNavigate?.('up');
         }
         break;
@@ -125,50 +132,73 @@ export function FileTreeItem({
   };
 
   return (
-    <div
-      role="group"
-      aria-label={`${type === 'folder' ? 'Folder' : 'File'}: ${name}`}
-    >
+    <>
+      {/* Tree item row */}
       <div
         ref={itemRef}
         role="treeitem"
         aria-expanded={isFolder ? isExpanded : undefined}
         aria-selected={isSelected}
-        aria-level={level}
+        aria-level={level + 1}
         aria-posinset={index + 1}
         aria-setsize={totalItems}
+        aria-label={`${isFolder ? 'مجلد' : 'ملف'}: ${name}`}
+        aria-owns={hasChildren ? `tree-group-${path}` : undefined}
         tabIndex={isFocused ? 0 : -1}
+        data-path={path}
         onKeyDown={handleKeyDown}
         onClick={handleClick}
         className={cn(
-          'flex items-center gap-1 px-2 py-1 cursor-pointer hover:bg-accent rounded-sm',
-          'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-          isSelected && 'bg-accent',
-          isFocused && 'ring-2 ring-ring'
+          'flex items-center gap-1 px-2 py-1 cursor-pointer rounded-sm',
+          'transition-colors duration-100',
+          'hover:bg-accent/60',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+          isSelected && 'bg-accent text-accent-foreground',
+          isFocused && !isSelected && 'bg-accent/30'
         )}
         style={{ paddingLeft: `${level * 12 + 8}px` }}
       >
+        {/* Chevron (folders only) */}
         {isFolder && (
           <ChevronRight
             className={cn(
-              'h-4 w-4 transition-transform',
-              isExpanded && 'transform rotate-90'
+              'h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-150',
+              isExpanded && 'rotate-90'
             )}
             aria-hidden="true"
           />
         )}
+
+        {/* Icon */}
         {isFolder ? (
           isExpanded ? (
-            <FolderOpen className="h-4 w-4" aria-hidden="true" />
+            <FolderOpen
+              className="h-4 w-4 shrink-0 text-blue-400"
+              aria-hidden="true"
+            />
           ) : (
-            <Folder className="h-4 w-4" aria-hidden="true" />
+            <Folder
+              className="h-4 w-4 shrink-0 text-blue-400"
+              aria-hidden="true"
+            />
           )
         ) : (
-          <File className="h-4 w-4" aria-hidden="true" />
+          <File
+            className="h-4 w-4 shrink-0 text-muted-foreground"
+            aria-hidden="true"
+          />
         )}
-        <span className="flex-1 truncate text-sm">{name}</span>
+
+        {/* Name */}
+        <span className="flex-1 truncate text-sm leading-tight">{name}</span>
       </div>
-      {isFolder && isExpanded && children && <div role="group">{children}</div>}
-    </div>
+
+      {/* Children (expanded folder contents) */}
+      {hasChildren && (
+        <div role="group" id={`tree-group-${path}`}>
+          {children}
+        </div>
+      )}
+    </>
   );
 }

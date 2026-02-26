@@ -1,6 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+/**
+ * CodeForge IDE — File Tree
+ * Renders a navigable, accessible file/folder tree.
+ *
+ * FIX v2: Eliminated double-render of children in renderTree().
+ * Previously, children were rendered TWICE for expanded folders:
+ *   1. As `children` prop inside <FileTreeItem>
+ *   2. Again after the item just to advance `currentIndex`
+ * Now: single call, both elements and nextIndex come from one result.
+ */
+
+import { useState, useCallback } from 'react';
 import { FileTreeItem } from './file-tree-item';
 
 interface FileNode {
@@ -22,31 +33,31 @@ export function FileTree({ files, onFileOpen }: FileTreeProps) {
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [focusedIndex, setFocusedIndex] = useState(0);
 
-  // Flatten tree for navigation
-  const flattenTree = (
-    nodes: FileNode[],
-    level = 0
-  ): Array<FileNode & { level: number }> => {
-    let result: Array<FileNode & { level: number }> = [];
+  // Flatten visible tree for keyboard navigation index tracking
+  const flattenTree = useCallback(
+    (nodes: FileNode[], level = 0): Array<FileNode & { level: number }> => {
+      const result: Array<FileNode & { level: number }> = [];
 
-    for (const node of nodes) {
-      result.push({ ...node, level });
+      for (const node of nodes) {
+        result.push({ ...node, level });
 
-      if (
-        node.type === 'folder' &&
-        expandedFolders.has(node.path) &&
-        node.children
-      ) {
-        result = result.concat(flattenTree(node.children, level + 1));
+        if (
+          node.type === 'folder' &&
+          expandedFolders.has(node.path) &&
+          node.children
+        ) {
+          result.push(...flattenTree(node.children, level + 1));
+        }
       }
-    }
 
-    return result;
-  };
+      return result;
+    },
+    [expandedFolders]
+  );
 
   const flatFiles = flattenTree(files);
 
-  const handleToggle = (path: string) => {
+  const handleToggle = useCallback((path: string) => {
     setExpandedFolders((prev) => {
       const next = new Set(prev);
       if (next.has(path)) {
@@ -56,33 +67,38 @@ export function FileTree({ files, onFileOpen }: FileTreeProps) {
       }
       return next;
     });
-  };
+  }, []);
 
-  const handleNavigate = (
-    direction: 'up' | 'down' | 'left' | 'right' | 'home' | 'end'
-  ) => {
-    let newIndex = focusedIndex;
+  const handleNavigate = useCallback(
+    (direction: 'up' | 'down' | 'left' | 'right' | 'home' | 'end') => {
+      setFocusedIndex((prev) => {
+        switch (direction) {
+          case 'up':
+            return Math.max(0, prev - 1);
+          case 'down':
+            return Math.min(flatFiles.length - 1, prev + 1);
+          case 'home':
+            return 0;
+          case 'end':
+            return flatFiles.length - 1;
+          default:
+            return prev;
+        }
+      });
+    },
+    [flatFiles.length]
+  );
 
-    switch (direction) {
-      case 'up':
-        newIndex = Math.max(0, focusedIndex - 1);
-        break;
-      case 'down':
-        newIndex = Math.min(flatFiles.length - 1, focusedIndex + 1);
-        break;
-      case 'home':
-        newIndex = 0;
-        break;
-      case 'end':
-        newIndex = flatFiles.length - 1;
-        break;
-      default:
-        break;
-    }
-
-    setFocusedIndex(newIndex);
-  };
-
+  /**
+   * Render tree nodes recursively.
+   *
+   * Returns { elements, nextIndex } where:
+   *  - elements: React nodes to render
+   *  - nextIndex: the flat-list index after all rendered nodes
+   *
+   * KEY FIX: For expanded folders, we call renderTree() ONCE
+   * and use the result for BOTH the children prop AND the index advance.
+   */
   const renderTree = (
     nodes: FileNode[],
     level = 0,
@@ -97,7 +113,16 @@ export function FileTree({ files, onFileOpen }: FileTreeProps) {
       const isFocused = focusedIndex === currentIndex;
       const nodeIndex = currentIndex;
 
+      // Advance index for this node itself
       currentIndex++;
+
+      // If folder is expanded and has children, render them ONCE
+      let childElements: React.ReactNode[] | null = null;
+      if (node.type === 'folder' && isExpanded && node.children) {
+        const childResult = renderTree(node.children, level + 1, currentIndex);
+        childElements = childResult.elements;
+        currentIndex = childResult.nextIndex; // advance past all children
+      }
 
       elements.push(
         <FileTreeItem
@@ -121,27 +146,28 @@ export function FileTree({ files, onFileOpen }: FileTreeProps) {
           onFocus={() => setFocusedIndex(nodeIndex)}
           onNavigate={handleNavigate}
         >
-          {node.type === 'folder' && isExpanded && node.children
-            ? renderTree(node.children, level + 1, currentIndex).elements
-            : null}
+          {childElements}
         </FileTreeItem>
       );
-
-      if (node.type === 'folder' && isExpanded && node.children) {
-        const result = renderTree(node.children, level + 1, currentIndex);
-        currentIndex = result.nextIndex;
-      }
     }
 
     return { elements, nextIndex: currentIndex };
   };
+
+  if (!files || files.length === 0) {
+    return (
+      <div className="py-4 text-center text-xs text-muted-foreground">
+        لا توجد ملفات
+      </div>
+    );
+  }
 
   return (
     <div
       role="tree"
       aria-label="File Explorer"
       aria-multiselectable="false"
-      className="py-2"
+      className="py-2 select-none"
     >
       {renderTree(files, 0, 0).elements}
     </div>
