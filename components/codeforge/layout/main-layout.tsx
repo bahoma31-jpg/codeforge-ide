@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 import { useUIStore } from '@/lib/stores/ui-store';
+import { useAgentStore } from '@/lib/stores/agent-store';
 import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts';
 import {
   applyTheme,
@@ -15,6 +16,11 @@ import EditorArea from './editor-area';
 import Panel from './panel';
 import StatusBar from './status-bar';
 import { NotificationToast } from '../notifications/notification-toast';
+
+// Lazy-load agent components (only loaded when needed)
+import dynamic from 'next/dynamic';
+const AgentPanel = dynamic(() => import('@/components/agent/agent-panel').then(m => ({ default: m.AgentPanel || m.default })), { ssr: false });
+const AgentToggleButton = dynamic(() => import('@/components/agent/agent-toggle-button').then(m => ({ default: m.AgentToggleButton || m.default })), { ssr: false });
 
 export default function MainLayout() {
   useKeyboardShortcuts();
@@ -30,8 +36,15 @@ export default function MainLayout() {
     setTheme,
   } = useUIStore();
 
+  const { isPanelOpen: isAgentOpen, initialize: initAgent } = useAgentStore();
+
   const sidebarHandleRef = useRef<HTMLDivElement | null>(null);
   const panelHandleRef = useRef<HTMLDivElement | null>(null);
+
+  // Initialize agent store on mount
+  useEffect(() => {
+    initAgent();
+  }, [initAgent]);
 
   useEffect(() => {
     const initial = getTheme();
@@ -95,6 +108,18 @@ export default function MainLayout() {
     [sidebarVisible, sidebarWidth]
   );
 
+  // Keyboard shortcut: Ctrl+Shift+A to toggle agent
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'A') {
+        e.preventDefault();
+        useAgentStore.getState().togglePanel();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
       <ActivityBar />
@@ -129,6 +154,10 @@ export default function MainLayout() {
 
       {/* Toast notifications — renders in bottom-right corner */}
       <NotificationToast />
+
+      {/* 🤖 AI Agent — Toggle button + sliding panel */}
+      <AgentToggleButton />
+      {isAgentOpen && <AgentPanel />}
     </div>
   );
 }

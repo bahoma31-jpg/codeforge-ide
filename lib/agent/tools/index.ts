@@ -22,6 +22,15 @@ export function getAllTools(): ToolDefinition[] {
 }
 
 /**
+ * All tools array (alias for backward compatibility)
+ */
+export const allTools: ToolDefinition[] = [
+  ...fileTools,
+  ...gitTools,
+  ...utilityTools,
+];
+
+/**
  * Register all tool executors with the agent service
  */
 export function registerAllExecutors(service: AgentService): void {

@@ -17,9 +17,7 @@ import type {
   ProviderId,
 } from '@/lib/agent/types';
 import { AgentService } from '@/lib/agent/agent-service';
-import { allTools } from '@/lib/agent/tools';
-import { registerFileExecutors } from '@/lib/agent/tools/file-tools';
-import { registerGitExecutors } from '@/lib/agent/tools/git-tools';
+import { allTools, registerAllExecutors } from '@/lib/agent/tools';
 import { AGENT_CONFIG_KEY, MAX_HISTORY_MESSAGES } from '@/lib/agent/constants';
 
 // ─── Types ────────────────────────────────────────────────────
@@ -80,8 +78,7 @@ let agentService: AgentService | null = null;
 function getOrCreateService(config: AgentConfig): AgentService {
   if (!agentService) {
     agentService = new AgentService(config, allTools);
-    registerFileExecutors(agentService);
-    registerGitExecutors(agentService);
+    registerAllExecutors(agentService);
   } else {
     agentService.updateConfig(config);
   }
@@ -196,7 +193,6 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       approvalResolvers.delete(approvalId);
     }
 
-    // Update UI state
     set((s) => ({
       pendingApprovals: s.pendingApprovals.map((a) =>
         a.id === approvalId ? { ...a, status: 'approved' as const } : a
@@ -211,7 +207,6 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       approvalResolvers.delete(approvalId);
     }
 
-    // Update UI state
     set((s) => ({
       pendingApprovals: s.pendingApprovals.map((a) =>
         a.id === approvalId ? { ...a, status: 'rejected' as const } : a
@@ -235,7 +230,6 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       localStorage.setItem(AGENT_CONFIG_KEY, JSON.stringify(config));
       return { config, isConfigured: false };
     });
-    // Reset service to pick up new provider
     agentService = null;
   },
 
