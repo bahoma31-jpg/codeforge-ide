@@ -63,3 +63,25 @@ export const AVAILABLE_MODELS: Record<string, Array<{ id: string; name: string; 
     { id: 'claude-haiku-3.5-20241022', name: 'Claude Haiku 3.5' },
   ],
 };
+
+// ─── Self-Improvement Constants ───────────────────────────────
+
+/** Maximum OODA loop iterations before the agent must stop and report */
+export const SELF_IMPROVE_MAX_ITERATIONS = 5;
+
+/** Maximum number of files the agent can modify in a single self-improvement task */
+export const SELF_IMPROVE_MAX_FILES = 10;
+
+/** Protected paths that the agent can NEVER modify during self-improvement */
+export const SELF_IMPROVE_PROTECTED_PATHS = [
+  'lib/agent/safety/',
+  'lib/agent/constants.ts',
+  '.env',
+  '.env.local',
+] as const;
+
+/** Maximum dependency trace depth */
+export const SELF_IMPROVE_MAX_TRACE_DEPTH = 8;
+
+/** Cache TTL for project map (ms) — 5 minutes */
+export const SELF_IMPROVE_MAP_CACHE_TTL = 5 * 60 * 1000;

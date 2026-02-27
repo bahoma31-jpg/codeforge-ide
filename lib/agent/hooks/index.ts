@@ -1,7 +1,6 @@
 /**
- * CodeForge IDE — Agent Hooks
- * Public exports for agent hooks.
+ * CodeForge IDE — Agent Hooks (Phase 8)
+ * React hooks for agent subsystems.
  */
 
-export { useAgentContextMenu } from './use-agent-context-menu';
-export { useAgentKeyboard } from './use-agent-keyboard';
+export { useOODABridge, type UseOODABridgeReturn, type OODABridgeState } from './use-ooda-bridge';

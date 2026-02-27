@@ -40,12 +40,23 @@ export interface AgentConfig {
 
 export type RiskLevel = 'auto' | 'notify' | 'confirm';
 
+/**
+ * Tool category — 6 categories:
+ * - filesystem: Local file operations (fs_* prefix)
+ * - git: Version control operations (git_* prefix)
+ * - github: GitHub API operations (github_* prefix)
+ * - utility: Code analysis and helpers
+ * - self-improve: Self-analysis tools (self_* prefix)
+ * - ooda: Active OODA loop tools (ooda_* prefix)
+ */
+export type ToolCategory = 'filesystem' | 'git' | 'github' | 'utility' | 'self-improve' | 'ooda';
+
 export interface ToolDefinition {
   name: string;
   description: string;
   parameters: Record<string, unknown>;
   riskLevel: RiskLevel;
-  category: 'filesystem' | 'git' | 'github' | 'utility';
+  category: ToolCategory;
 }
 
 export interface ToolCall {
