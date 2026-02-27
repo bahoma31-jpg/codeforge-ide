@@ -1,0 +1,735 @@
+/**
+ * CodeForge IDE — Self-Improvement Panel Styles
+ * Dark theme, RTL-friendly, with smooth animations.
+ */
+
+/* ─── Panel Container ──────────────────────────────────────── */
+
+.si-panel {
+  display: flex;
+  flex-direction: column;
+  width: 380px;
+  max-height: calc(100vh - 60px);
+  background: var(--bg-secondary, #1a1b26);
+  border-left: 1px solid var(--border-color, #2d2d3f);
+  font-family: var(--font-sans, 'Inter', sans-serif);
+  font-size: 13px;
+  color: var(--text-primary, #c0caf5);
+  direction: rtl;
+  overflow: hidden;
+}
+
+/* ─── Toggle Button (when closed) ──────────────────────────── */
+
+.si-panel-toggle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--bg-tertiary, #24283b);
+  border: 1px solid var(--border-color, #2d2d3f);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.si-panel-toggle:hover {
+  background: var(--bg-hover, #2f3347);
+  transform: scale(1.05);
+}
+
+.si-toggle-icon {
+  font-size: 18px;
+}
+
+.si-toggle-badge {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.si-badge-active {
+  background: #7aa2f7;
+  animation: si-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes si-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.3); }
+}
+
+/* ─── Header ───────────────────────────────────────────────── */
+
+.si-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color, #2d2d3f);
+  background: var(--bg-tertiary, #24283b);
+}
+
+.si-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.si-header-title h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.si-header-icon {
+  font-size: 18px;
+}
+
+.si-header-badge {
+  padding: 2px 8px;
+  background: rgba(122, 162, 247, 0.2);
+  color: #7aa2f7;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  animation: si-pulse 2s ease-in-out infinite;
+}
+
+.si-header-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.si-btn-refresh,
+.si-btn-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-secondary, #565f89);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.si-btn-refresh:hover,
+.si-btn-close:hover {
+  background: var(--bg-hover, #2f3347);
+  color: var(--text-primary, #c0caf5);
+}
+
+.si-spinning {
+  display: inline-block;
+  animation: si-spin 0.8s linear infinite;
+}
+
+@keyframes si-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Tabs ─────────────────────────────────────────────────── */
+
+.si-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-color, #2d2d3f);
+  background: var(--bg-secondary, #1a1b26);
+}
+
+.si-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary, #565f89);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 11px;
+}
+
+.si-tab:hover {
+  color: var(--text-primary, #c0caf5);
+  background: var(--bg-hover, #2f3347);
+}
+
+.si-tab-active {
+  color: #7aa2f7;
+  border-bottom-color: #7aa2f7;
+}
+
+.si-tab-icon {
+  font-size: 16px;
+}
+
+.si-tab-label {
+  font-weight: 500;
+}
+
+/* ─── Panel Content ────────────────────────────────────────── */
+
+.si-panel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.si-tab-content {
+  animation: si-fadeIn 0.2s ease;
+}
+
+@keyframes si-fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Phase Indicator ──────────────────────────────────────── */
+
+.si-phase-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 16px 8px;
+  margin-bottom: 12px;
+}
+
+.si-phase-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 48px;
+}
+
+.si-phase-icon {
+  font-size: 20px;
+  transition: transform 0.3s ease;
+}
+
+.si-phase-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-secondary, #565f89);
+}
+
+.si-phase-active .si-phase-icon {
+  transform: scale(1.3);
+  animation: si-bounce 0.6s ease infinite;
+}
+
+.si-phase-active .si-phase-label {
+  color: #7aa2f7;
+  font-weight: 600;
+}
+
+.si-phase-completed .si-phase-label {
+  color: #9ece6a;
+}
+
+.si-phase-pending .si-phase-icon {
+  opacity: 0.4;
+}
+
+@keyframes si-bounce {
+  0%, 100% { transform: scale(1.3) translateY(0); }
+  50% { transform: scale(1.3) translateY(-3px); }
+}
+
+.si-phase-connector {
+  width: 24px;
+  height: 2px;
+  background: var(--border-color, #2d2d3f);
+  margin: 0 2px;
+  margin-bottom: 18px;
+  transition: background 0.3s ease;
+}
+
+.si-connector-done {
+  background: #9ece6a;
+}
+
+/* ─── Timeline ─────────────────────────────────────────────── */
+
+.si-timeline {
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 16px;
+  border-right: 2px solid var(--border-color, #2d2d3f);
+  margin-right: 8px;
+}
+
+.si-timeline-event {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 0;
+  position: relative;
+}
+
+.si-event-time {
+  font-size: 10px;
+  color: var(--text-secondary, #565f89);
+  min-width: 60px;
+  text-align: left;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+}
+
+.si-event-dot {
+  position: absolute;
+  right: -21px;
+  top: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border-color, #2d2d3f);
+}
+
+.si-event-info .si-event-dot { background: #7aa2f7; }
+.si-event-success .si-event-dot { background: #9ece6a; }
+.si-event-error .si-event-dot { background: #f7768e; }
+.si-event-warning .si-event-dot { background: #e0af68; }
+
+.si-event-content {
+  flex: 1;
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.si-event-phase {
+  font-size: 12px;
+}
+
+.si-event-message {
+  font-size: 12px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.si-timeline-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px;
+  color: var(--text-secondary, #565f89);
+}
+
+.si-timeline-empty-icon {
+  font-size: 32px;
+}
+
+/* ─── Task Card ────────────────────────────────────────────── */
+
+.si-task-card {
+  background: var(--bg-tertiary, #24283b);
+  border: 1px solid var(--border-color, #2d2d3f);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+
+.si-task-active {
+  border-color: #7aa2f7;
+  box-shadow: 0 0 0 1px rgba(122, 162, 247, 0.2);
+}
+
+.si-task-completed {
+  border-color: rgba(158, 206, 106, 0.3);
+}
+
+.si-task-failed {
+  border-color: rgba(247, 118, 142, 0.3);
+}
+
+.si-task-header {
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.si-task-header:hover {
+  background: var(--bg-hover, #2f3347);
+}
+
+.si-task-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.si-task-status-icon {
+  font-size: 14px;
+}
+
+.si-task-description {
+  flex: 1;
+  font-weight: 500;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.si-task-expand {
+  font-size: 10px;
+  color: var(--text-secondary, #565f89);
+}
+
+.si-task-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--text-secondary, #565f89);
+}
+
+.si-task-body {
+  padding: 12px;
+  border-top: 1px solid var(--border-color, #2d2d3f);
+}
+
+.si-task-files-list {
+  margin-top: 12px;
+}
+
+.si-task-files-list h4 {
+  font-size: 12px;
+  margin: 0 0 6px;
+  color: var(--text-secondary, #565f89);
+}
+
+.si-task-files-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.si-file-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+  font-size: 11px;
+}
+
+.si-file-item code {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  color: #bb9af7;
+}
+
+/* ─── Buttons ──────────────────────────────────────────────── */
+
+.si-btn-cancel {
+  width: 100%;
+  padding: 8px;
+  margin-top: 8px;
+  background: rgba(247, 118, 142, 0.1);
+  border: 1px solid rgba(247, 118, 142, 0.3);
+  border-radius: 6px;
+  color: #f7768e;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.15s ease;
+}
+
+.si-btn-cancel:hover {
+  background: rgba(247, 118, 142, 0.2);
+}
+
+.si-btn-start {
+  padding: 8px 16px;
+  background: rgba(122, 162, 247, 0.15);
+  border: 1px solid rgba(122, 162, 247, 0.3);
+  border-radius: 6px;
+  color: #7aa2f7;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.si-btn-start:hover:not(:disabled) {
+  background: rgba(122, 162, 247, 0.25);
+}
+
+.si-btn-start:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ─── No Active Task ───────────────────────────────────────── */
+
+.si-no-active {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 16px;
+  text-align: center;
+}
+
+.si-no-active-icon {
+  font-size: 48px;
+}
+
+.si-no-active p {
+  margin: 0;
+  color: var(--text-secondary, #565f89);
+}
+
+.si-start-task {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.si-input {
+  flex: 1;
+  padding: 8px 12px;
+  background: var(--bg-primary, #16161e);
+  border: 1px solid var(--border-color, #2d2d3f);
+  border-radius: 6px;
+  color: var(--text-primary, #c0caf5);
+  font-size: 12px;
+  direction: rtl;
+  transition: border-color 0.15s ease;
+}
+
+.si-input:focus {
+  outline: none;
+  border-color: #7aa2f7;
+}
+
+.si-input::placeholder {
+  color: var(--text-secondary, #565f89);
+}
+
+/* ─── Empty States ─────────────────────────────────────────── */
+
+.si-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 32px;
+  text-align: center;
+  color: var(--text-secondary, #565f89);
+}
+
+.si-empty-icon {
+  font-size: 40px;
+}
+
+.si-empty-hint {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+/* ─── Stats Dashboard ──────────────────────────────────────── */
+
+.si-stats-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.si-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.si-stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  background: var(--bg-tertiary, #24283b);
+  border: 1px solid var(--border-color, #2d2d3f);
+  border-radius: 8px;
+}
+
+.si-stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary, #c0caf5);
+}
+
+.si-stat-success .si-stat-value {
+  color: #9ece6a;
+}
+
+.si-stat-label {
+  font-size: 11px;
+  color: var(--text-secondary, #565f89);
+}
+
+.si-stats-section h4 {
+  font-size: 12px;
+  margin: 0 0 8px;
+  color: var(--text-secondary, #565f89);
+}
+
+/* ─── Category Bars ────────────────────────────────────────── */
+
+.si-category-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.si-category-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.si-cat-name {
+  font-size: 11px;
+  min-width: 80px;
+  text-align: right;
+}
+
+.si-cat-bar-bg {
+  flex: 1;
+  height: 6px;
+  background: var(--bg-primary, #16161e);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.si-cat-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #7aa2f7, #bb9af7);
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.si-cat-count {
+  font-size: 11px;
+  min-width: 24px;
+  text-align: left;
+  color: var(--text-secondary, #565f89);
+}
+
+/* ─── Top Files ────────────────────────────────────────────── */
+
+.si-top-files {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.si-top-files li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 11px;
+}
+
+.si-top-files code {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  color: #bb9af7;
+  font-size: 10px;
+}
+
+.si-file-count {
+  color: var(--text-secondary, #565f89);
+  font-size: 10px;
+}
+
+/* ─── Learning Patterns ────────────────────────────────────── */
+
+.si-patterns-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.si-pattern-card {
+  background: var(--bg-tertiary, #24283b);
+  border: 1px solid var(--border-color, #2d2d3f);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.si-pattern-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.si-pattern-category {
+  font-size: 11px;
+  padding: 2px 8px;
+  background: rgba(122, 162, 247, 0.15);
+  color: #7aa2f7;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.si-pattern-rate {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.si-rate-good { color: #9ece6a; }
+.si-rate-mid { color: #e0af68; }
+.si-rate-low { color: #f7768e; }
+
+.si-pattern-desc {
+  font-size: 12px;
+  margin: 0 0 6px;
+  line-height: 1.4;
+}
+
+.si-pattern-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 10px;
+  color: var(--text-secondary, #565f89);
+}
+
+/* ─── Scrollbar ────────────────────────────────────────────── */
+
+.si-panel-content::-webkit-scrollbar,
+.si-timeline::-webkit-scrollbar {
+  width: 4px;
+}
+
+.si-panel-content::-webkit-scrollbar-track,
+.si-timeline::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.si-panel-content::-webkit-scrollbar-thumb,
+.si-timeline::-webkit-scrollbar-thumb {
+  background: var(--border-color, #2d2d3f);
+  border-radius: 2px;
+}
+
+.si-panel-content::-webkit-scrollbar-thumb:hover,
+.si-timeline::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary, #565f89);
+}
