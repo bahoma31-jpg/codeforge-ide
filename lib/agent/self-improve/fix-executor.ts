@@ -83,18 +83,11 @@ export class FixExecutor {
     this.toolBridge = toolBridge;
   }
 
-  /**
-   * Execute a complete fix plan.
-   * Accepts either:
-   *   1. PlanInput (flat object with steps, protectedPaths, maxFiles)
-   *   2. Legacy (plan, allFiles, options) — 3-arg form
-   */
   async executePlan(
     planOrInput: FixStep[] | PlanInput | Record<string, unknown> | undefined | null,
     allFiles?: Map<string, string>,
     options?: ExecutionOptions
   ): Promise<ExecutionResult | FileChange[]> {
-    // ── Detect flat PlanInput form ──
     if (
       planOrInput &&
       typeof planOrInput === 'object' &&
@@ -106,15 +99,12 @@ export class FixExecutor {
       return this.executePlanFlat(planOrInput as PlanInput);
     }
 
-    // ── Legacy 3-arg form ──
     return this.executePlanLegacy(planOrInput, allFiles!, options!);
   }
 
-  /**
-   * Flat form: executePlan({ steps, protectedPaths, maxFiles, dryRun? })
-   */
   private async executePlanFlat(input: PlanInput): Promise<ExecutionResult> {
     const backupData = new Map<string, string>();
+    const readCache = new Map<string, string>();
     const filesModified: string[] = [];
     const errors: string[] = [];
     const changes: FileChange[] = [];
@@ -124,12 +114,10 @@ export class FixExecutor {
       const filePath = step.filePath;
       const action = step.type;
 
-      // Protected path check
       if (this.isProtected(filePath, input.protectedPaths)) {
         continue;
       }
 
-      // Max files check
       if (
         (action === 'edit' || action === 'create' || action === 'delete') &&
         filesModifiedCount >= input.maxFiles
@@ -139,14 +127,19 @@ export class FixExecutor {
 
       try {
         if (action === 'read') {
-          await this.toolBridge.readFile(filePath);
+          const content = await this.toolBridge.readFile(filePath);
+          readCache.set(filePath, content);
         } else if (action === 'edit') {
-          // Backup before editing
-          try {
-            const currentContent = await this.toolBridge.readFile(filePath);
-            backupData.set(filePath, currentContent);
-          } catch {
-            // File might not exist yet
+          if (readCache.has(filePath)) {
+            backupData.set(filePath, readCache.get(filePath)!);
+          } else {
+            try {
+              const currentContent = await this.toolBridge.readFile(filePath);
+              readCache.set(filePath, currentContent);
+              backupData.set(filePath, currentContent);
+            } catch {
+              // File might not exist yet
+            }
           }
 
           if (input.dryRun) {
@@ -181,10 +174,14 @@ export class FixExecutor {
             timestamp: Date.now(),
           });
         } else if (action === 'delete') {
-          try {
-            const currentContent = await this.toolBridge.readFile(filePath);
-            backupData.set(filePath, currentContent);
-          } catch { /* ignore */ }
+          if (readCache.has(filePath)) {
+            backupData.set(filePath, readCache.get(filePath)!);
+          } else {
+            try {
+              const currentContent = await this.toolBridge.readFile(filePath);
+              backupData.set(filePath, currentContent);
+            } catch { /* ignore */ }
+          }
 
           if (!input.dryRun) {
             await this.toolBridge.deleteFile(filePath);
@@ -217,9 +214,6 @@ export class FixExecutor {
     };
   }
 
-  /**
-   * Legacy 3-arg form for backward compatibility.
-   */
   private async executePlanLegacy(
     plan: FixStep[] | Record<string, unknown> | undefined | null,
     allFiles: Map<string, string>,
@@ -280,11 +274,6 @@ export class FixExecutor {
     return changes;
   }
 
-  /**
-   * Rollback changes. Accepts either:
-   *   - Map<string, string> (backupData from flat form)
-   *   - ExecutionOptions (legacy form)
-   */
   async rollback(
     backupOrOptions?: Map<string, string> | ExecutionOptions
   ): Promise<number> {
