@@ -91,7 +91,7 @@ function SingleToast({ notification }: NotifyToastProps) {
               ))}
               {notification.affectedFiles.length > 3 && (
                 <span className="text-[9px] text-[#6c7086]">
-                  +{notification.affectedFiles.length - 3} \u0645\u0644\u0641\u0627\u062a
+                  +{notification.affectedFiles.length - 3} ملفات
                 </span>
               )}
             </div>
