@@ -1,14 +1,15 @@
 /**
- * CodeForge IDE — Tools Registry v2.0
+ * CodeForge IDE — Tools Registry v2.1
  * Central registry for all agent tools.
  * Exports tool definitions and executor registration.
  *
- * v2.0 — Updated to reflect renamed tools:
+ * v2.1 — Added self-improvement tools:
  *   - fileTools: 9 tools (fs_* prefix)
- *   - gitTools: 8 tools (git_* prefix, added git_log)
+ *   - gitTools: 8 tools (git_* prefix)
  *   - githubTools: 25 tools (github_* prefix)
  *   - utilityTools: 3 tools (get_project_context, explain_code, suggest_fix)
- *   Total: 45 tools
+ *   - selfImproveTools: 3 tools (self_analyze_component, self_trace_dependency, self_map_project)
+ *   Total: 48 tools
  */
 
 import type { ToolDefinition } from '../types';
@@ -17,9 +18,10 @@ import { fileTools, registerFileExecutors } from './file-tools';
 import { gitTools, registerGitExecutors } from './git-tools';
 import { githubTools, registerGitHubExecutors } from './github-tools';
 import { utilityTools, registerUtilityExecutors } from './utility-tools';
+import { selfImproveTools, registerSelfImproveExecutors } from '../self-improve';
 
 /**
- * Get all available tools (45 total)
+ * Get all available tools (48 total)
  */
 export function getAllTools(): ToolDefinition[] {
   return [
@@ -27,6 +29,7 @@ export function getAllTools(): ToolDefinition[] {
     ...gitTools,
     ...githubTools,
     ...utilityTools,
+    ...selfImproveTools,
   ];
 }
 
@@ -38,6 +41,7 @@ export const allTools: ToolDefinition[] = [
   ...gitTools,
   ...githubTools,
   ...utilityTools,
+  ...selfImproveTools,
 ];
 
 /**
@@ -48,13 +52,14 @@ export function registerAllExecutors(service: AgentService): void {
   registerGitExecutors(service);
   registerGitHubExecutors(service);
   registerUtilityExecutors(service);
+  registerSelfImproveExecutors(service);
 }
 
 /**
  * Get tools by category
  */
 export function getToolsByCategory(
-  category: 'filesystem' | 'git' | 'github' | 'utility'
+  category: 'filesystem' | 'git' | 'github' | 'utility' | 'self-improve'
 ): ToolDefinition[] {
   return getAllTools().filter((t) => t.category === category);
 }
