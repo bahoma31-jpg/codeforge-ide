@@ -4,10 +4,13 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const response = NextResponse.next();
 
-  // Content Security Policy - allows unsafe-eval for Monaco Editor and blob: for Workers
+  // Content Security Policy
+  // - unsafe-eval required by Monaco Editor (language workers)
+  // - blob: required by Monaco Web Workers
+  // - connect-src includes https: to allow GitHub API calls
   const csp = [
     "default-src 'self'",
-        "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob:",
+    "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob:",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
@@ -34,5 +37,7 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  // Previously excluded /api — now all routes receive security headers.
+  // Only static Next.js internals and favicon are excluded.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
