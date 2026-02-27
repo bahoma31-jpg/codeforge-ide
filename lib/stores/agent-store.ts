@@ -2,9 +2,7 @@
  * CodeForge IDE — Agent Store v2.2 (Triple-Layer Safety)
  * Zustand store for AI agent state management.
  *
- * v2.2 — Passes onNotify callback to agent-service.sendMessage().
- *         New state: notifications[] for NOTIFY-level toast stack.
- *         New actions: dismissNotification(), clearNotifications().
+ * v2.2.1 — Fixed: All Unicode escape sequences replaced with direct Arabic text.
  */
 
 import { create } from 'zustand';
@@ -83,8 +81,6 @@ interface AgentState {
 }
 
 // ─── Approval Resolver Map ────────────────────────────────────
-// This lives outside the store to avoid serialization issues.
-// Maps approval IDs to their Promise resolvers.
 
 const approvalResolvers = new Map<string, ApprovalResolver>();
 
@@ -164,7 +160,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
     // Safety: ensure model is set before sending
     if (!state.config.model) {
-      set({ error: '\u064a\u0631\u062c\u0649 \u0627\u062e\u062a\u064a\u0627\u0631 \u0646\u0645\u0648\u0630\u062c \u0645\u0646 \u0627\u0644\u0625\u0639\u062f\u0627\u062f\u0627\u062a \u0623\u0648\u0644\u0627\u064b' });
+      set({ error: 'يرجى اختيار نموذج من الإعدادات أولاً' });
       return;
     }
 
@@ -233,7 +229,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         auditLog: service.getAuditLog(),
       }));
     } catch (error) {
-      const message = error instanceof Error ? error.message : '\u062d\u062f\u062b \u062e\u0637\u0623 \u063a\u064a\u0631 \u0645\u062a\u0648\u0642\u0639';
+      const message = error instanceof Error ? error.message : 'حدث خطأ غير متوقع';
       set({ error: message, currentToolCall: null });
     } finally {
       set({ isProcessing: false });
