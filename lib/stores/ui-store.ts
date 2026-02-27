@@ -18,7 +18,6 @@ interface UIState {
   agentPanelWidth: number;
   theme: CodeforgeTheme;
 
-  // Core actions
   toggleSidebar: () => void;
   togglePanel: () => void;
   setActivityBarView: (view: ActivityBarView) => void;
@@ -26,17 +25,12 @@ interface UIState {
   setPanelHeight: (height: number) => void;
   setAgentPanelWidth: (width: number) => void;
   setTheme: (theme: CodeforgeTheme) => void;
-
-  // Aliases used by activity-bar.tsx and sidebar.tsx
-  readonly activeView: ActivityBarView;
-  readonly sidebarOpen: boolean;
-  setActiveView: (view: ActivityBarView) => void;
 }
 
 const clamp = (n: number, min: number, max: number) =>
   Math.max(min, Math.min(max, n));
 
-export const useUIStore = create<UIState>((set, get) => ({
+export const useUIStore = create<UIState>((set) => ({
   sidebarVisible: true,
   panelVisible: true,
   activityBarView: 'explorer',
@@ -45,18 +39,9 @@ export const useUIStore = create<UIState>((set, get) => ({
   agentPanelWidth: 380,
   theme: 'dark',
 
-  // Aliases — these are computed getters that map to the real state
-  get activeView() {
-    return get().activityBarView;
-  },
-  get sidebarOpen() {
-    return get().sidebarVisible;
-  },
-
   toggleSidebar: () => set((s) => ({ sidebarVisible: !s.sidebarVisible })),
   togglePanel: () => set((s) => ({ panelVisible: !s.panelVisible })),
   setActivityBarView: (view) => set({ activityBarView: view }),
-  setActiveView: (view) => set({ activityBarView: view }),
   setSidebarWidth: (width) =>
     set({ sidebarWidth: clamp(Math.round(width), 200, 400) }),
   setPanelHeight: (height) =>

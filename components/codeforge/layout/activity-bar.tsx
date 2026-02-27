@@ -1,7 +1,7 @@
 /**
- * CodeForge IDE - Activity Bar
+ * CodeForge IDE - Activity Bar v2.0
  * Main navigation sidebar with view toggle buttons.
- * Merged version with full a11y attributes.
+ * Fixed to use correct ui-store property names.
  */
 
 'use client';
@@ -22,25 +22,28 @@ const views: {
   icon: React.ElementType;
   label: string;
 }[] = [
-  { id: 'explorer', icon: Files, label: 'Explorer' },
-  { id: 'search', icon: Search, label: 'Search' },
-  { id: 'git', icon: GitBranch, label: 'Source Control' },
-  { id: 'terminal', icon: Terminal, label: 'Terminal' },
-  { id: 'settings', icon: Settings, label: 'Settings' },
+  { id: 'explorer', icon: Files, label: 'المستكشف' },
+  { id: 'search', icon: Search, label: 'البحث' },
+  { id: 'git', icon: GitBranch, label: 'التحكم بالمصدر' },
+  { id: 'terminal', icon: Terminal, label: 'الطرفية' },
+  { id: 'settings', icon: Settings, label: 'الإعدادات' },
 ];
 
 export default function ActivityBar() {
-  const { activeView, setActiveView, sidebarOpen, toggleSidebar } =
+  // Use the REAL store property names
+  const { activityBarView, setActivityBarView, sidebarVisible, toggleSidebar } =
     useUIStore();
   const { changes } = useGitStore();
   const changeCount = changes.length;
 
   const handleClick = (viewId: ActivityBarView) => {
-    if (activeView === viewId && sidebarOpen) {
+    if (activityBarView === viewId && sidebarVisible) {
+      // Same view clicked while open → close sidebar
       toggleSidebar();
     } else {
-      setActiveView(viewId);
-      if (!sidebarOpen) {
+      // Different view or sidebar closed → switch view and open
+      setActivityBarView(viewId);
+      if (!sidebarVisible) {
         toggleSidebar();
       }
     }
@@ -54,7 +57,7 @@ export default function ActivityBar() {
       aria-orientation="vertical"
     >
       {views.map((view) => {
-        const isActive = activeView === view.id && sidebarOpen;
+        const isActive = activityBarView === view.id && sidebarVisible;
         return (
           <button
             key={view.id}
