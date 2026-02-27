@@ -1,15 +1,18 @@
 /**
- * CodeForge IDE — Tools Registry v2.1
+ * CodeForge IDE — Tools Registry v2.2
  * Central registry for all agent tools.
  * Exports tool definitions and executor registration.
  *
- * v2.1 — Added self-improvement tools:
+ * v2.2 — Added OODA loop tools (Phase 2):
  *   - fileTools: 9 tools (fs_* prefix)
  *   - gitTools: 8 tools (git_* prefix)
  *   - githubTools: 25 tools (github_* prefix)
  *   - utilityTools: 3 tools (get_project_context, explain_code, suggest_fix)
- *   - selfImproveTools: 3 tools (self_analyze_component, self_trace_dependency, self_map_project)
- *   Total: 48 tools
+ *   - selfImproveTools: 8 tools
+ *     Phase 1 (🟢 AUTO): self_analyze_component, self_trace_dependency, self_map_project
+ *     Phase 2 (mixed):   self_start_improvement, self_get_task_status,
+ *                         self_cancel_task, self_get_suggestions, self_get_stats
+ *   Total: 53 tools
  */
 
 import type { ToolDefinition } from '../types';
@@ -21,7 +24,7 @@ import { utilityTools, registerUtilityExecutors } from './utility-tools';
 import { selfImproveTools, registerSelfImproveExecutors } from '../self-improve';
 
 /**
- * Get all available tools (48 total)
+ * Get all available tools (53 total)
  */
 export function getAllTools(): ToolDefinition[] {
   return [

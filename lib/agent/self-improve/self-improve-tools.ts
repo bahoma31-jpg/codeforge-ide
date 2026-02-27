@@ -1,18 +1,28 @@
 /**
  * CodeForge IDE — Self-Improvement Tools
- * Agent tools for self-analysis, dependency tracing, and project mapping.
- * 3 tools: self_analyze_component, self_trace_dependency, self_map_project.
+ * Agent tools for self-analysis, dependency tracing, project mapping,
+ * and OODA loop operations.
  *
- * All tools are 🟢 AUTO (read-only analysis) — they never modify files.
+ * Phase 1: 3 tools (🟢 AUTO read-only)
+ *   - self_analyze_component, self_trace_dependency, self_map_project
+ *
+ * Phase 2: 5 tools (mixed risk levels)
+ *   - self_start_improvement (🔴 CONFIRM), self_get_task_status (🟢 AUTO),
+ *   - self_cancel_task (🟡 NOTIFY), self_get_suggestions (🟢 AUTO),
+ *   - self_get_stats (🟢 AUTO)
+ *
+ * Total: 8 self-improve tools
  */
 
 import type { ToolDefinition } from '../types';
 import type { AgentService } from '../agent-service';
 import { getSelfAnalysisEngine } from './self-analysis-engine';
+import { oodaToolDefinitions, createOODAToolExecutors } from './ooda-tools';
+import type { ToolBridge } from './fix-executor';
 
-// ─── Tool Definitions ─────────────────────────────────────────
+// ─── Phase 1 Tool Definitions ─────────────────────────────────
 
-export const selfImproveTools: ToolDefinition[] = [
+const phase1Tools: ToolDefinition[] = [
   {
     name: 'self_analyze_component',
     description:
@@ -81,12 +91,30 @@ export const selfImproveTools: ToolDefinition[] = [
   },
 ];
 
+// ─── Phase 2 Tool Definitions (with risk levels) ──────────────
+
+const phase2Tools: ToolDefinition[] = oodaToolDefinitions.map(tool => {
+  // Assign risk levels based on tool behavior
+  let riskLevel: 'auto' | 'notify' | 'confirm' = 'auto';
+  if (tool.name === 'self_start_improvement') riskLevel = 'confirm';
+  if (tool.name === 'self_cancel_task') riskLevel = 'notify';
+
+  return { ...tool, riskLevel };
+});
+
+// ─── Combined Exports ─────────────────────────────────────────
+
+/** All 8 self-improve tool definitions */
+export const selfImproveTools: ToolDefinition[] = [
+  ...phase1Tools,
+  ...phase2Tools,
+];
+
+/** Alias for backward compatibility */
+export const selfImproveToolDefinitions = selfImproveTools;
+
 // ─── Helper: Load All Project Files ───────────────────────────
 
-/**
- * Load all files from the local workspace into a Map<path, content>.
- * Uses the same file-operations module as other tools.
- */
 async function loadProjectFiles(): Promise<Map<string, string>> {
   const { getAllNodes } = await import('@/lib/db/file-operations');
   const allNodes = await getAllNodes();
@@ -101,10 +129,46 @@ async function loadProjectFiles(): Promise<Map<string, string>> {
   return fileMap;
 }
 
+// ─── Helper: Create Tool Bridge ───────────────────────────────
+
+function createToolBridge(service: AgentService): ToolBridge {
+  return {
+    readFile: async (filePath: string) => {
+      const { readFileByPath } = await import('@/lib/db/file-operations');
+      const file = await readFileByPath(filePath);
+      return file.content || '';
+    },
+    editFile: async (filePath, oldStr, newStr, commitMessage) => {
+      const { readFileByPath, updateFileContent } = await import('@/lib/db/file-operations');
+      const file = await readFileByPath(filePath);
+      const content = file.content || '';
+      const newContent = content.replace(oldStr, newStr);
+      if (newContent === content) return false;
+      await updateFileContent(filePath, newContent);
+      return true;
+    },
+    writeFile: async (filePath, content, commitMessage) => {
+      const { updateFileContent } = await import('@/lib/db/file-operations');
+      await updateFileContent(filePath, content);
+      return true;
+    },
+    deleteFile: async (filePath, commitMessage) => {
+      const { deleteNode } = await import('@/lib/db/file-operations');
+      await deleteNode(filePath);
+      return true;
+    },
+  };
+}
+
 // ─── Tool Executors ───────────────────────────────────────────
 
+/** Register all self-improvement tool executors (Phase 1 + Phase 2) */
 export function registerSelfImproveExecutors(service: AgentService): void {
   const engine = getSelfAnalysisEngine();
+
+  // ══════════════════════════════════════════════════════
+  // Phase 1 Executors (read-only analysis)
+  // ══════════════════════════════════════════════════════
 
   // ── self_analyze_component ──
   service.registerToolExecutor('self_analyze_component', async (args) => {
@@ -114,7 +178,6 @@ export function registerSelfImproveExecutors(service: AgentService): void {
         return { success: false, error: 'filePath is required' };
       }
 
-      // Try to read the file from local workspace
       let content: string;
       try {
         const { readFileByPath } = await import('@/lib/db/file-operations');
@@ -133,13 +196,12 @@ export function registerSelfImproveExecutors(service: AgentService): void {
 
       const analysis = engine.analyzeComponent(filePath, content);
 
-      // Try to find dependents by loading project files
       try {
         const allFiles = await loadProjectFiles();
         const trace = engine.traceDependencies(filePath, allFiles, 1);
         analysis.dependents = trace.downstream;
       } catch {
-        // Dependents will remain empty if we can't load all files
+        // Dependents will remain empty
       }
 
       return {
@@ -177,7 +239,6 @@ export function registerSelfImproveExecutors(service: AgentService): void {
 
       const trace = engine.traceDependencies(filePath, allFiles, maxDepth);
 
-      // Build a human-readable summary
       const summary = [
         `📁 Dependency trace for: ${filePath}`,
         ``,
@@ -197,10 +258,7 @@ export function registerSelfImproveExecutors(service: AgentService): void {
 
       return {
         success: true,
-        data: {
-          ...trace,
-          summary: summary.join('\n'),
-        },
+        data: { ...trace, summary: summary.join('\n') },
       };
     } catch (error) {
       return { success: false, error: (error as Error).message };
@@ -210,7 +268,7 @@ export function registerSelfImproveExecutors(service: AgentService): void {
   // ── self_map_project ──
   service.registerToolExecutor('self_map_project', async (args) => {
     try {
-      const includeGraph = args.includeGraph !== false; // default true
+      const includeGraph = args.includeGraph !== false;
       const allFiles = await loadProjectFiles();
 
       if (allFiles.size === 0) {
@@ -222,7 +280,6 @@ export function registerSelfImproveExecutors(service: AgentService): void {
 
       const projectMap = engine.buildProjectMap(allFiles);
 
-      // Build a concise summary
       const extSummary = Object.entries(projectMap.filesByExtension)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 10)
@@ -245,7 +302,6 @@ export function registerSelfImproveExecutors(service: AgentService): void {
         `🧩 Component files: ${projectMap.componentFiles.length}`,
       ].join('\n');
 
-      // Return with or without full graph
       const result: Record<string, unknown> = {
         totalFiles: projectMap.totalFiles,
         totalFolders: projectMap.totalFolders,
@@ -257,7 +313,6 @@ export function registerSelfImproveExecutors(service: AgentService): void {
       };
 
       if (includeGraph) {
-        // Return a simplified graph (just file -> dependencies) to save tokens
         const simplifiedGraph: Record<string, string[]> = {};
         for (const [path, node] of Object.entries(projectMap.dependencyGraph)) {
           simplifiedGraph[path] = node.imports.filter(
@@ -272,4 +327,15 @@ export function registerSelfImproveExecutors(service: AgentService): void {
       return { success: false, error: (error as Error).message };
     }
   });
+
+  // ══════════════════════════════════════════════════════
+  // Phase 2 Executors (OODA loop operations)
+  // ══════════════════════════════════════════════════════
+
+  const toolBridge = createToolBridge(service);
+  const oodaExecutors = createOODAToolExecutors(toolBridge, loadProjectFiles);
+
+  for (const [toolName, executor] of Object.entries(oodaExecutors)) {
+    service.registerToolExecutor(toolName, executor);
+  }
 }

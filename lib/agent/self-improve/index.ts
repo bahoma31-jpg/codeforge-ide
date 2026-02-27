@@ -1,34 +1,79 @@
 /**
  * CodeForge IDE — Self-Improvement Module
- * Central export for all self-improvement functionality.
+ * Central barrel export for all self-improvement components.
  *
- * Phase 1 includes:
- * - Type definitions for OODA loop, project analysis, and learning memory
- * - SelfAnalysisEngine for code analysis and dependency tracing
- * - Self-improvement tools (self_analyze_component, self_trace_dependency, self_map_project)
+ * Phase 1: Foundation (analysis + basic tools)
+ * Phase 2: OODA Loop (controller + executor + verification + memory)
  */
+
+// ─── Phase 1: Foundation ──────────────────────────────────────
 
 // Types
 export type {
   TaskTrigger,
-  IssueCategory,
   TaskStatus,
+  IssueCategory,
   FixStep,
   VerificationCheck,
   VerificationResult,
   FileChange,
   SelfImprovementTask,
   DependencyNode,
-  DependencyTrace,
-  DependencyTreeNode,
   ProjectMap,
   ComponentAnalysis,
+  DependencyTrace,
+  DependencyTreeNode,
   FixPattern,
   SelfImproveStats,
 } from './types';
 
-// Engine
-export { SelfAnalysisEngine, getSelfAnalysisEngine } from './self-analysis-engine';
+// Self-Analysis Engine
+export {
+  SelfAnalysisEngine,
+  getSelfAnalysisEngine,
+} from './self-analysis-engine';
 
-// Tools
-export { selfImproveTools, registerSelfImproveExecutors } from './self-improve-tools';
+// Phase 1 Tools
+export {
+  selfImproveToolDefinitions,
+  selfImproveToolExecutors,
+} from './self-improve-tools';
+
+// ─── Phase 2: OODA Loop ──────────────────────────────────────
+
+// OODA Controller
+export {
+  OODAController,
+  getOODAController,
+} from './ooda-controller';
+export type {
+  OODAPhase,
+  OODAEvent,
+  OODAEventListener,
+} from './ooda-controller';
+
+// Fix Executor
+export {
+  FixExecutor,
+} from './fix-executor';
+export type {
+  ToolBridge,
+  ExecutionOptions,
+} from './fix-executor';
+
+// Verification Engine
+export {
+  VerificationEngine,
+} from './verification-engine';
+
+// Learning Memory
+export {
+  LearningMemory,
+  getLearningMemory,
+} from './learning-memory';
+
+// OODA Tools
+export {
+  oodaToolDefinitions,
+  createOODAToolExecutors,
+} from './ooda-tools';
