@@ -69,13 +69,12 @@ export class OODAController {
   }
 
   /**
-   * Get learning memory instance. Loaded lazily to work with vi.mock.
-   * Each call goes through require() so test mocks are picked up.
+   * Get learning memory instance via dynamic import().
+   * This is critical: vi.mock() intercepts import() but NOT require().
    */
-  private getLearningMemoryInstance(): any {
+  private async getLearningMemoryInstance(): Promise<any> {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const lm = require('./learning-memory');
+      const lm = await import('./learning-memory');
       if (lm && lm.getLearningMemory) {
         return lm.getLearningMemory();
       }
@@ -97,7 +96,6 @@ export class OODAController {
 
   /**
    * Alias for onEvent — backward compatibility.
-   * Tests and older code may use controller.on(listener).
    */
   on(listener: OODAEventListener): () => void {
     return this.onEvent(listener);
@@ -131,7 +129,7 @@ export class OODAController {
   }
 
   /**
-   * Get task status by ID — returns a simplified status object or null.
+   * Get task status by ID.
    */
   getTaskStatus(taskId: string): { id: string; description: string; status: TaskStatus; phase?: OODAPhase } | null {
     const task = this.activeTasks.get(taskId) || this.completedTasks.find(t => t.id === taskId);
@@ -194,7 +192,6 @@ export class OODAController {
     return task;
   }
 
-  /** Get the status of an active or completed task */
   getTask(taskId: string): SelfImprovementTask | undefined {
     return this.activeTasks.get(taskId) || this.completedTasks.find(t => t.id === taskId);
   }
@@ -211,7 +208,6 @@ export class OODAController {
     return [...this.completedTasks];
   }
 
-  /** Cancel an active task */
   cancelTask(taskId: string): boolean {
     const task = this.activeTasks.get(taskId);
     if (!task) return false;
@@ -239,23 +235,19 @@ export class OODAController {
         allFiles = new Map();
       }
 
-      // ═══ Phase 1: OBSERVE ═══
       await this.phaseObserve(task, allFiles);
       if (task.status === 'cancelled') return;
 
-      // ═══ Phase 2: ORIENT ═══
       await this.phaseOrient(task, allFiles);
       if (task.status === 'cancelled') return;
 
-      // ═══ Phase 3: DECIDE ═══
       await this.phaseDecide(task, allFiles);
       if (task.status === 'cancelled') return;
 
-      // ═══ Phase 4 & 5: ACT + VERIFY ═══
       await this.phaseActAndVerify(task, allFiles);
 
-      // Record outcome in learning memory
-      const memory = this.getLearningMemoryInstance();
+      // Record outcome in learning memory via dynamic import
+      const memory = await this.getLearningMemoryInstance();
       if (task.status === 'completed' && memory?.recordSuccess) {
         memory.recordSuccess({
           description: task.description,
@@ -276,13 +268,18 @@ export class OODAController {
       task.updatedAt = Date.now();
       this.emit(task.id, 'act', 'failed', `Task failed: ${(error as Error).message}`);
 
-      const memory = this.getLearningMemoryInstance();
-      if (memory?.recordFailure) {
-        memory.recordFailure({
-          description: task.description,
-          category: task.category,
-          errors: task.execution.errors,
-        });
+      // Record failure
+      try {
+        const memory = await this.getLearningMemoryInstance();
+        if (memory?.recordFailure) {
+          memory.recordFailure({
+            description: task.description,
+            category: task.category,
+            errors: task.execution.errors,
+          });
+        }
+      } catch {
+        // Ignore learning memory errors
       }
     }
 
@@ -366,7 +363,6 @@ export class OODAController {
     for (const filePath of topFiles) {
       const trace = engine.traceDependencies(filePath, allFiles, 3);
       allTraces.push(trace);
-      // Normalize: handle both array and other formats
       const upstream = Array.isArray(trace.upstream) ? trace.upstream : [];
       const downstream = Array.isArray(trace.downstream) ? trace.downstream : [];
       upstream.forEach((f: string) => relatedComponents.add(f));
@@ -547,7 +543,6 @@ export class OODAController {
         if (Array.isArray(rawResult)) {
           changes = rawResult;
         } else if (rawResult && typeof rawResult === 'object') {
-          // Mock returns {success, filesModified, backupData}
           const obj = rawResult as any;
           const modifiedFiles: string[] = obj.filesModified || [];
           changes = modifiedFiles.map((fp: string) => ({
@@ -601,9 +596,7 @@ export class OODAController {
         task.execution.changes
       );
 
-      // Normalize: verify may return different shapes
       const verification: VerificationResult = this.normalizeVerification(rawVerification);
-
       task.execution.verificationResult = verification;
 
       if (verification.passed) {
@@ -643,11 +636,6 @@ export class OODAController {
 
   // ─── Verification Normalizer ──────────────────────────────
 
-  /**
-   * Normalize verification results to handle different shapes:
-   * - Standard: {passed, checks, retryNeeded, reason}
-   * - Mock:     {passed, score, checks, failedChecks}
-   */
   private normalizeVerification(raw: any): VerificationResult {
     if (!raw || typeof raw !== 'object') {
       return { passed: false, checks: [], retryNeeded: true, reason: 'No verification result' };
@@ -655,10 +643,8 @@ export class OODAController {
 
     const passed = !!raw.passed;
 
-    // Build checks array from either checks or failedChecks
     let checks = Array.isArray(raw.checks) ? raw.checks : [];
 
-    // If failedChecks exist, merge them in
     if (Array.isArray(raw.failedChecks)) {
       for (const fc of raw.failedChecks) {
         const existing = checks.find((c: any) => c.name === fc.name);
@@ -672,14 +658,12 @@ export class OODAController {
       }
     }
 
-    // Normalize check format: accept {message} as {details}
     checks = checks.map((c: any) => ({
       name: c.name || 'unknown',
       passed: c.passed ?? true,
       details: c.details || c.message || '',
     }));
 
-    // Determine reason
     let reason = raw.reason;
     if (!reason && !passed) {
       const failedNames = checks.filter((c: any) => !c.passed).map((c: any) => c.name);
@@ -688,7 +672,6 @@ export class OODAController {
         : 'Verification failed';
     }
 
-    // Determine retryNeeded: if not explicitly set, retry on failure
     const retryNeeded = raw.retryNeeded !== undefined ? raw.retryNeeded : !passed;
 
     return { passed, checks, retryNeeded, reason };
