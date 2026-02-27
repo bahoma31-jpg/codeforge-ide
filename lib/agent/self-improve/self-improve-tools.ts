@@ -3,15 +3,21 @@
  * Agent tools for self-analysis, dependency tracing, project mapping,
  * and OODA loop operations.
  *
- * Phase 1: 3 tools (🟢 AUTO read-only)
+ * Phase 1: 3 tools (🟢 AUTO read-only) — category: 'self-improve'
  *   - self_analyze_component, self_trace_dependency, self_map_project
  *
- * Phase 2: 5 tools (mixed risk levels)
+ * Phase 2: 5 tools (mixed risk levels) — category: 'self-improve'
  *   - self_start_improvement (🔴 CONFIRM), self_get_task_status (🟢 AUTO),
  *   - self_cancel_task (🟡 NOTIFY), self_get_suggestions (🟢 AUTO),
  *   - self_get_stats (🟢 AUTO)
  *
- * Total: 8 self-improve tools
+ * Phase 3: 5 tools — category: 'ooda' (separate file: ooda-tool-definitions.ts)
+ *   - ooda_start_cycle, ooda_execute_fix, ooda_verify_fix,
+ *   - ooda_learn_pattern, ooda_get_status
+ *
+ * This file handles self-improve category (8 tools).
+ * For ooda category (5 tools), see ooda-tool-definitions.ts.
+ * Total across both: 13 self-improvement tools.
  */
 
 import type { ToolDefinition } from '../types';
@@ -113,7 +119,10 @@ export const selfImproveTools: ToolDefinition[] = [
 /** Alias for backward compatibility */
 export const selfImproveToolDefinitions = selfImproveTools;
 
-// ─── Helper: Load All Project Files ───────────────────────────
+/** Alias for executor registration (used by barrel re-export) */
+export const selfImproveToolExecutors = selfImproveTools;
+
+// ─── Helper: Load All Project Files ─────────────────────────────
 
 async function loadProjectFiles(): Promise<Map<string, string>> {
   const { getAllNodes } = await import('@/lib/db/file-operations');
@@ -129,7 +138,7 @@ async function loadProjectFiles(): Promise<Map<string, string>> {
   return fileMap;
 }
 
-// ─── Helper: Create Tool Bridge ───────────────────────────────
+// ─── Helper: Create Tool Bridge ─────────────────────────────────
 
 function createToolBridge(service: AgentService): ToolBridge {
   return {
@@ -166,9 +175,9 @@ function createToolBridge(service: AgentService): ToolBridge {
 export function registerSelfImproveExecutors(service: AgentService): void {
   const engine = getSelfAnalysisEngine();
 
-  // ══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════
   // Phase 1 Executors (read-only analysis)
-  // ══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════
 
   // ── self_analyze_component ──
   service.registerToolExecutor('self_analyze_component', async (args) => {
@@ -328,9 +337,9 @@ export function registerSelfImproveExecutors(service: AgentService): void {
     }
   });
 
-  // ══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════
   // Phase 2 Executors (OODA loop operations)
-  // ══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════
 
   const toolBridge = createToolBridge(service);
   const oodaExecutors = createOODAToolExecutors(toolBridge, loadProjectFiles);
