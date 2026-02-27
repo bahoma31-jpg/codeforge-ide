@@ -45,7 +45,7 @@ export interface ToolDefinition {
   description: string;
   parameters: Record<string, unknown>;
   riskLevel: RiskLevel;
-  category: 'filesystem' | 'git' | 'github' | 'utility';
+  category: 'filesystem' | 'git' | 'github' | 'utility' | 'self-improve';
 }
 
 export interface ToolCall {
