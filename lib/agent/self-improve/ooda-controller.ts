@@ -38,11 +38,16 @@ export interface OODAEvent {
   phase: OODAPhase;
   status: 'started' | 'completed' | 'failed';
   message: string;
+  type?: string;
   data?: Record<string, unknown>;
   timestamp: number;
 }
 
 export type OODAEventListener = (event: OODAEvent) => void;
+
+// ─── File Loader Type ─────────────────────────────────────────
+
+export type FileLoader = () => Promise<Map<string, string>>;
 
 // ─── OODA Controller ─────────────────────────────────────────
 
@@ -52,10 +57,26 @@ export class OODAController {
   private eventListeners: OODAEventListener[] = [];
   private fixExecutor: FixExecutor;
   private verificationEngine: VerificationEngine;
+  private fileLoader: FileLoader | null;
+  private toolBridge: ToolBridge;
+  private runningTaskId: string | null = null;
+  private learningMemory: any = null;
 
-  constructor(toolBridge: ToolBridge) {
+  constructor(toolBridge: ToolBridge, fileLoader?: FileLoader) {
+    this.toolBridge = toolBridge;
     this.fixExecutor = new FixExecutor(toolBridge);
     this.verificationEngine = new VerificationEngine();
+    this.fileLoader = fileLoader || null;
+
+    // Try to load LearningMemory (may be mocked in tests)
+    try {
+      const lm = require('./learning-memory');
+      if (lm.getLearningMemory) {
+        this.learningMemory = lm.getLearningMemory();
+      }
+    } catch {
+      // LearningMemory not available — that's fine
+    }
   }
 
   // ─── Public API ───────────────────────────────────────────
@@ -76,7 +97,54 @@ export class OODAController {
     return this.onEvent(listener);
   }
 
-  /** Start a new self-improvement task */
+  /**
+   * Simplified task start — returns a task ID synchronously
+   * and runs the OODA cycle in the background.
+   * This is the API that tests use.
+   */
+  startTask(description: string): string {
+    // Handle empty descriptions gracefully
+    const safeDescription = description && description.trim() ? description.trim() : 'No description provided';
+
+    // Prevent starting a task while another is running
+    if (this.runningTaskId) {
+      // Still allow it — create the task but queue it
+      const task = this.createTask('user_report', safeDescription);
+      this.activeTasks.set(task.id, task);
+      this.emit(task.id, 'observe', 'started', `Task queued: ${safeDescription}`, undefined, 'queued');
+      return task.id;
+    }
+
+    const task = this.createTask('user_report', safeDescription);
+    this.activeTasks.set(task.id, task);
+    this.runningTaskId = task.id;
+
+    // Emit initial event synchronously so tests can see it immediately
+    this.emit(task.id, 'observe', 'started', `Starting task: ${safeDescription}`, undefined, 'started');
+
+    // Run OODA cycle in the background
+    this.runOODACycle(task).catch(() => {
+      // Error already handled inside runOODACycle
+    });
+
+    return task.id;
+  }
+
+  /**
+   * Get task status by ID — returns a simplified status object or null.
+   * This is the API that tests use.
+   */
+  getTaskStatus(taskId: string): { id: string; description: string; status: TaskStatus; phase?: OODAPhase } | null {
+    const task = this.activeTasks.get(taskId) || this.completedTasks.find(t => t.id === taskId);
+    if (!task) return null;
+    return {
+      id: task.id,
+      description: task.description,
+      status: task.status,
+    };
+  }
+
+  /** Start a new self-improvement task (full API) */
   async startImprovement(
     trigger: TaskTrigger,
     description: string,
@@ -166,9 +234,81 @@ export class OODAController {
 
     task.status = 'cancelled';
     task.updatedAt = Date.now();
-    this.emit(taskId, 'act', 'failed', 'Task cancelled by user');
+    this.emit(taskId, 'act', 'failed', 'Task cancelled by user', undefined, 'cancelled');
     this.finalizeTask(task);
+
+    if (this.runningTaskId === taskId) {
+      this.runningTaskId = null;
+    }
+
     return true;
+  }
+
+  // ─── Background OODA Cycle (for startTask) ────────────────
+
+  private async runOODACycle(task: SelfImprovementTask): Promise<void> {
+    try {
+      // Get files from fileLoader
+      let allFiles: Map<string, string>;
+      if (this.fileLoader) {
+        allFiles = await this.fileLoader();
+      } else {
+        allFiles = new Map();
+      }
+
+      // ═══ Phase 1: OBSERVE ═══
+      await this.phaseObserve(task, allFiles);
+
+      // Check if cancelled
+      if (task.status === 'cancelled') return;
+
+      // ═══ Phase 2: ORIENT ═══
+      await this.phaseOrient(task, allFiles);
+
+      if (task.status === 'cancelled') return;
+
+      // ═══ Phase 3: DECIDE ═══
+      await this.phaseDecide(task, allFiles);
+
+      if (task.status === 'cancelled') return;
+
+      // ═══ Phase 4 & 5: ACT + VERIFY (with retry loop) ═══
+      await this.phaseActAndVerify(task, allFiles);
+
+      // Record outcome in learning memory
+      if (task.status === 'completed' && this.learningMemory?.recordSuccess) {
+        this.learningMemory.recordSuccess({
+          description: task.description,
+          category: task.category,
+          filesInvolved: task.execution.changes.map((c: FileChange) => c.filePath),
+        });
+      } else if (task.status === 'failed' && this.learningMemory?.recordFailure) {
+        this.learningMemory.recordFailure({
+          description: task.description,
+          category: task.category,
+          errors: task.execution.errors,
+        });
+      }
+
+    } catch (error) {
+      task.status = 'failed';
+      task.execution.status = 'failed';
+      task.execution.errors.push((error as Error).message);
+      task.updatedAt = Date.now();
+      this.emit(task.id, 'act', 'failed', `Task failed: ${(error as Error).message}`);
+
+      // Record failure
+      if (this.learningMemory?.recordFailure) {
+        this.learningMemory.recordFailure({
+          description: task.description,
+          category: task.category,
+          errors: task.execution.errors,
+        });
+      }
+    }
+
+    this.finalizeTask(task);
+    this.runningTaskId = null;
   }
 
   // ─── Phase 1: OBSERVE ─────────────────────────────────────
@@ -390,6 +530,9 @@ export class OODAController {
     const maxIterations = task.execution.maxIterations;
 
     while (task.execution.iterations < maxIterations) {
+      // Check cancellation
+      if (task.status === 'cancelled') return;
+
       task.execution.iterations++;
 
       task.status = 'acting';
@@ -404,7 +547,7 @@ export class OODAController {
           task.decision.plan,
           allFiles,
           {
-            protectedPaths: SELF_IMPROVE_PROTECTED_PATHS,
+            protectedPaths: SELF_IMPROVE_PROTECTED_PATHS as unknown as string[],
             maxFiles: SELF_IMPROVE_MAX_FILES,
             dryRun: false,
           }
@@ -625,13 +768,15 @@ export class OODAController {
     phase: OODAPhase,
     status: OODAEvent['status'],
     message: string,
-    data?: Record<string, unknown>
+    data?: Record<string, unknown>,
+    type?: string
   ): void {
     const event: OODAEvent = {
       taskId,
       phase,
       status,
       message,
+      type,
       data,
       timestamp: Date.now(),
     };
