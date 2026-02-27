@@ -1,0 +1,403 @@
+/**
+ * CodeForge IDE — Model Selector Styles
+ * Dark theme + RTL support for Groq model dropdown.
+ *
+ * Color palette: Catppuccin Mocha
+ * - Surface: #1e1e2e, #181825, #313244
+ * - Text: #cdd6f4, #bac2de, #6c7086, #45475a
+ * - Accent: #89b4fa (blue), #a6e3a1 (green), #f9e2af (yellow)
+ * - Special: #f38ba8 (red), #cba6f7 (purple), #fab387 (orange)
+ */
+
+/* ─── Container ───────────────────────────────────────────── */
+
+.ms-container {
+  position: relative;
+  width: 100%;
+  font-family: inherit;
+}
+
+.ms-container--compact {
+  max-width: 280px;
+}
+
+/* ─── Trigger Button ──────────────────────────────────────── */
+
+.ms-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+  background: #313244;
+  border: 1px solid #45475a;
+  border-radius: 10px;
+  color: #cdd6f4;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  outline: none;
+}
+
+.ms-trigger:hover {
+  border-color: #89b4fa;
+  background: #313244;
+}
+
+.ms-trigger--open {
+  border-color: #89b4fa;
+  box-shadow: 0 0 0 2px rgba(137, 180, 250, 0.15);
+}
+
+.ms-trigger--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ms-trigger__content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.ms-trigger__icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.ms-trigger__name {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ms-trigger__star {
+  color: #f9e2af;
+  flex-shrink: 0;
+}
+
+.ms-trigger__placeholder {
+  color: #6c7086;
+}
+
+.ms-trigger__chevron {
+  color: #6c7086;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.ms-trigger__chevron--open {
+  transform: rotate(180deg);
+}
+
+/* ─── Dropdown Panel ──────────────────────────────────────── */
+
+.ms-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: #1e1e2e;
+  border: 1px solid #313244;
+  border-radius: 12px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 2px 8px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  animation: ms-slideDown 0.15s ease-out;
+}
+
+@keyframes ms-slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ─── Search ──────────────────────────────────────────────── */
+
+.ms-dropdown__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #313244;
+}
+
+.ms-dropdown__search-icon {
+  color: #6c7086;
+  flex-shrink: 0;
+}
+
+.ms-dropdown__search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #cdd6f4;
+  font-size: 13px;
+  outline: none;
+}
+
+.ms-dropdown__search-input::placeholder {
+  color: #45475a;
+}
+
+/* ─── Model List ──────────────────────────────────────────── */
+
+.ms-dropdown__list {
+  max-height: 380px;
+  overflow-y: auto;
+  padding: 4px 0;
+  scrollbar-width: thin;
+  scrollbar-color: #45475a transparent;
+}
+
+.ms-dropdown__list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.ms-dropdown__list::-webkit-scrollbar-thumb {
+  background: #45475a;
+  border-radius: 4px;
+}
+
+.ms-dropdown__list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ms-dropdown__empty {
+  padding: 20px;
+  text-align: center;
+  color: #6c7086;
+  font-size: 12px;
+}
+
+/* ─── Group ───────────────────────────────────────────────── */
+
+.ms-group {
+  padding: 2px 0;
+}
+
+.ms-group + .ms-group {
+  border-top: 1px solid #313244;
+  margin-top: 2px;
+  padding-top: 4px;
+}
+
+.ms-group__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6c7086;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ms-group__icon {
+  font-size: 12px;
+}
+
+.ms-group__label {
+  flex: 1;
+}
+
+.ms-group__count {
+  background: #313244;
+  color: #6c7086;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+
+/* ─── Model Item ──────────────────────────────────────────── */
+
+.ms-model {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 14px;
+  background: transparent;
+  border: none;
+  color: #cdd6f4;
+  cursor: pointer;
+  transition: background 0.1s ease;
+  text-align: inherit;
+}
+
+.ms-model:hover,
+.ms-model--highlighted {
+  background: #313244;
+}
+
+.ms-model--selected {
+  background: rgba(137, 180, 250, 0.08);
+}
+
+.ms-model--selected:hover {
+  background: rgba(137, 180, 250, 0.12);
+}
+
+.ms-model__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.ms-model__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ms-model__name {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #cdd6f4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ms-model__star {
+  color: #f9e2af;
+  flex-shrink: 0;
+}
+
+.ms-model__check {
+  color: #89b4fa;
+  flex-shrink: 0;
+}
+
+.ms-model__desc {
+  font-size: 10.5px;
+  color: #6c7086;
+  margin-top: 2px;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ms-model__badges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+/* ─── Badges ──────────────────────────────────────────────── */
+
+.ms-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 6px;
+  font-size: 9.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ms-badge--instant {
+  background: rgba(166, 227, 161, 0.12);
+  color: #a6e3a1;
+}
+
+.ms-badge--fast {
+  background: rgba(137, 180, 250, 0.12);
+  color: #89b4fa;
+}
+
+.ms-badge--medium {
+  background: rgba(249, 226, 175, 0.12);
+  color: #f9e2af;
+}
+
+.ms-badge--slow {
+  background: rgba(250, 179, 135, 0.12);
+  color: #fab387;
+}
+
+.ms-badge--context {
+  background: rgba(203, 166, 247, 0.10);
+  color: #cba6f7;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+}
+
+/* ─── Type Icons ──────────────────────────────────────────── */
+
+.ms-type-icon--text {
+  color: #89b4fa;
+}
+
+.ms-type-icon--compound {
+  color: #f9e2af;
+}
+
+.ms-type-icon--stt {
+  color: #a6e3a1;
+}
+
+.ms-type-icon--tts {
+  color: #cba6f7;
+}
+
+/* ─── Footer ──────────────────────────────────────────────── */
+
+.ms-dropdown__footer {
+  padding: 6px 14px;
+  border-top: 1px solid #313244;
+  font-size: 10px;
+  color: #45475a;
+  text-align: center;
+}
+
+/* ─── RTL Support ─────────────────────────────────────────── */
+
+[dir='rtl'] .ms-trigger__content,
+[dir='rtl'] .ms-model__header,
+[dir='rtl'] .ms-group__header,
+[dir='rtl'] .ms-dropdown__search {
+  direction: rtl;
+}
+
+[dir='rtl'] .ms-model__badges {
+  align-items: flex-start;
+}
+
+[dir='rtl'] .ms-trigger__chevron {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+/* ─── Responsive ──────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .ms-dropdown {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-radius: 16px 16px 0 0;
+    max-height: 70vh;
+  }
+
+  .ms-dropdown__list {
+    max-height: calc(70vh - 100px);
+  }
+}
