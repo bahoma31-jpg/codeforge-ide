@@ -1,18 +1,18 @@
 'use client';
 
 /**
- * CodeForge IDE — Chat Message
- * Renders a single chat message with markdown support,
- * tool call indicators, diff previews, and clickable file paths.
+ * CodeForge IDE — Chat Message v2.0
+ * Renders a single chat message with rich markdown support,
+ * tool call indicators, and clickable file paths.
+ *
+ * v2.0 — Replaced naive regex-based markdown with MarkdownRenderer.
+ *         Filters out raw tool JSON noise from displayed messages.
  */
 
 import React, { useState } from 'react';
 import type { AgentMessage, ToolCall } from '@/lib/agent/types';
-import { useEditorStore } from '@/lib/stores/editor-store';
-import {
-  parseFilePathsFromText,
-  type TextSegment,
-} from '@/lib/utils/file-path-detect';
+import { MarkdownRenderer } from './markdown-renderer';
+import { cleanAIContent } from '@/lib/utils/markdown-parser';
 import {
   User,
   Bot,
@@ -23,7 +23,6 @@ import {
   XCircle,
   Clock,
   Loader2,
-  FileCode2,
 } from 'lucide-react';
 
 interface ChatMessageProps {
@@ -34,8 +33,18 @@ export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === 'user';
   const isTool = message.role === 'tool';
 
+  // ── Filter out internal tool messages from display ──
   if (isTool) {
     return <ToolResultMessage message={message} />;
+  }
+
+  // ── Filter out noise from assistant messages ──
+  // Messages that are just "[Calling tool: ...]" should be hidden
+  if (!isUser && message.content) {
+    const cleaned = cleanAIContent(message.content);
+    if (!cleaned || cleaned.startsWith('[Calling tool:')) {
+      return null;
+    }
   }
 
   return (
@@ -58,16 +67,21 @@ export function ChatMessage({ message }: ChatMessageProps) {
         }`}
       >
         <div
-          className={`inline-block px-3 py-2 rounded-xl text-sm leading-relaxed ${
+          className={`inline-block px-3 py-2 rounded-xl leading-relaxed ${
             isUser
               ? 'bg-[#89b4fa]/15 text-[#cdd6f4] rounded-tr-sm'
               : 'bg-[#313244] text-[#cdd6f4] rounded-tl-sm'
           }`}
         >
-          {/* Message content with basic markdown + clickable file paths */}
-          <div className="whitespace-pre-wrap break-words agent-message-content">
-            <MessageContent content={message.content} />
-          </div>
+          {isUser ? (
+            // User messages: plain text, no markdown
+            <div className="text-sm whitespace-pre-wrap break-words">
+              {message.content}
+            </div>
+          ) : (
+            // Assistant messages: rich markdown rendering
+            <MarkdownRenderer content={message.content} />
+          )}
 
           {/* Tool calls indicator */}
           {message.toolCalls && message.toolCalls.length > 0 && (
@@ -96,186 +110,54 @@ export function ChatMessage({ message }: ChatMessageProps) {
 }
 
 /**
- * Render message content with basic markdown formatting
- * AND clickable file paths
- */
-function MessageContent({ content }: { content: string }) {
-  if (!content) return null;
-
-  // Basic markdown: bold, code blocks, inline code
-  const parts = content.split(/(```[\s\S]*?```|`[^`]+`|\*\*[^*]+\*\*)/);
-
-  return (
-    <>
-      {parts.map((part, i) => {
-        // Code block
-        if (part.startsWith('```') && part.endsWith('```')) {
-          const code = part.slice(3, -3);
-          const firstLine = code.indexOf('\n');
-          const lang = firstLine > 0 ? code.slice(0, firstLine).trim() : '';
-          const codeContent = firstLine > 0 ? code.slice(firstLine + 1) : code;
-
-          return (
-            <pre
-              key={i}
-              className="my-2 p-2.5 rounded-lg bg-[#181825] border border-[#313244] overflow-x-auto text-xs font-mono"
-            >
-              {lang && (
-                <div className="text-[10px] text-[#45475a] mb-1.5 font-sans">
-                  {lang}
-                </div>
-              )}
-              <code className="text-[#cdd6f4]">{codeContent}</code>
-            </pre>
-          );
-        }
-
-        // Inline code — check if it's a file path
-        if (part.startsWith('`') && part.endsWith('`')) {
-          const codeText = part.slice(1, -1);
-          // Try to detect if the inline code is a file path
-          const segments = parseFilePathsFromText(codeText);
-          const isFilePath =
-            segments.length === 1 &&
-            segments[0].type === 'filepath' &&
-            segments[0].filePath;
-
-          if (isFilePath && segments[0].filePath) {
-            return (
-              <FilePathButton
-                key={i}
-                filePath={segments[0].filePath}
-                language={segments[0].language || 'plaintext'}
-                displayText={codeText}
-                isInlineCode
-              />
-            );
-          }
-
-          return (
-            <code
-              key={i}
-              className="px-1.5 py-0.5 rounded bg-[#181825] text-[#f9e2af] text-xs font-mono"
-            >
-              {codeText}
-            </code>
-          );
-        }
-
-        // Bold
-        if (part.startsWith('**') && part.endsWith('**')) {
-          return (
-            <strong key={i} className="font-semibold text-[#cdd6f4]">
-              {part.slice(2, -2)}
-            </strong>
-          );
-        }
-
-        // Regular text — check for file paths within it
-        return <TextWithFilePaths key={i} text={part} />;
-      })}
-    </>
-  );
-}
-
-/**
- * Render plain text with file paths converted to clickable buttons
- */
-function TextWithFilePaths({ text }: { text: string }) {
-  const segments = parseFilePathsFromText(text);
-
-  // If no file paths found, return plain text
-  if (segments.every((s) => s.type === 'text')) {
-    return <span>{text}</span>;
-  }
-
-  return (
-    <>
-      {segments.map((segment, i) => {
-        if (segment.type === 'filepath' && segment.filePath) {
-          return (
-            <FilePathButton
-              key={i}
-              filePath={segment.filePath}
-              language={segment.language || 'plaintext'}
-              displayText={segment.value}
-              isInlineCode={false}
-            />
-          );
-        }
-        return <span key={i}>{segment.value}</span>;
-      })}
-    </>
-  );
-}
-
-/**
- * Clickable file path button that opens the file in the editor
- */
-function FilePathButton({
-  filePath,
-  language,
-  displayText,
-  isInlineCode,
-}: {
-  filePath: string;
-  language: string;
-  displayText: string;
-  isInlineCode: boolean;
-}) {
-  const [isLoading, setIsLoading] = useState(false);
-  const openFileFromPath = useEditorStore((s) => s.openFileFromPath);
-
-  const handleClick = async () => {
-    setIsLoading(true);
-    try {
-      await openFileFromPath(filePath, language);
-    } catch (error) {
-      console.error('[ChatMessage] Failed to open file:', filePath, error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <button
-      onClick={handleClick}
-      disabled={isLoading}
-      title={`فتح ${filePath} في المحرر`}
-      className={`inline-flex items-center gap-1 rounded transition-all cursor-pointer
-        ${
-          isInlineCode
-            ? 'px-1.5 py-0.5 bg-[#181825] text-xs font-mono hover:bg-[#89b4fa]/20 hover:text-[#89b4fa] border border-transparent hover:border-[#89b4fa]/30'
-            : 'px-1 py-0 text-sm hover:text-[#89b4fa] hover:underline'
-        }
-        ${isLoading ? 'opacity-60' : 'text-[#89b4fa]'}
-        focus-visible:ring-2 focus-visible:ring-[#89b4fa] focus-visible:ring-offset-1 focus-visible:ring-offset-[#1e1e2e]
-      `}
-    >
-      {isLoading ? (
-        <Loader2 size={10} className="animate-spin" />
-      ) : (
-        <FileCode2 size={10} className="flex-shrink-0" />
-      )}
-      <span>{displayText}</span>
-    </button>
-  );
-}
-
-/**
  * Tool call badge showing status
  */
 function ToolCallBadge({ toolCall }: { toolCall: ToolCall }) {
   const [expanded, setExpanded] = useState(false);
 
-  const statusIcon = {
-    pending: <Clock size={12} className="text-[#f9e2af]" />,
-    approved: <CheckCircle2 size={12} className="text-[#a6e3a1]" />,
-    rejected: <XCircle size={12} className="text-[#f38ba8]" />,
-    executing: <Loader2 size={12} className="animate-spin text-[#89b4fa]" />,
-    completed: <CheckCircle2 size={12} className="text-[#a6e3a1]" />,
-    failed: <XCircle size={12} className="text-[#f38ba8]" />,
+  // Friendly Arabic labels for common tools
+  const toolLabels: Record<string, string> = {
+    fs_read_file: 'قراءة ملف',
+    fs_create_file: 'إنشاء ملف',
+    fs_update_file: 'تحديث ملف',
+    fs_delete_file: 'حذف ملف',
+    fs_list_files: 'عرض الملفات',
+    fs_search_files: 'بحث في الملفات',
+    fs_create_folder: 'إنشاء مجلد',
+    fs_rename_file: 'إعادة تسمية',
+    fs_move_file: 'نقل ملف',
+    github_read_file: 'قراءة من GitHub',
+    github_push_file: 'رفع ملف',
+    github_push_files: 'رفع ملفات',
+    github_edit_file: 'تعديل ملف',
+    github_delete_file: 'حذف ملف',
+    github_list_files: 'عرض ملفات GitHub',
+    github_create_branch: 'إنشاء فرع',
+    github_create_pull_request: 'إنشاء PR',
+    github_merge_pull_request: 'دمج PR',
+    github_create_issue: 'إنشاء Issue',
+    github_search_code: 'بحث في الكود',
+    git_status: 'حالة Git',
+    git_commit: 'حفظ التغييرات',
+    git_push: 'دفع للريموت',
+    get_project_context: 'تحليل المشروع',
+    explain_code: 'شرح الكود',
+    suggest_fix: 'اقتراح إصلاح',
   };
+
+  const toolName = toolCall.toolName || toolCall.name || 'unknown';
+  const displayName = toolLabels[toolName] || toolName;
+
+  const statusConfig = {
+    pending: { icon: <Clock size={12} className="text-[#f9e2af]" />, color: 'text-[#f9e2af]' },
+    approved: { icon: <CheckCircle2 size={12} className="text-[#a6e3a1]" />, color: 'text-[#a6e3a1]' },
+    rejected: { icon: <XCircle size={12} className="text-[#f38ba8]" />, color: 'text-[#f38ba8]' },
+    executing: { icon: <Loader2 size={12} className="animate-spin text-[#89b4fa]" />, color: 'text-[#89b4fa]' },
+    completed: { icon: <CheckCircle2 size={12} className="text-[#a6e3a1]" />, color: 'text-[#a6e3a1]' },
+    failed: { icon: <XCircle size={12} className="text-[#f38ba8]" />, color: 'text-[#f38ba8]' },
+  };
+
+  const status = statusConfig[toolCall.status] || statusConfig.pending;
 
   return (
     <div className="mt-1">
@@ -285,21 +167,21 @@ function ToolCallBadge({ toolCall }: { toolCall: ToolCall }) {
       >
         {expanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
         <Wrench size={10} />
-        <span className="font-mono">{toolCall.toolName}</span>
-        {statusIcon[toolCall.status]}
+        <span>{displayName}</span>
+        {status.icon}
       </button>
 
       {expanded && (
-        <div className="mt-1 ml-4 p-2 rounded bg-[#181825] border border-[#313244] text-[10px] font-mono">
-          <div className="text-[#6c7086]">المعاملات:</div>
-          <pre className="text-[#cdd6f4] whitespace-pre-wrap">
-            {JSON.stringify(toolCall.args, null, 2)}
+        <div className="mt-1 ml-4 p-2 rounded bg-[#181825] border border-[#313244] text-[10px] font-mono max-h-40 overflow-y-auto">
+          <div className="text-[#6c7086] mb-0.5">المعاملات:</div>
+          <pre className="text-[#cdd6f4] whitespace-pre-wrap break-all">
+            {formatToolArgs(toolCall.args)}
           </pre>
           {toolCall.result && (
             <>
-              <div className="text-[#6c7086] mt-1">النتيجة:</div>
-              <pre className="text-[#cdd6f4] whitespace-pre-wrap">
-                {JSON.stringify(toolCall.result, null, 2).slice(0, 300)}
+              <div className="text-[#6c7086] mt-1.5 mb-0.5">النتيجة:</div>
+              <pre className="text-[#cdd6f4] whitespace-pre-wrap break-all">
+                {formatToolResult(toolCall.result)}
               </pre>
             </>
           )}
@@ -310,7 +192,34 @@ function ToolCallBadge({ toolCall }: { toolCall: ToolCall }) {
 }
 
 /**
- * Tool result message (compact)
+ * Format tool arguments for display — hide long values
+ */
+function formatToolArgs(args: Record<string, unknown> | undefined): string {
+  if (!args) return '{}';
+  const cleaned: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(args)) {
+    if (typeof value === 'string' && value.length > 200) {
+      cleaned[key] = value.slice(0, 100) + `... (${value.length} حرف)`;
+    } else {
+      cleaned[key] = value;
+    }
+  }
+  return JSON.stringify(cleaned, null, 2);
+}
+
+/**
+ * Format tool result — truncate long content
+ */
+function formatToolResult(result: unknown): string {
+  const str = JSON.stringify(result, null, 2);
+  if (str.length > 500) {
+    return str.slice(0, 400) + '\n... (مقتطع)';
+  }
+  return str;
+}
+
+/**
+ * Tool result message (compact inline indicator)
  */
 function ToolResultMessage({ message }: { message: AgentMessage }) {
   const tc = message.toolCalls?.[0];
@@ -319,15 +228,14 @@ function ToolResultMessage({ message }: { message: AgentMessage }) {
   const success = tc.result?.success;
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 mx-8">
+    <div className="flex items-center gap-2 px-3 py-1 mx-8">
       <div
-        className={`w-1 h-1 rounded-full ${
+        className={`w-1.5 h-1.5 rounded-full ${
           success ? 'bg-[#a6e3a1]' : 'bg-[#f38ba8]'
         }`}
       />
-      <span className="text-[10px] font-mono text-[#45475a]">
-        {tc.toolName}
-        {success ? ' ✓' : ' ✗'}
+      <span className="text-[10px] text-[#45475a]">
+        {success ? '✓' : '✗'}
       </span>
     </div>
   );
