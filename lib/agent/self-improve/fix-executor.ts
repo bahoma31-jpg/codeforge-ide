@@ -20,18 +20,18 @@ export interface ToolBridge {
     filePath: string,
     oldStr: string,
     newStr: string,
-    commitMessage: string,
+    commitMessage?: string,
     branch?: string
   ): Promise<boolean>;
   writeFile(
     filePath: string,
     content: string,
-    commitMessage: string,
+    commitMessage?: string,
     branch?: string
   ): Promise<boolean>;
   deleteFile(
     filePath: string,
-    commitMessage: string,
+    commitMessage?: string,
     branch?: string
   ): Promise<boolean>;
 }
@@ -41,8 +41,36 @@ export interface ToolBridge {
 export interface ExecutionOptions {
   protectedPaths: string[];
   maxFiles: number;
-  dryRun: boolean;
+  dryRun?: boolean;
   branch?: string;
+}
+
+// ─── Plan Input (flat object form) ────────────────────────────
+
+export interface PlanInput {
+  steps: PlanStep[];
+  protectedPaths: string[];
+  maxFiles: number;
+  dryRun?: boolean;
+  branch?: string;
+}
+
+export interface PlanStep {
+  type: string;
+  filePath: string;
+  description: string;
+  oldStr?: string;
+  newStr?: string;
+}
+
+// ─── Execution Result ─────────────────────────────────────────
+
+export interface ExecutionResult {
+  success: boolean;
+  filesModified: string[];
+  backupData: Map<string, string>;
+  errors: string[];
+  changes: FileChange[];
 }
 
 // ─── Fix Executor ─────────────────────────────────────────────
@@ -57,11 +85,142 @@ export class FixExecutor {
 
   /**
    * Execute a complete fix plan.
-   * Returns the list of file changes made.
-   *
-   * Defensive: handles non-array plan input gracefully.
+   * Accepts either:
+   *   1. PlanInput (flat object with steps, protectedPaths, maxFiles)
+   *   2. Legacy (plan, allFiles, options) — 3-arg form
    */
   async executePlan(
+    planOrInput: FixStep[] | PlanInput | Record<string, unknown> | undefined | null,
+    allFiles?: Map<string, string>,
+    options?: ExecutionOptions
+  ): Promise<ExecutionResult | FileChange[]> {
+    // ── Detect flat PlanInput form ──
+    if (
+      planOrInput &&
+      typeof planOrInput === 'object' &&
+      !Array.isArray(planOrInput) &&
+      'steps' in planOrInput &&
+      Array.isArray((planOrInput as any).steps) &&
+      'protectedPaths' in planOrInput
+    ) {
+      return this.executePlanFlat(planOrInput as PlanInput);
+    }
+
+    // ── Legacy 3-arg form ──
+    return this.executePlanLegacy(planOrInput, allFiles!, options!);
+  }
+
+  /**
+   * Flat form: executePlan({ steps, protectedPaths, maxFiles, dryRun? })
+   */
+  private async executePlanFlat(input: PlanInput): Promise<ExecutionResult> {
+    const backupData = new Map<string, string>();
+    const filesModified: string[] = [];
+    const errors: string[] = [];
+    const changes: FileChange[] = [];
+    let filesModifiedCount = 0;
+
+    for (const step of input.steps) {
+      const filePath = step.filePath;
+      const action = step.type;
+
+      // Protected path check
+      if (this.isProtected(filePath, input.protectedPaths)) {
+        continue;
+      }
+
+      // Max files check
+      if (
+        (action === 'edit' || action === 'create' || action === 'delete') &&
+        filesModifiedCount >= input.maxFiles
+      ) {
+        continue;
+      }
+
+      try {
+        if (action === 'read') {
+          await this.toolBridge.readFile(filePath);
+        } else if (action === 'edit') {
+          // Backup before editing
+          try {
+            const currentContent = await this.toolBridge.readFile(filePath);
+            backupData.set(filePath, currentContent);
+          } catch {
+            // File might not exist yet
+          }
+
+          if (input.dryRun) {
+            // Dry run — don't actually edit
+          } else {
+            const oldStr = step.oldStr || '';
+            const newStr = step.newStr || '';
+            const success = await this.toolBridge.editFile(filePath, oldStr, newStr);
+            if (success && !filesModified.includes(filePath)) {
+              filesModified.push(filePath);
+              filesModifiedCount++;
+            }
+          }
+
+          changes.push({
+            filePath,
+            changeType: 'modify',
+            oldContent: backupData.get(filePath),
+            timestamp: Date.now(),
+          });
+        } else if (action === 'create') {
+          if (!input.dryRun) {
+            await this.toolBridge.writeFile(filePath, step.newStr || '');
+            if (!filesModified.includes(filePath)) {
+              filesModified.push(filePath);
+              filesModifiedCount++;
+            }
+          }
+          changes.push({
+            filePath,
+            changeType: 'create',
+            timestamp: Date.now(),
+          });
+        } else if (action === 'delete') {
+          try {
+            const currentContent = await this.toolBridge.readFile(filePath);
+            backupData.set(filePath, currentContent);
+          } catch { /* ignore */ }
+
+          if (!input.dryRun) {
+            await this.toolBridge.deleteFile(filePath);
+            if (!filesModified.includes(filePath)) {
+              filesModified.push(filePath);
+              filesModifiedCount++;
+            }
+          }
+          changes.push({
+            filePath,
+            changeType: 'delete',
+            oldContent: backupData.get(filePath),
+            timestamp: Date.now(),
+          });
+        }
+      } catch (error) {
+        errors.push(`${action} ${filePath}: ${(error as Error).message}`);
+        continue;
+      }
+    }
+
+    this.rollbackStack = changes;
+
+    return {
+      success: errors.length === 0,
+      filesModified,
+      backupData,
+      errors,
+      changes,
+    };
+  }
+
+  /**
+   * Legacy 3-arg form for backward compatibility.
+   */
+  private async executePlanLegacy(
     plan: FixStep[] | Record<string, unknown> | undefined | null,
     allFiles: Map<string, string>,
     options: ExecutionOptions
@@ -70,20 +229,17 @@ export class FixExecutor {
     this.rollbackStack = [];
     let filesModified = 0;
 
-    // ── Defensive: ensure plan is an array ──
     let safePlan: FixStep[];
     if (Array.isArray(plan)) {
       safePlan = plan;
     } else if (plan && typeof plan === 'object' && 'steps' in plan && Array.isArray((plan as any).steps)) {
       safePlan = (plan as any).steps;
     } else if (plan && typeof plan === 'object') {
-      // Single step object → wrap in array
       safePlan = [plan as unknown as FixStep];
     } else {
       safePlan = [];
     }
 
-    // Sort plan by order
     const sortedPlan = [...safePlan].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
     for (const step of sortedPlan) {
@@ -117,7 +273,6 @@ export class FixExecutor {
       } catch (error) {
         step.completed = true;
         step.result = `ERROR: ${(error as Error).message}`;
-        // Continue to next step instead of throwing — allows partial execution
         continue;
       }
     }
@@ -125,9 +280,34 @@ export class FixExecutor {
     return changes;
   }
 
-  async rollback(options: ExecutionOptions): Promise<number> {
+  /**
+   * Rollback changes. Accepts either:
+   *   - Map<string, string> (backupData from flat form)
+   *   - ExecutionOptions (legacy form)
+   */
+  async rollback(
+    backupOrOptions?: Map<string, string> | ExecutionOptions
+  ): Promise<number> {
     let rolledBack = 0;
+
+    if (backupOrOptions instanceof Map) {
+      for (const [filePath, content] of backupOrOptions) {
+        try {
+          await this.toolBridge.writeFile(
+            filePath,
+            content,
+            `rollback: Restore ${filePath.split('/').pop()} to pre-fix state`
+          );
+          rolledBack++;
+        } catch (error) {
+          console.error(`Rollback failed for ${filePath}: ${(error as Error).message}`);
+        }
+      }
+      return rolledBack;
+    }
+
     const stack = [...this.rollbackStack].reverse();
+    const branch = (backupOrOptions as ExecutionOptions)?.branch;
 
     for (const change of stack) {
       try {
@@ -136,14 +316,14 @@ export class FixExecutor {
             change.filePath,
             change.oldContent,
             `rollback: Restore ${change.filePath.split('/').pop()} to pre-fix state`,
-            options.branch
+            branch
           );
           rolledBack++;
         } else if (change.changeType === 'create') {
           await this.toolBridge.deleteFile(
             change.filePath,
             `rollback: Remove ${change.filePath.split('/').pop()} (created during fix)`,
-            options.branch
+            branch
           );
           rolledBack++;
         } else if (change.changeType === 'delete' && change.oldContent !== undefined) {
@@ -151,7 +331,7 @@ export class FixExecutor {
             change.filePath,
             change.oldContent,
             `rollback: Restore deleted ${change.filePath.split('/').pop()}`,
-            options.branch
+            branch
           );
           rolledBack++;
         }
@@ -168,7 +348,7 @@ export class FixExecutor {
     return [...this.rollbackStack];
   }
 
-  // ─── Private: Step Execution ───────────────────────────────
+  // ─── Private: Step Execution (Legacy) ──────────────────────
 
   private async executeStep(
     step: FixStep,
