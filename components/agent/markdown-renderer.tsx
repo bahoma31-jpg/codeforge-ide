@@ -1,14 +1,15 @@
 'use client';
 
 /**
- * CodeForge IDE — Markdown Renderer v2.0
+ * CodeForge IDE — Markdown Renderer v2.1
  * React component that renders parsed markdown tokens.
  * Catppuccin Mocha themed. Supports copy-to-clipboard for code blocks,
  * clickable file paths (open in editor), and clickable repo names
  * (load file tree in sidebar).
  *
- * v2.0 — Added RepoNameLink for clickable GitHub repository names.
- *         Clicking a repo name loads its file tree in the sidebar.
+ * v2.1 — Fixed RepoNameLink to use auth-store instead of deleted
+ *         localStorage key. Owner is now resolved from useAuthStore
+ *         user.login (already available after sign-in).
  */
 
 import React, { useState, useCallback } from 'react';
@@ -22,6 +23,7 @@ import {
 } from '@/lib/utils/markdown-parser';
 import { parseFilePathsFromText, type TextSegment } from '@/lib/utils/file-path-detect';
 import { useEditorStore } from '@/lib/stores/editor-store';
+import { useAuthStore } from '@/lib/stores/auth-store';
 
 // ─── Main Renderer ──────────────────────────────────────────
 
@@ -346,7 +348,7 @@ function MaybeRepoLink({ name }: { name: string }) {
 /**
  * Clickable repository name button.
  * When clicked, loads the repo's file tree into the sidebar.
- * If owner is empty, resolves from stored GitHub config.
+ * If owner is empty, resolves from auth-store (user.login).
  */
 function RepoNameLink({
   owner,
@@ -360,6 +362,7 @@ function RepoNameLink({
   isInlineCode: boolean;
 }) {
   const loadRepoTree = useEditorStore((s) => s.loadRepoTree);
+  const authUser = useAuthStore((s) => s.user);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -367,31 +370,11 @@ function RepoNameLink({
     if (failed) return; // Don't retry if already failed
     setLoading(true);
     try {
-      let resolvedOwner = owner;
-
-      // If no owner, resolve from GitHub config
-      if (!resolvedOwner) {
-        try {
-          const configRaw = localStorage.getItem('codeforge-agent-config');
-          if (configRaw) {
-            const config = JSON.parse(configRaw);
-            if (config.githubToken) {
-              const resp = await fetch('https://api.github.com/user', {
-                headers: {
-                  Authorization: `Bearer ${config.githubToken}`,
-                  Accept: 'application/vnd.github+json',
-                },
-              });
-              if (resp.ok) {
-                const userData = await resp.json();
-                resolvedOwner = userData.login;
-              }
-            }
-          }
-        } catch { /* fallback */ }
-      }
+      // Resolve owner: use provided owner, or fall back to auth-store user.login
+      const resolvedOwner = owner || authUser?.login || null;
 
       if (!resolvedOwner) {
+        console.warn('[RepoNameLink] No owner: user not signed in');
         setFailed(true);
         return;
       }
