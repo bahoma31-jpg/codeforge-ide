@@ -4,6 +4,7 @@ import {
   getExtension,
   getFileName,
 } from '@/lib/utils/file-path-detect';
+import { useAuthStore } from './auth-store';
 
 export interface EditorTab {
   id: string;
@@ -71,55 +72,28 @@ export interface RepoFileNode {
 }
 
 /**
+ * Get GitHub token from the single source of truth: auth-store.
+ * Never reads from localStorage or any other location.
+ */
+function getGitHubToken(): string | null {
+  return useAuthStore.getState().token;
+}
+
+/**
  * Fetch file content from GitHub API.
- * Reads the GitHub token and repo info from agent config in localStorage.
+ * Uses token exclusively from auth-store.
  */
 async function fetchFileFromGitHub(
   filePath: string
 ): Promise<{ content: string; found: boolean }> {
   try {
-    const configRaw = localStorage.getItem('codeforge-agent-config');
-    if (!configRaw) return { content: '', found: false };
-
-    const config = JSON.parse(configRaw);
-    const token = config.githubToken;
+    const token = getGitHubToken();
     if (!token) return { content: '', found: false };
 
-    const projectRaw = localStorage.getItem('codeforge-project-context');
-    let owner = '';
-    let repo = '';
-    let branch = 'main';
-
-    if (projectRaw) {
-      try {
-        const project = JSON.parse(projectRaw);
-        if (project.repoUrl) {
-          const urlMatch = project.repoUrl.match(
-            /github\.com\/([^/]+)\/([^/]+)/
-          );
-          if (urlMatch) {
-            owner = urlMatch[1];
-            repo = urlMatch[2].replace(/\.git$/, '');
-          }
-        }
-        if (project.currentBranch) {
-          branch = project.currentBranch;
-        }
-      } catch {
-        // ignore parse errors
-      }
-    }
-
-    // Also check current repo from store
     const storeState = useEditorStore.getState();
-    if (storeState.currentRepo) {
-      owner = storeState.currentRepo.owner;
-      repo = storeState.currentRepo.repo;
-      branch = storeState.currentRepo.branch;
-    }
+    if (!storeState.currentRepo) return { content: '', found: false };
 
-    if (!owner || !repo) return { content: '', found: false };
-
+    const { owner, repo, branch } = storeState.currentRepo;
     const cleanPath = filePath.replace(/^\/+/, '');
     const url = `https://api.github.com/repos/${owner}/${repo}/contents/${cleanPath}?ref=${branch}`;
 
@@ -135,7 +109,9 @@ async function fetchFileFromGitHub(
     const data = await response.json();
 
     if (data.content && data.encoding === 'base64') {
-      const decoded = decodeURIComponent(escape(atob(data.content.replace(/\n/g, ''))));
+      const decoded = decodeURIComponent(
+        escape(atob(data.content.replace(/\n/g, '')))
+      );
       return { content: decoded, found: true };
     }
 
@@ -144,18 +120,6 @@ async function fetchFileFromGitHub(
     console.error('[EditorStore] Failed to fetch from GitHub:', error);
     return { content: '', found: false };
   }
-}
-
-/** Get GitHub token from config */
-function getGitHubToken(): string | null {
-  try {
-    const configRaw = localStorage.getItem('codeforge-agent-config');
-    if (configRaw) {
-      const config = JSON.parse(configRaw);
-      return config.githubToken || null;
-    }
-  } catch { /* ignore */ }
-  return null;
 }
 
 /** Fetch directory listing from GitHub API */
@@ -191,7 +155,6 @@ async function fetchGitHubDirectory(
       childrenLoaded: false,
     }))
     .sort((a: RepoFileNode, b: RepoFileNode) => {
-      // Directories first, then alphabetical
       if (a.type === 'dir' && b.type !== 'dir') return -1;
       if (a.type !== 'dir' && b.type === 'dir') return 1;
       return a.name.localeCompare(b.name);
@@ -218,7 +181,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set((state) => {
       const newTabs = state.tabs.filter((t) => t.id !== id);
       const newActiveId =
-        state.activeTabId === id ? (newTabs[0]?.id ?? null) : state.activeTabId;
+        state.activeTabId === id
+          ? (newTabs[0]?.id ?? null)
+          : state.activeTabId;
       return { tabs: newTabs, activeTabId: newActiveId };
     }),
 
@@ -280,7 +245,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       language: lang,
       content: found
         ? content
-        : `// ⏳ لم يتم العثور على محتوى الملف: ${cleanPath}\n// تأكد من إعداد GitHub Token وبيانات المشروع في إعدادات الوكيل\n// أو قم بتعديل المحتوى يدوياً هنا\n`,
+        : `// ⏳ لم يتم العثور على محتوى الملف: ${cleanPath}\n// تأكد من تسجيل الدخول وإعداد بيانات المستودع\n// أو قم بتعديل المحتوى يدوياً هنا\n`,
       isDirty: false,
       isActive: true,
     };
@@ -295,7 +260,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   loadRepoTree: async (owner: string, repo: string, branch?: string) => {
     const token = getGitHubToken();
     if (!token) {
-      console.error('[EditorStore] No GitHub token for loadRepoTree');
+      console.error('[EditorStore] No GitHub token — please sign in first');
       return;
     }
 
@@ -303,7 +268,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ repoTreeLoading: true });
 
     try {
-      const nodes = await fetchGitHubDirectory(owner, repo, '', branchName, token);
+      const nodes = await fetchGitHubDirectory(
+        owner,
+        repo,
+        '',
+        branchName,
+        token
+      );
 
       set({
         currentRepo: { owner, repo, branch: branchName },
@@ -311,13 +282,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         repoTreeLoading: false,
       });
 
-      // Store repo context for file fetching
-      localStorage.setItem('codeforge-project-context', JSON.stringify({
-        repoUrl: `https://github.com/${owner}/${repo}`,
-        currentBranch: branchName,
-      }));
-
-      console.log(`[EditorStore] Loaded repo tree: ${owner}/${repo} (${nodes.length} items)`);
+      console.log(
+        `[EditorStore] Loaded repo tree: ${owner}/${repo} (${nodes.length} items)`
+      );
     } catch (error) {
       console.error('[EditorStore] Failed to load repo tree:', error);
       set({ repoTreeLoading: false });
@@ -336,9 +303,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const { owner, repo, branch } = state.currentRepo;
 
     try {
-      const children = await fetchGitHubDirectory(owner, repo, path, branch, token);
+      const children = await fetchGitHubDirectory(
+        owner,
+        repo,
+        path,
+        branch,
+        token
+      );
 
-      // Update the tree recursively
       const updateNodes = (nodes: RepoFileNode[]): RepoFileNode[] =>
         nodes.map((node) => {
           if (node.path === path) {
@@ -360,7 +332,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   openRepoFile: async (path: string, name: string) => {
     const state = get();
 
-    // Check if already open
     const existing = state.tabs.find((t) => t.filePath === path);
     if (existing) {
       set({ activeTabId: existing.id });
@@ -377,7 +348,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const lang = getLanguageFromExtension(ext);
     const tabId = `repo-${path}-${Date.now()}`;
 
-    // Fetch file content
     let content = `// جاري تحميل ${path}...`;
     try {
       const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;

@@ -2,19 +2,24 @@
  * CodeForge IDE — Auth Store
  * GitHub authentication state management.
  * Uses Personal Access Token (PAT) approach for browser-based IDE.
- * Token is stored in localStorage (client-side only).
+ *
+ * Security:
+ * - Token is stored in sessionStorage (cleared when tab closes)
+ * - Token is AES-GCM encrypted before storage
+ * - Single source of truth: all other stores read token via useAuthStore
  */
 
 import { create } from 'zustand';
 import type { GitHubUser } from '@/lib/services/github.service';
 import { validateToken } from '@/lib/services/github.service';
+import { encryptValue, decryptValue } from '@/lib/utils/crypto';
 
 const TOKEN_KEY = 'codeforge-github-token';
 
 export interface AuthState {
   /** Current authenticated user (null if not signed in) */
   user: GitHubUser | null;
-  /** GitHub PAT */
+  /** GitHub PAT (in-memory only — never read from storage directly) */
   token: string | null;
   /** Whether auth is being checked */
   isLoading: boolean;
@@ -27,13 +32,13 @@ export interface AuthState {
   signIn: (token: string) => Promise<void>;
   /** Sign out and clear stored token */
   signOut: () => void;
-  /** Restore session from localStorage on app start */
+  /** Restore session from sessionStorage on app start */
   restoreSession: () => Promise<void>;
   /** Clear error */
   clearError: () => void;
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   token: null,
   isLoading: false,
@@ -45,9 +50,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const user = await validateToken(token);
 
-      // Persist token
+      // Persist encrypted token in sessionStorage (cleared on tab close)
       if (typeof window !== 'undefined') {
-        localStorage.setItem(TOKEN_KEY, token);
+        const encrypted = await encryptValue(token);
+        sessionStorage.setItem(TOKEN_KEY, encrypted);
+        // Remove any legacy localStorage entry
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem('codeforge-agent-config');
       }
 
       set({
@@ -72,7 +81,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signOut: () => {
     if (typeof window !== 'undefined') {
+      sessionStorage.removeItem(TOKEN_KEY);
+      // Clean up any legacy keys
       localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem('codeforge-agent-config');
     }
     set({
       user: null,
@@ -85,11 +97,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   restoreSession: async () => {
     if (typeof window === 'undefined') return;
 
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (!token) return;
+    const encrypted = sessionStorage.getItem(TOKEN_KEY);
+    if (!encrypted) return;
 
     set({ isLoading: true });
     try {
+      const token = await decryptValue(encrypted);
+      if (!token) {
+        // Decryption failed — discard
+        sessionStorage.removeItem(TOKEN_KEY);
+        set({ isLoading: false });
+        return;
+      }
+
       const user = await validateToken(token);
       set({
         user,
@@ -99,7 +119,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
     } catch {
       // Token expired or invalid — clean up silently
-      localStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem(TOKEN_KEY);
       set({
         user: null,
         token: null,
