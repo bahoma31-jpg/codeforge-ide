@@ -22,11 +22,6 @@ const GITHUB_API = 'https://api.github.com';
 // or are restricted by GitHub API policies.
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * Maps tool names to user-friendly messages explaining why they might fail
- * and what the user can do about it. Used by executors to provide clear
- * guidance instead of cryptic API errors.
- */
 export const TOOL_LIMITATIONS: Record<string, {
   requiredScope: string;
   userMessage: string;
@@ -70,6 +65,30 @@ async function getGitHubToken(): Promise<string> {
   throw new Error('لم يتم العثور على GitHub Token. يرجى إدخاله في إعدادات الوكيل.');
 }
 
+// ─── Helper: Get authenticated username (cached) ─────────────
+
+let _cachedUsername: string | null = null;
+
+async function getAuthenticatedUsername(): Promise<string | null> {
+  if (_cachedUsername) return _cachedUsername;
+
+  try {
+    const token = await getGitHubToken();
+    const response = await fetch(`${GITHUB_API}/user`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github+json',
+      },
+    });
+    if (response.ok) {
+      const data = await response.json();
+      _cachedUsername = data.login as string;
+      return _cachedUsername;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
 // ─── Helper: GitHub API Call ──────────────────────────────────
 
 async function githubFetch(
@@ -100,10 +119,6 @@ async function githubFetch(
   return response.json();
 }
 
-/**
- * Custom error class for GitHub API errors.
- * Carries the HTTP status code and endpoint for better error handling.
- */
 class GitHubApiError extends Error {
   constructor(
     public readonly status: number,
@@ -114,21 +129,16 @@ class GitHubApiError extends Error {
     this.name = 'GitHubApiError';
   }
 
-  /** Check if this is a permissions/scope error */
   isPermissionError(): boolean {
     return this.status === 403 || this.status === 401;
   }
 
-  /** Check if the resource was not found */
   isNotFound(): boolean {
     return this.status === 404;
   }
 }
 
-// Helper for raw text responses (file content)
-async function githubFetchRaw(
-  endpoint: string
-): Promise<string> {
+async function githubFetchRaw(endpoint: string): Promise<string> {
   const token = await getGitHubToken();
 
   const response = await fetch(`${GITHUB_API}${endpoint}`, {
@@ -169,14 +179,14 @@ export const githubTools: ToolDefinition[] = [
   },
   {
     name: 'github_delete_repo',
-    description: 'Delete a GitHub repository permanently. This action is IRREVERSIBLE and will delete all code, issues, PRs, and settings. Requires user confirmation. NOTE: This operation requires the "delete_repo" scope on the GitHub token — if unavailable, the agent will provide manual deletion instructions instead.',
+    description: 'Delete a GitHub repository permanently. This action is IRREVERSIBLE and will delete all code, issues, PRs, and settings. Requires user confirmation. The owner is auto-detected from the GitHub token if not provided or incorrect.',
     parameters: {
       type: 'object',
       properties: {
-        owner: { type: 'string', description: 'Repository owner (username or org).' },
+        owner: { type: 'string', description: 'Repository owner (username or org). Auto-detected from token if empty or incorrect.' },
         repo: { type: 'string', description: 'Repository name to delete.' },
       },
-      required: ['owner', 'repo'],
+      required: ['repo'],
     },
     riskLevel: 'confirm',
     category: 'github',
@@ -211,12 +221,12 @@ export const githubTools: ToolDefinition[] = [
   },
   {
     name: 'github_search_repos',
-    description: 'Search for GitHub repositories by keyword, language, topic, or other criteria. Returns matching repos with stats.',
+    description: 'Search for GitHub repositories by keyword, language, topic, or other criteria.',
     parameters: {
       type: 'object',
       properties: {
-        query: { type: 'string', description: 'Search query (e.g., "react language:typescript stars:>100").' },
-        sort: { type: 'string', description: 'Sort by: "stars", "forks", "updated", "help-wanted-issues".', enum: ['stars', 'forks', 'updated', 'help-wanted-issues'] },
+        query: { type: 'string', description: 'Search query.' },
+        sort: { type: 'string', description: 'Sort by.', enum: ['stars', 'forks', 'updated', 'help-wanted-issues'] },
         perPage: { type: 'number', description: 'Number of results (max 30). Defaults to 5.' },
       },
       required: ['query'],
@@ -228,25 +238,25 @@ export const githubTools: ToolDefinition[] = [
   // ============== FILE TOOLS ==============
   {
     name: 'github_push_file',
-    description: 'Create or update a single file in a GitHub repository. If the file exists, it will be updated; otherwise created.',
+    description: 'Create or update a single file in a GitHub repository.',
     parameters: {
       type: 'object',
       properties: {
-        owner: { type: 'string', description: 'Repository owner (username or org).' },
+        owner: { type: 'string', description: 'Repository owner.' },
         repo: { type: 'string', description: 'Repository name.' },
-        path: { type: 'string', description: 'File path in the repo (e.g., "src/index.ts").' },
-        content: { type: 'string', description: 'File content (plain text, will be base64 encoded automatically).' },
+        path: { type: 'string', description: 'File path in the repo.' },
+        content: { type: 'string', description: 'File content.' },
         message: { type: 'string', description: 'Commit message.' },
-        branch: { type: 'string', description: 'Branch to push to. Defaults to "main".' },
+        branch: { type: 'string', description: 'Branch. Defaults to "main".' },
       },
       required: ['owner', 'repo', 'path', 'content', 'message'],
     },
-    riskLevel: 'notify',  // Fixed: was 'confirm', prompt says NOTIFY for create/update
+    riskLevel: 'notify',
     category: 'github',
   },
   {
     name: 'github_push_files',
-    description: 'Push multiple files to a GitHub repository in a single commit. Uses the Git Trees API for atomic multi-file commits.',
+    description: 'Push multiple files to a GitHub repository in a single commit.',
     parameters: {
       type: 'object',
       properties: {
@@ -257,7 +267,7 @@ export const githubTools: ToolDefinition[] = [
           items: {
             type: 'object',
             properties: {
-              path: { type: 'string', description: 'File path in the repo.' },
+              path: { type: 'string', description: 'File path.' },
               content: { type: 'string', description: 'File content.' },
             },
             required: ['path', 'content'],
@@ -265,7 +275,7 @@ export const githubTools: ToolDefinition[] = [
           description: 'Array of files to push.',
         },
         message: { type: 'string', description: 'Commit message.' },
-        branch: { type: 'string', description: 'Branch to push to. Defaults to "main".' },
+        branch: { type: 'string', description: 'Branch. Defaults to "main".' },
       },
       required: ['owner', 'repo', 'files', 'message'],
     },
@@ -274,34 +284,33 @@ export const githubTools: ToolDefinition[] = [
   },
   {
     name: 'github_read_file',
-    description: 'Read the content of a file from a GitHub repository. Returns the raw file content as text.',
+    description: 'Read the content of a file from a GitHub repository.',
     parameters: {
       type: 'object',
       properties: {
         owner: { type: 'string', description: 'Repository owner.' },
         repo: { type: 'string', description: 'Repository name.' },
-        path: { type: 'string', description: 'File path in the repo (e.g., "src/index.ts").' },
-        branch: { type: 'string', description: 'Branch to read from. Defaults to "main".' },
+        path: { type: 'string', description: 'File path.' },
+        branch: { type: 'string', description: 'Branch. Defaults to "main".' },
       },
       required: ['owner', 'repo', 'path'],
     },
     riskLevel: 'auto',
     category: 'github',
   },
-  // ── NEW: github_edit_file ── Surgical edit with old_str/new_str ──
   {
     name: 'github_edit_file',
-    description: 'Edit an existing file by replacing a specific text section. Uses surgical old_str/new_str replacement instead of rewriting the entire file. ALWAYS read the file first with github_read_file before using this tool.',
+    description: 'Edit an existing file by replacing a specific text section. ALWAYS read the file first.',
     parameters: {
       type: 'object',
       properties: {
         owner: { type: 'string', description: 'Repository owner.' },
         repo: { type: 'string', description: 'Repository name.' },
-        path: { type: 'string', description: 'File path in the repo (e.g., "src/index.ts").' },
-        old_str: { type: 'string', description: 'The exact text to find and replace. Must match the file content EXACTLY including whitespace and indentation.' },
-        new_str: { type: 'string', description: 'The replacement text that will replace old_str.' },
-        branch: { type: 'string', description: 'Branch to edit on. Defaults to "main".' },
-        message: { type: 'string', description: 'Commit message describing the change.' },
+        path: { type: 'string', description: 'File path.' },
+        old_str: { type: 'string', description: 'Exact text to find and replace.' },
+        new_str: { type: 'string', description: 'Replacement text.' },
+        branch: { type: 'string', description: 'Branch. Defaults to "main".' },
+        message: { type: 'string', description: 'Commit message.' },
       },
       required: ['owner', 'repo', 'path', 'old_str', 'new_str', 'message'],
     },
@@ -310,15 +319,15 @@ export const githubTools: ToolDefinition[] = [
   },
   {
     name: 'github_delete_file',
-    description: 'Delete a file from a GitHub repository. Requires the file path and a commit message.',
+    description: 'Delete a file from a GitHub repository.',
     parameters: {
       type: 'object',
       properties: {
         owner: { type: 'string', description: 'Repository owner.' },
         repo: { type: 'string', description: 'Repository name.' },
-        path: { type: 'string', description: 'File path to delete (e.g., "src/old-file.ts").' },
-        message: { type: 'string', description: 'Commit message for the deletion.' },
-        branch: { type: 'string', description: 'Branch to delete from. Defaults to "main".' },
+        path: { type: 'string', description: 'File path to delete.' },
+        message: { type: 'string', description: 'Commit message.' },
+        branch: { type: 'string', description: 'Branch. Defaults to "main".' },
       },
       required: ['owner', 'repo', 'path', 'message'],
     },
@@ -327,14 +336,14 @@ export const githubTools: ToolDefinition[] = [
   },
   {
     name: 'github_list_files',
-    description: 'List files and directories in a path of a GitHub repository. Returns names, types, sizes, and download URLs.',
+    description: 'List files and directories in a path of a GitHub repository.',
     parameters: {
       type: 'object',
       properties: {
         owner: { type: 'string', description: 'Repository owner.' },
         repo: { type: 'string', description: 'Repository name.' },
-        path: { type: 'string', description: 'Directory path (empty string "" for root). Defaults to root.' },
-        branch: { type: 'string', description: 'Branch to list from. Defaults to "main".' },
+        path: { type: 'string', description: 'Directory path. Defaults to root.' },
+        branch: { type: 'string', description: 'Branch. Defaults to "main".' },
       },
       required: ['owner', 'repo'],
     },
@@ -345,7 +354,7 @@ export const githubTools: ToolDefinition[] = [
   // ============== BRANCH TOOLS ==============
   {
     name: 'github_create_branch',
-    description: 'Create a new branch in a GitHub repository from an existing branch.',
+    description: 'Create a new branch in a GitHub repository.',
     parameters: {
       type: 'object',
       properties: {
@@ -373,16 +382,15 @@ export const githubTools: ToolDefinition[] = [
     riskLevel: 'auto',
     category: 'github',
   },
-  // ── NEW: github_delete_branch ── Delete a branch ──
   {
     name: 'github_delete_branch',
-    description: 'Delete a branch from a GitHub repository. This is irreversible — verify the branch is merged or user acknowledges data loss before proceeding. REQUIRES user confirmation.',
+    description: 'Delete a branch from a GitHub repository. Irreversible.',
     parameters: {
       type: 'object',
       properties: {
         owner: { type: 'string', description: 'Repository owner.' },
         repo: { type: 'string', description: 'Repository name.' },
-        branch: { type: 'string', description: 'Branch name to delete. Cannot delete the default branch.' },
+        branch: { type: 'string', description: 'Branch name to delete.' },
       },
       required: ['owner', 'repo', 'branch'],
     },
@@ -402,12 +410,12 @@ export const githubTools: ToolDefinition[] = [
         title: { type: 'string', description: 'PR title.' },
         body: { type: 'string', description: 'PR description.' },
         head: { type: 'string', description: 'Branch with changes.' },
-        base: { type: 'string', description: 'Target branch (e.g., "main").' },
-        draft: { type: 'boolean', description: 'Create as draft PR. Defaults to false.' },
+        base: { type: 'string', description: 'Target branch.' },
+        draft: { type: 'boolean', description: 'Create as draft.' },
       },
       required: ['owner', 'repo', 'title', 'head', 'base'],
     },
-    riskLevel: 'notify',  // Fixed: was 'confirm', prompt says NOTIFY for PR creation
+    riskLevel: 'notify',
     category: 'github',
   },
   {
@@ -418,17 +426,16 @@ export const githubTools: ToolDefinition[] = [
       properties: {
         owner: { type: 'string', description: 'Repository owner.' },
         repo: { type: 'string', description: 'Repository name.' },
-        state: { type: 'string', description: 'Filter by state: "open", "closed", "all".', enum: ['open', 'closed', 'all'] },
+        state: { type: 'string', description: 'Filter by state.', enum: ['open', 'closed', 'all'] },
       },
       required: ['owner', 'repo'],
     },
     riskLevel: 'auto',
     category: 'github',
   },
-  // ── NEW: github_get_pull_request ── Single PR details ──
   {
     name: 'github_get_pull_request',
-    description: 'Get detailed information about a specific pull request including title, body, status, diff stats, review status, and merge info.',
+    description: 'Get detailed information about a specific pull request.',
     parameters: {
       type: 'object',
       properties: {
@@ -443,16 +450,16 @@ export const githubTools: ToolDefinition[] = [
   },
   {
     name: 'github_merge_pull_request',
-    description: 'Merge a pull request in a GitHub repository. Supports merge, squash, and rebase strategies.',
+    description: 'Merge a pull request in a GitHub repository.',
     parameters: {
       type: 'object',
       properties: {
         owner: { type: 'string', description: 'Repository owner.' },
         repo: { type: 'string', description: 'Repository name.' },
-        pullNumber: { type: 'number', description: 'Pull request number to merge.' },
-        mergeMethod: { type: 'string', description: 'Merge method: "merge", "squash", or "rebase". Defaults to "merge".', enum: ['merge', 'squash', 'rebase'] },
-        commitTitle: { type: 'string', description: 'Custom merge commit title. Optional.' },
-        commitMessage: { type: 'string', description: 'Custom merge commit message. Optional.' },
+        pullNumber: { type: 'number', description: 'Pull request number.' },
+        mergeMethod: { type: 'string', description: 'Merge method.', enum: ['merge', 'squash', 'rebase'] },
+        commitTitle: { type: 'string', description: 'Custom merge commit title.' },
+        commitMessage: { type: 'string', description: 'Custom merge commit message.' },
       },
       required: ['owner', 'repo', 'pullNumber'],
     },
@@ -470,8 +477,8 @@ export const githubTools: ToolDefinition[] = [
         owner: { type: 'string', description: 'Repository owner.' },
         repo: { type: 'string', description: 'Repository name.' },
         title: { type: 'string', description: 'Issue title.' },
-        body: { type: 'string', description: 'Issue description (Markdown supported).' },
-        labels: { type: 'array', items: { type: 'string' }, description: 'Labels to add (e.g., ["bug", "enhancement"]).' },
+        body: { type: 'string', description: 'Issue description.' },
+        labels: { type: 'array', items: { type: 'string' }, description: 'Labels to add.' },
       },
       required: ['owner', 'repo', 'title'],
     },
@@ -480,37 +487,36 @@ export const githubTools: ToolDefinition[] = [
   },
   {
     name: 'github_list_issues',
-    description: 'List issues in a GitHub repository. Can filter by state, labels, and sort order.',
+    description: 'List issues in a GitHub repository.',
     parameters: {
       type: 'object',
       properties: {
         owner: { type: 'string', description: 'Repository owner.' },
         repo: { type: 'string', description: 'Repository name.' },
-        state: { type: 'string', description: 'Filter by state: "open", "closed", "all". Defaults to "open".', enum: ['open', 'closed', 'all'] },
-        labels: { type: 'string', description: 'Comma-separated list of labels to filter by.' },
-        sort: { type: 'string', description: 'Sort by: "created", "updated", "comments".', enum: ['created', 'updated', 'comments'] },
-        perPage: { type: 'number', description: 'Number of issues to return. Defaults to 10.' },
+        state: { type: 'string', description: 'Filter by state.', enum: ['open', 'closed', 'all'] },
+        labels: { type: 'string', description: 'Comma-separated labels.' },
+        sort: { type: 'string', description: 'Sort by.', enum: ['created', 'updated', 'comments'] },
+        perPage: { type: 'number', description: 'Number of issues. Defaults to 10.' },
       },
       required: ['owner', 'repo'],
     },
     riskLevel: 'auto',
     category: 'github',
   },
-  // ── NEW: github_update_issue ── Update existing issue ──
   {
     name: 'github_update_issue',
-    description: 'Update an existing issue properties: title, body, state (open/closed), labels, or assignees.',
+    description: 'Update an existing issue.',
     parameters: {
       type: 'object',
       properties: {
         owner: { type: 'string', description: 'Repository owner.' },
         repo: { type: 'string', description: 'Repository name.' },
-        issueNumber: { type: 'number', description: 'Issue number to update.' },
-        title: { type: 'string', description: 'New title. Optional.' },
-        body: { type: 'string', description: 'New body/description. Optional.' },
-        state: { type: 'string', description: 'New state: "open" or "closed". Optional.', enum: ['open', 'closed'] },
-        labels: { type: 'array', items: { type: 'string' }, description: 'Updated labels array. Replaces all existing labels.' },
-        assignees: { type: 'array', items: { type: 'string' }, description: 'Updated assignees (GitHub usernames).' },
+        issueNumber: { type: 'number', description: 'Issue number.' },
+        title: { type: 'string', description: 'New title.' },
+        body: { type: 'string', description: 'New body.' },
+        state: { type: 'string', description: 'New state.', enum: ['open', 'closed'] },
+        labels: { type: 'array', items: { type: 'string' }, description: 'Updated labels.' },
+        assignees: { type: 'array', items: { type: 'string' }, description: 'Updated assignees.' },
       },
       required: ['owner', 'repo', 'issueNumber'],
     },
@@ -519,14 +525,14 @@ export const githubTools: ToolDefinition[] = [
   },
   {
     name: 'github_add_comment',
-    description: 'Add a comment to an issue or pull request in a GitHub repository.',
+    description: 'Add a comment to an issue or pull request.',
     parameters: {
       type: 'object',
       properties: {
         owner: { type: 'string', description: 'Repository owner.' },
         repo: { type: 'string', description: 'Repository name.' },
-        issueNumber: { type: 'number', description: 'Issue or PR number to comment on.' },
-        body: { type: 'string', description: 'Comment text (Markdown supported).' },
+        issueNumber: { type: 'number', description: 'Issue or PR number.' },
+        body: { type: 'string', description: 'Comment text.' },
       },
       required: ['owner', 'repo', 'issueNumber', 'body'],
     },
@@ -535,19 +541,18 @@ export const githubTools: ToolDefinition[] = [
   },
 
   // ============== SEARCH TOOLS ==============
-  // ── NEW: github_search_code ── Search code within repository ──
   {
     name: 'github_search_code',
-    description: 'Search for code patterns, function names, class definitions, or text across a GitHub repository. Returns matching files with code snippets.',
+    description: 'Search for code patterns across a GitHub repository.',
     parameters: {
       type: 'object',
       properties: {
         owner: { type: 'string', description: 'Repository owner.' },
         repo: { type: 'string', description: 'Repository name.' },
-        query: { type: 'string', description: 'Search query — code pattern, function name, variable, or text to find.' },
-        fileExtension: { type: 'string', description: 'Filter by file extension (e.g., "ts", "py", "js"). Optional.' },
-        path: { type: 'string', description: 'Filter by directory path (e.g., "src/components"). Optional.' },
-        perPage: { type: 'number', description: 'Number of results (max 30). Defaults to 10.' },
+        query: { type: 'string', description: 'Search query.' },
+        fileExtension: { type: 'string', description: 'Filter by extension.' },
+        path: { type: 'string', description: 'Filter by directory.' },
+        perPage: { type: 'number', description: 'Results (max 30). Defaults to 10.' },
       },
       required: ['owner', 'repo', 'query'],
     },
@@ -556,18 +561,17 @@ export const githubTools: ToolDefinition[] = [
   },
 
   // ============== HISTORY TOOLS ==============
-  // ── NEW: github_get_commit_history ── View commit history ──
   {
     name: 'github_get_commit_history',
-    description: 'Retrieve commit history for a branch. Shows commit messages, authors, dates, and SHAs. Useful for understanding recent changes and development timeline.',
+    description: 'Retrieve commit history for a branch.',
     parameters: {
       type: 'object',
       properties: {
         owner: { type: 'string', description: 'Repository owner.' },
         repo: { type: 'string', description: 'Repository name.' },
         branch: { type: 'string', description: 'Branch name. Defaults to "main".' },
-        path: { type: 'string', description: 'Filter commits by file path. Optional.' },
-        perPage: { type: 'number', description: 'Number of commits to return (max 100). Defaults to 10.' },
+        path: { type: 'string', description: 'Filter by file path.' },
+        perPage: { type: 'number', description: 'Number of commits (max 100). Defaults to 10.' },
       },
       required: ['owner', 'repo'],
     },
@@ -578,7 +582,7 @@ export const githubTools: ToolDefinition[] = [
   // ============== USER TOOLS ==============
   {
     name: 'github_get_user_info',
-    description: 'Get profile information about the authenticated GitHub user. Returns username, bio, public repos count, followers, etc.',
+    description: 'Get profile information about the authenticated GitHub user.',
     parameters: {
       type: 'object',
       properties: {},
@@ -607,7 +611,7 @@ export function registerGitHubExecutors(service: AgentService): void {
           gitignore_template: (args.gitignoreTemplate as string) || undefined,
         }),
       });
-      await sendNotification(`🤖 تم إنشاء مستودع: ${result.full_name}`, 'success');
+      await sendNotification(`تم إنشاء مستودع: ${result.full_name}`, 'success');
       return {
         success: true,
         data: {
@@ -618,28 +622,75 @@ export function registerGitHubExecutors(service: AgentService): void {
     } catch (error) { return { success: false, error: (error as Error).message }; }
   });
 
+  // ═══════════════════════════════════════════════════════════════
+  // DELETE REPO — with auto-owner resolution
+  // ═══════════════════════════════════════════════════════════════
   service.registerToolExecutor('github_delete_repo', async (args) => {
-    const owner = args.owner as string;
+    let owner = (args.owner as string) || '';
     const repo = args.repo as string;
     const limitation = TOOL_LIMITATIONS.github_delete_repo;
 
+    // ── Step 1: Auto-resolve owner if missing or suspicious ──
+    if (!owner || owner === 'unknown' || owner === 'undefined' || owner.includes(' ')) {
+      const resolvedUsername = await getAuthenticatedUsername();
+      if (resolvedUsername) {
+        owner = resolvedUsername;
+        console.log(`[github_delete_repo] Auto-resolved owner to: ${owner}`);
+      } else {
+        return {
+          success: false,
+          error: 'لم يتم تحديد مالك المستودع (owner) ولم نتمكن من استخراجه من التوكن. يرجى تحديد الـ owner يدوياً.',
+        };
+      }
+    }
+
+    // ── Step 2: Verify the repo exists before attempting delete ──
+    try {
+      await githubFetch(`/repos/${owner}/${repo}`);
+    } catch (checkError) {
+      if (checkError instanceof GitHubApiError && checkError.isNotFound()) {
+        // Maybe wrong owner — try with authenticated user
+        const authUsername = await getAuthenticatedUsername();
+        if (authUsername && authUsername !== owner) {
+          try {
+            await githubFetch(`/repos/${authUsername}/${repo}`);
+            // Found under authenticated user!
+            owner = authUsername;
+            console.log(`[github_delete_repo] Corrected owner to: ${owner}`);
+          } catch {
+            return {
+              success: false,
+              error:
+                `المستودع ${repo} غير موجود تحت ${owner} ولا تحت ${authUsername}.\n` +
+                `تأكد من اسم المستودع.`,
+            };
+          }
+        } else {
+          return {
+            success: false,
+            error: `المستودع ${owner}/${repo} غير موجود.`,
+          };
+        }
+      }
+      // Other errors (network, etc.) — continue and let the delete call handle it
+    }
+
+    // ── Step 3: Attempt deletion ──
     try {
       await githubFetch(`/repos/${owner}/${repo}`, { method: 'DELETE' });
-      await sendNotification(`🤖 ⚠️ تم حذف المستودع: ${owner}/${repo} نهائياً`, 'success');
+      await sendNotification(`⚠️ تم حذف المستودع: ${owner}/${repo} نهائياً`, 'success');
       return {
         success: true,
         data: {
           deleted: `${owner}/${repo}`,
-          message: `Repository ${owner}/${repo} has been permanently deleted.`,
+          message: `تم حذف المستودع ${owner}/${repo} نهائياً بنجاح.`,
         },
       };
     } catch (error) {
-      // ── Enhanced error handling with clear user guidance ──
       if (error instanceof GitHubApiError) {
-        // 403 = Token doesn't have delete_repo scope
         if (error.isPermissionError()) {
           await sendNotification(
-            `⚠️ لا يمكن حذف ${owner}/${repo} — صلاحية delete_repo غير متوفرة في التوكن`,
+            `⚠️ لا يمكن حذف ${owner}/${repo} — صلاحية delete_repo مطلوبة`,
             'error'
           );
           return {
@@ -651,20 +702,14 @@ export function registerGitHubExecutors(service: AgentService): void {
           };
         }
 
-        // 404 = Repo doesn't exist or token can't see it
         if (error.isNotFound()) {
           return {
             success: false,
-            error:
-              `المستودع ${owner}/${repo} غير موجود، أو أن التوكن الحالي لا يملك صلاحية رؤيته.\n\n` +
-              `تأكد من:\n` +
-              `- اسم المستودع مكتوب بشكل صحيح\n` +
-              `- التوكن مرتبط بالحساب المالك للمستودع`,
+            error: `المستودع ${owner}/${repo} غير موجود أو التوكن لا يملك صلاحية رؤيته.`,
           };
         }
       }
 
-      // Generic fallback
       return {
         success: false,
         error:
@@ -745,7 +790,7 @@ export function registerGitHubExecutors(service: AgentService): void {
         body: JSON.stringify({ message, content: base64Content, branch, ...(sha ? { sha } : {}) }),
       });
       const commitData = result.commit as Record<string, unknown> | undefined;
-      await sendNotification(`🤖 تم ${sha ? 'تحديث' : 'إنشاء'}: ${path} في ${owner}/${repo}`, 'success');
+      await sendNotification(`تم ${sha ? 'تحديث' : 'إنشاء'}: ${path} في ${owner}/${repo}`, 'success');
       return {
         success: true,
         data: { path, action: sha ? 'updated' : 'created', commitSha: commitData?.sha || '', commitUrl: commitData?.html_url || '' },
@@ -784,7 +829,7 @@ export function registerGitHubExecutors(service: AgentService): void {
         method: 'PATCH', body: JSON.stringify({ sha: newCommit.sha }),
       });
 
-      await sendNotification(`🤖 تم دفع ${files.length} ملف(ات) إلى ${owner}/${repo}`, 'success');
+      await sendNotification(`تم دفع ${files.length} ملف(ات) إلى ${owner}/${repo}`, 'success');
       return { success: true, data: { filesCount: files.length, commitSha: newCommit.sha, commitUrl: newCommit.html_url, branch } };
     } catch (error) { return { success: false, error: (error as Error).message }; }
   });
@@ -795,22 +840,17 @@ export function registerGitHubExecutors(service: AgentService): void {
       const repo = args.repo as string;
       const path = args.path as string;
       const branch = (args.branch as string) || 'main';
-
       const content = await githubFetchRaw(`/repos/${owner}/${repo}/contents/${path}?ref=${branch}`);
-
       return {
         success: true,
         data: {
-          path,
-          content: content.length > 50000 ? content.slice(0, 50000) + '\n\n... [تم اقتطاع المحتوى - الملف كبير جداً]' : content,
-          size: content.length,
-          truncated: content.length > 50000,
+          path, content: content.length > 50000 ? content.slice(0, 50000) + '\n\n... [تم اقتطاع المحتوى]' : content,
+          size: content.length, truncated: content.length > 50000,
         },
       };
     } catch (error) { return { success: false, error: (error as Error).message }; }
   });
 
-  // ── NEW EXECUTOR: github_edit_file ──
   service.registerToolExecutor('github_edit_file', async (args) => {
     try {
       const owner = args.owner as string;
@@ -821,34 +861,23 @@ export function registerGitHubExecutors(service: AgentService): void {
       const branch = (args.branch as string) || 'main';
       const message = args.message as string;
 
-      // Step 1: Read current file content + SHA
       const fileData = await githubFetch(`/repos/${owner}/${repo}/contents/${path}?ref=${branch}`);
       const sha = fileData.sha as string;
       const currentContentB64 = fileData.content as string;
       const currentContent = decodeURIComponent(escape(atob(currentContentB64.replace(/\n/g, ''))));
 
-      // Step 2: Verify old_str exists in the file
       if (!currentContent.includes(oldStr)) {
-        return {
-          success: false,
-          error: `النص المطلوب استبداله غير موجود في الملف ${path}. تأكد من مطابقة النص تماماً بما في ذلك المسافات والسطور.`,
-        };
+        return { success: false, error: `النص المطلوب استبداله غير موجود في الملف ${path}.` };
       }
 
-      // Step 3: Check for multiple matches (ambiguity)
       const matchCount = currentContent.split(oldStr).length - 1;
       if (matchCount > 1) {
-        return {
-          success: false,
-          error: `تم العثور على ${matchCount} تطابقات للنص المطلوب في ${path}. يرجى تقديم نص أطول وأكثر تحديداً لتجنب الغموض.`,
-        };
+        return { success: false, error: `تم العثور على ${matchCount} تطابقات في ${path}. يرجى تقديم نص أكثر تحديداً.` };
       }
 
-      // Step 4: Apply the replacement
       const newContent = currentContent.replace(oldStr, newStr);
       const base64Content = btoa(unescape(encodeURIComponent(newContent)));
 
-      // Step 5: Commit the change
       const result = await githubFetch(`/repos/${owner}/${repo}/contents/${path}`, {
         method: 'PUT',
         body: JSON.stringify({ message, content: base64Content, branch, sha }),
@@ -857,17 +886,13 @@ export function registerGitHubExecutors(service: AgentService): void {
       const commitData = result.commit as Record<string, unknown> | undefined;
       const linesChanged = newStr.split('\n').length - oldStr.split('\n').length;
 
-      await sendNotification(`🤖 تم تعديل ${path} — ${Math.abs(linesChanged)} سطر ${linesChanged >= 0 ? 'أُضيف' : 'أُزيل'}`, 'success');
+      await sendNotification(`تم تعديل ${path} — ${Math.abs(linesChanged)} سطر ${linesChanged >= 0 ? 'أُضيف' : 'أُزيل'}`, 'success');
       return {
         success: true,
         data: {
-          path,
-          action: 'edited',
-          linesAdded: newStr.split('\n').length,
-          linesRemoved: oldStr.split('\n').length,
-          netChange: linesChanged,
-          commitSha: commitData?.sha || '',
-          commitUrl: commitData?.html_url || '',
+          path, action: 'edited',
+          linesAdded: newStr.split('\n').length, linesRemoved: oldStr.split('\n').length,
+          netChange: linesChanged, commitSha: commitData?.sha || '', commitUrl: commitData?.html_url || '',
         },
       };
     } catch (error) { return { success: false, error: (error as Error).message }; }
@@ -883,12 +908,12 @@ export function registerGitHubExecutors(service: AgentService): void {
 
       const existing = await githubFetch(`/repos/${owner}/${repo}/contents/${path}?ref=${branch}`);
       const sha = existing.sha as string;
-      if (!sha) return { success: false, error: `الملف ${path} غير موجود في المستودع.` };
+      if (!sha) return { success: false, error: `الملف ${path} غير موجود.` };
 
       const result = await githubFetch(`/repos/${owner}/${repo}/contents/${path}`, {
         method: 'DELETE', body: JSON.stringify({ message, sha, branch }),
       });
-      await sendNotification(`🤖 تم حذف الملف: ${path} من ${owner}/${repo}`, 'success');
+      await sendNotification(`تم حذف الملف: ${path} من ${owner}/${repo}`, 'success');
       return { success: true, data: { deleted: path, commitSha: (result.commit as Record<string, unknown>)?.sha || '' } };
     } catch (error) { return { success: false, error: (error as Error).message }; }
   });
@@ -902,13 +927,9 @@ export function registerGitHubExecutors(service: AgentService): void {
 
       const result = await githubFetch(`/repos/${owner}/${repo}/contents/${path}?ref=${branch}`);
       const items = (result as unknown as Array<Record<string, unknown>>).map((item) => ({
-        name: item.name,
-        type: item.type, // "file" or "dir"
-        size: item.size || 0,
-        path: item.path,
-        downloadUrl: item.download_url || null,
+        name: item.name, type: item.type, size: item.size || 0,
+        path: item.path, downloadUrl: item.download_url || null,
       }));
-
       return { success: true, data: { path: path || '/', count: items.length, items } };
     } catch (error) { return { success: false, error: (error as Error).message }; }
   });
@@ -927,7 +948,7 @@ export function registerGitHubExecutors(service: AgentService): void {
       await githubFetch(`/repos/${owner}/${repo}/git/refs`, {
         method: 'POST', body: JSON.stringify({ ref: `refs/heads/${branch}`, sha }),
       });
-      await sendNotification(`🤖 تم إنشاء فرع: ${branch} من ${fromBranch}`, 'success');
+      await sendNotification(`تم إنشاء فرع: ${branch} من ${fromBranch}`, 'success');
       return { success: true, data: { branch, fromBranch, sha } };
     } catch (error) { return { success: false, error: (error as Error).message }; }
   });
@@ -945,27 +966,19 @@ export function registerGitHubExecutors(service: AgentService): void {
     } catch (error) { return { success: false, error: (error as Error).message }; }
   });
 
-  // ── NEW EXECUTOR: github_delete_branch ──
   service.registerToolExecutor('github_delete_branch', async (args) => {
     try {
       const owner = args.owner as string;
       const repo = args.repo as string;
       const branch = args.branch as string;
 
-      // Safety check: prevent deleting default branch
       const repoInfo = await githubFetch(`/repos/${owner}/${repo}`);
       if (repoInfo.default_branch === branch) {
-        return {
-          success: false,
-          error: `لا يمكن حذف الفرع الافتراضي "${branch}". يرجى تغيير الفرع الافتراضي أولاً من إعدادات المستودع.`,
-        };
+        return { success: false, error: `لا يمكن حذف الفرع الافتراضي "${branch}".` };
       }
 
-      await githubFetch(`/repos/${owner}/${repo}/git/refs/heads/${branch}`, {
-        method: 'DELETE',
-      });
-
-      await sendNotification(`🤖 ⚠️ تم حذف الفرع: ${branch} من ${owner}/${repo}`, 'success');
+      await githubFetch(`/repos/${owner}/${repo}/git/refs/heads/${branch}`, { method: 'DELETE' });
+      await sendNotification(`⚠️ تم حذف الفرع: ${branch} من ${owner}/${repo}`, 'success');
       return { success: true, data: { deleted: branch, repo: `${owner}/${repo}` } };
     } catch (error) { return { success: false, error: (error as Error).message }; }
   });
@@ -984,7 +997,7 @@ export function registerGitHubExecutors(service: AgentService): void {
           draft: (args.draft as boolean) ?? false,
         }),
       });
-      await sendNotification(`🤖 تم إنشاء PR #${result.number}: ${result.title}`, 'success');
+      await sendNotification(`تم إنشاء PR #${result.number}: ${result.title}`, 'success');
       return { success: true, data: { number: result.number, url: result.html_url, title: result.title, state: result.state } };
     } catch (error) { return { success: false, error: (error as Error).message }; }
   });
@@ -1003,41 +1016,26 @@ export function registerGitHubExecutors(service: AgentService): void {
     } catch (error) { return { success: false, error: (error as Error).message }; }
   });
 
-  // ── NEW EXECUTOR: github_get_pull_request ──
   service.registerToolExecutor('github_get_pull_request', async (args) => {
     try {
       const owner = args.owner as string;
       const repo = args.repo as string;
       const pullNumber = args.pullNumber as number;
-
       const pr = await githubFetch(`/repos/${owner}/${repo}/pulls/${pullNumber}`);
       const user = pr.user as Record<string, unknown> || {};
       const head = pr.head as Record<string, unknown> || {};
       const base = pr.base as Record<string, unknown> || {};
-
       return {
         success: true,
         data: {
-          number: pr.number,
-          title: pr.title,
-          body: pr.body || '',
-          state: pr.state,
-          url: pr.html_url,
-          author: user.login || '',
-          headBranch: head.ref || '',
-          baseBranch: base.ref || '',
-          isDraft: pr.draft || false,
-          mergeable: pr.mergeable,
-          mergeableState: pr.mergeable_state,
-          additions: pr.additions,
-          deletions: pr.deletions,
-          changedFiles: pr.changed_files,
-          commits: pr.commits,
-          reviewComments: pr.review_comments,
-          createdAt: pr.created_at,
-          updatedAt: pr.updated_at,
-          mergedAt: pr.merged_at,
-          closedAt: pr.closed_at,
+          number: pr.number, title: pr.title, body: pr.body || '', state: pr.state,
+          url: pr.html_url, author: user.login || '',
+          headBranch: head.ref || '', baseBranch: base.ref || '',
+          isDraft: pr.draft || false, mergeable: pr.mergeable,
+          additions: pr.additions, deletions: pr.deletions,
+          changedFiles: pr.changed_files, commits: pr.commits,
+          createdAt: pr.created_at, updatedAt: pr.updated_at,
+          mergedAt: pr.merged_at, closedAt: pr.closed_at,
         },
       };
     } catch (error) { return { success: false, error: (error as Error).message }; }
@@ -1049,7 +1047,6 @@ export function registerGitHubExecutors(service: AgentService): void {
       const repo = args.repo as string;
       const pullNumber = args.pullNumber as number;
       const mergeMethod = (args.mergeMethod as string) || 'merge';
-
       const result = await githubFetch(`/repos/${owner}/${repo}/pulls/${pullNumber}/merge`, {
         method: 'PUT',
         body: JSON.stringify({
@@ -1058,12 +1055,8 @@ export function registerGitHubExecutors(service: AgentService): void {
           commit_message: (args.commitMessage as string) || undefined,
         }),
       });
-
-      await sendNotification(`🤖 تم دمج PR #${pullNumber} بنجاح (طريقة: ${mergeMethod})`, 'success');
-      return {
-        success: true,
-        data: { merged: true, sha: result.sha, message: result.message, pullNumber },
-      };
+      await sendNotification(`تم دمج PR #${pullNumber} بنجاح`, 'success');
+      return { success: true, data: { merged: true, sha: result.sha, message: result.message, pullNumber } };
     } catch (error) { return { success: false, error: (error as Error).message }; }
   });
 
@@ -1080,7 +1073,7 @@ export function registerGitHubExecutors(service: AgentService): void {
           labels: (args.labels as string[]) || [],
         }),
       });
-      await sendNotification(`🤖 تم إنشاء Issue #${result.number}: ${result.title}`, 'success');
+      await sendNotification(`تم إنشاء Issue #${result.number}: ${result.title}`, 'success');
       return { success: true, data: { number: result.number, url: result.html_url, title: result.title } };
     } catch (error) { return { success: false, error: (error as Error).message }; }
   });
@@ -1099,26 +1092,23 @@ export function registerGitHubExecutors(service: AgentService): void {
 
       const result = await githubFetch(url);
       const issues = (result as unknown as Array<Record<string, unknown>>)
-        .filter((i) => !i.pull_request) // Exclude PRs from issues list
+        .filter((i) => !i.pull_request)
         .map((i) => ({
-          number: i.number, title: i.title, url: i.html_url,
-          state: i.state, labels: ((i.labels || []) as Array<Record<string, unknown>>).map((l) => l.name),
+          number: i.number, title: i.title, url: i.html_url, state: i.state,
+          labels: ((i.labels || []) as Array<Record<string, unknown>>).map((l) => l.name),
           author: (i.user as Record<string, unknown>)?.login || '',
           comments: i.comments, createdAt: i.created_at,
         }));
-
       return { success: true, data: { count: issues.length, issues } };
     } catch (error) { return { success: false, error: (error as Error).message }; }
   });
 
-  // ── NEW EXECUTOR: github_update_issue ──
   service.registerToolExecutor('github_update_issue', async (args) => {
     try {
       const owner = args.owner as string;
       const repo = args.repo as string;
       const issueNumber = args.issueNumber as number;
 
-      // Build update payload with only provided fields
       const updatePayload: Record<string, unknown> = {};
       if (args.title !== undefined) updatePayload.title = args.title;
       if (args.body !== undefined) updatePayload.body = args.body;
@@ -1127,25 +1117,18 @@ export function registerGitHubExecutors(service: AgentService): void {
       if (args.assignees !== undefined) updatePayload.assignees = args.assignees;
 
       if (Object.keys(updatePayload).length === 0) {
-        return { success: false, error: 'لم يتم تقديم أي حقول للتحديث. يرجى تحديد title أو body أو state أو labels أو assignees.' };
+        return { success: false, error: 'لم يتم تقديم أي حقول للتحديث.' };
       }
 
       const result = await githubFetch(`/repos/${owner}/${repo}/issues/${issueNumber}`, {
-        method: 'PATCH',
-        body: JSON.stringify(updatePayload),
+        method: 'PATCH', body: JSON.stringify(updatePayload),
       });
 
       const updatedFields = Object.keys(updatePayload).join(', ');
-      await sendNotification(`🤖 تم تحديث Issue #${issueNumber} (${updatedFields})`, 'success');
+      await sendNotification(`تم تحديث Issue #${issueNumber} (${updatedFields})`, 'success');
       return {
         success: true,
-        data: {
-          number: result.number,
-          title: result.title,
-          state: result.state,
-          url: result.html_url,
-          updatedFields,
-        },
+        data: { number: result.number, title: result.title, state: result.state, url: result.html_url, updatedFields },
       };
     } catch (error) { return { success: false, error: (error as Error).message }; }
   });
@@ -1158,18 +1141,16 @@ export function registerGitHubExecutors(service: AgentService): void {
       const body = args.body as string;
 
       const result = await githubFetch(`/repos/${owner}/${repo}/issues/${issueNumber}/comments`, {
-        method: 'POST',
-        body: JSON.stringify({ body }),
+        method: 'POST', body: JSON.stringify({ body }),
       });
 
-      await sendNotification(`🤖 تم إضافة تعليق على #${issueNumber}`, 'success');
+      await sendNotification(`تم إضافة تعليق على #${issueNumber}`, 'success');
       return { success: true, data: { id: result.id, url: result.html_url, issueNumber } };
     } catch (error) { return { success: false, error: (error as Error).message }; }
   });
 
   // ============== SEARCH EXECUTORS ==============
 
-  // ── NEW EXECUTOR: github_search_code ──
   service.registerToolExecutor('github_search_code', async (args) => {
     try {
       const owner = args.owner as string;
@@ -1179,48 +1160,29 @@ export function registerGitHubExecutors(service: AgentService): void {
       const path = args.path as string | undefined;
       const perPage = (args.perPage as number) || 10;
 
-      // Build search query with repo scope
       let searchQuery = `${query}+repo:${owner}/${repo}`;
       if (fileExtension) searchQuery += `+extension:${fileExtension}`;
       if (path) searchQuery += `+path:${path}`;
 
       const result = await githubFetch(
         `/search/code?q=${encodeURIComponent(searchQuery)}&per_page=${perPage}`,
-        {
-          headers: {
-            Accept: 'application/vnd.github.text-match+json',
-          },
-        }
+        { headers: { Accept: 'application/vnd.github.text-match+json' } }
       );
 
       const items = ((result.items || []) as Array<Record<string, unknown>>).map((item) => {
         const textMatches = (item.text_matches as Array<Record<string, unknown>> || []);
         return {
-          name: item.name,
-          path: item.path,
-          url: item.html_url,
-          matches: textMatches.map((m) => ({
-            fragment: m.fragment,
-            property: m.property,
-          })),
+          name: item.name, path: item.path, url: item.html_url,
+          matches: textMatches.map((m) => ({ fragment: m.fragment, property: m.property })),
         };
       });
 
-      return {
-        success: true,
-        data: {
-          totalCount: result.total_count,
-          resultCount: items.length,
-          query,
-          items,
-        },
-      };
+      return { success: true, data: { totalCount: result.total_count, resultCount: items.length, query, items } };
     } catch (error) { return { success: false, error: (error as Error).message }; }
   });
 
   // ============== HISTORY EXECUTORS ==============
 
-  // ── NEW EXECUTOR: github_get_commit_history ──
   service.registerToolExecutor('github_get_commit_history', async (args) => {
     try {
       const owner = args.owner as string;
@@ -1238,24 +1200,14 @@ export function registerGitHubExecutors(service: AgentService): void {
         const author = commit.author as Record<string, unknown> || {};
         const committer = commit.committer as Record<string, unknown> || {};
         return {
-          sha: (c.sha as string || '').slice(0, 7),
-          fullSha: c.sha,
+          sha: (c.sha as string || '').slice(0, 7), fullSha: c.sha,
           message: commit.message,
           author: author.name || (c.author as Record<string, unknown>)?.login || '',
-          authorEmail: author.email,
-          date: author.date || committer.date,
-          url: c.html_url,
+          authorEmail: author.email, date: author.date || committer.date, url: c.html_url,
         };
       });
 
-      return {
-        success: true,
-        data: {
-          branch,
-          count: commits.length,
-          commits,
-        },
-      };
+      return { success: true, data: { branch, count: commits.length, commits } };
     } catch (error) { return { success: false, error: (error as Error).message }; }
   });
 

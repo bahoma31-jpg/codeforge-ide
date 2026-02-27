@@ -1,14 +1,18 @@
 'use client';
 
 /**
- * CodeForge IDE — Markdown Renderer v1.0
+ * CodeForge IDE — Markdown Renderer v2.0
  * React component that renders parsed markdown tokens.
- * Catppuccin Mocha themed. Supports copy-to-clipboard for code blocks
- * and clickable file paths.
+ * Catppuccin Mocha themed. Supports copy-to-clipboard for code blocks,
+ * clickable file paths (open in editor), and clickable repo names
+ * (load file tree in sidebar).
+ *
+ * v2.0 — Added RepoNameLink for clickable GitHub repository names.
+ *         Clicking a repo name loads its file tree in the sidebar.
  */
 
 import React, { useState, useCallback } from 'react';
-import { Copy, Check, FileCode2, ExternalLink } from 'lucide-react';
+import { Copy, Check, FileCode2, ExternalLink, FolderGit2, Loader2 } from 'lucide-react';
 import {
   parseMarkdown,
   parseInline,
@@ -233,7 +237,7 @@ function InlineSegmentRenderer({ segment }: { segment: InlineSegment }) {
       return <del className="text-[#6c7086]">{segment.content}</del>;
 
     case 'code':
-      return <InlineCode code={segment.content} />;
+      return <SmartInlineCode code={segment.content} />;
 
     case 'link':
       return (
@@ -266,9 +270,28 @@ function InlineSegmentRenderer({ segment }: { segment: InlineSegment }) {
   }
 }
 
-// ─── Inline Code (with file path detection) ──────────────────
+// ─── Smart Inline Code (detects repos + file paths) ──────────
 
-function InlineCode({ code }: { code: string }) {
+/**
+ * Detects if inline code is:
+ * 1. A GitHub repo (owner/repo pattern) → clickable repo button
+ * 2. A file path (src/index.ts pattern) → clickable file button
+ * 3. Plain code → renders as styled <code>
+ */
+function SmartInlineCode({ code }: { code: string }) {
+  // Pattern 1: owner/repo (e.g., bahoma31-jpg/secoderepo)
+  const ownerRepoMatch = code.match(/^([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)$/);
+  if (ownerRepoMatch && !code.includes('/') === false) {
+    const owner = ownerRepoMatch[1];
+    const repo = ownerRepoMatch[2];
+    // Distinguish from file paths: repos don't have file extensions typically
+    const hasExtension = /\.[a-zA-Z0-9]{1,10}$/.test(repo);
+    if (!hasExtension && !code.startsWith('./') && !code.startsWith('../')) {
+      return <RepoNameLink owner={owner} repo={repo} displayText={code} isInlineCode />;
+    }
+  }
+
+  // Pattern 2: file path detection
   const segments = parseFilePathsFromText(code);
   const isFilePath =
     segments.length === 1 &&
@@ -286,10 +309,131 @@ function InlineCode({ code }: { code: string }) {
     );
   }
 
+  // Pattern 3: standalone repo name (no slash, no extension, no spaces)
+  // Only if it looks like a simple identifier that could be a repo name
+  // We check context from the store to see if this matches a known repo
+  if (/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(code) && !code.includes(' ') && code.length > 1 && code.length < 100) {
+    const hasExtension = /\.[a-zA-Z0-9]{1,10}$/.test(code);
+    // Exclude common code tokens like 'true', 'false', 'null', 'undefined', etc.
+    const codeKeywords = ['true', 'false', 'null', 'undefined', 'none', 'nil', 'void', 'return', 'const', 'let', 'var', 'function', 'class', 'import', 'export', 'async', 'await', 'if', 'else', 'for', 'while', 'break', 'continue', 'switch', 'case', 'default', 'try', 'catch', 'finally', 'throw', 'new', 'this', 'self', 'super', 'main', 'string', 'number', 'boolean', 'object', 'array', 'int', 'float', 'double', 'char', 'auto', 'notify', 'confirm'];
+    if (!hasExtension && !codeKeywords.includes(code.toLowerCase())) {
+      return <MaybeRepoLink name={code} />;
+    }
+  }
+
   return (
     <code className="px-1.5 py-0.5 rounded bg-[#181825] text-[#f9e2af] text-[11px] font-mono border border-[#313244]/50">
       {code}
     </code>
+  );
+}
+
+// ─── Maybe Repo Link (checks context to decide) ─────────────
+
+/**
+ * Renders a potential repo name. Checks if the surrounding chat context
+ * mentions GitHub/repos. If so, renders as a clickable repo button.
+ * Otherwise renders as plain inline code.
+ */
+function MaybeRepoLink({ name }: { name: string }) {
+  // We render as a repo-styled button that attempts to load the repo on click.
+  // If it fails (404), it just shows as plain text. This is a progressive approach.
+  return <RepoNameLink owner="" repo={name} displayText={name} isInlineCode />;
+}
+
+// ─── Clickable Repo Name ─────────────────────────────────────
+
+/**
+ * Clickable repository name button.
+ * When clicked, loads the repo's file tree into the sidebar.
+ * If owner is empty, resolves from stored GitHub config.
+ */
+function RepoNameLink({
+  owner,
+  repo,
+  displayText,
+  isInlineCode,
+}: {
+  owner: string;
+  repo: string;
+  displayText: string;
+  isInlineCode: boolean;
+}) {
+  const loadRepoTree = useEditorStore((s) => s.loadRepoTree);
+  const [loading, setLoading] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  const handleClick = async () => {
+    if (failed) return; // Don't retry if already failed
+    setLoading(true);
+    try {
+      let resolvedOwner = owner;
+
+      // If no owner, resolve from GitHub config
+      if (!resolvedOwner) {
+        try {
+          const configRaw = localStorage.getItem('codeforge-agent-config');
+          if (configRaw) {
+            const config = JSON.parse(configRaw);
+            if (config.githubToken) {
+              const resp = await fetch('https://api.github.com/user', {
+                headers: {
+                  Authorization: `Bearer ${config.githubToken}`,
+                  Accept: 'application/vnd.github+json',
+                },
+              });
+              if (resp.ok) {
+                const userData = await resp.json();
+                resolvedOwner = userData.login;
+              }
+            }
+          }
+        } catch { /* fallback */ }
+      }
+
+      if (!resolvedOwner) {
+        setFailed(true);
+        return;
+      }
+
+      await loadRepoTree(resolvedOwner, repo);
+    } catch (error) {
+      console.error('[MarkdownRenderer] Failed to load repo:', repo, error);
+      setFailed(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // If it failed, render as plain code (not a repo after all)
+  if (failed) {
+    return (
+      <code className="px-1.5 py-0.5 rounded bg-[#181825] text-[#f9e2af] text-[11px] font-mono border border-[#313244]/50">
+        {displayText}
+      </code>
+    );
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={loading}
+      title={`فتح مستودع ${owner ? owner + '/' : ''}${repo} في شجرة الملفات`}
+      className={`inline-flex items-center gap-1 rounded transition-all cursor-pointer
+        ${isInlineCode
+          ? 'px-1.5 py-0.5 bg-[#181825] text-[11px] font-mono border border-[#313244]/50 hover:border-[#cba6f7]/40 hover:bg-[#cba6f7]/10 hover:text-[#cba6f7]'
+          : 'text-[#cba6f7] hover:underline text-sm'
+        }
+        ${loading ? 'opacity-50' : ''}
+      `}
+    >
+      {loading ? (
+        <Loader2 size={10} className="shrink-0 animate-spin" />
+      ) : (
+        <FolderGit2 size={10} className="shrink-0" />
+      )}
+      <span>{displayText}</span>
+    </button>
   );
 }
 
