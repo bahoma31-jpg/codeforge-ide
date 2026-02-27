@@ -1,17 +1,18 @@
 'use client';
 
 /**
- * CodeForge IDE — Monaco Editor
+ * CodeForge IDE — Monaco Editor v2.1
  * Main code editor component with multi-tab support.
  *
- * FIX v2: Theme switching now uses monaco.editor.setTheme()
- * instead of editor.updateOptions({ theme }) which doesn't work.
- * Monaco instance is stored in a ref for use in useEffect.
+ * v2.1 — Fixed: All helper modules now receive the monaco instance
+ * from onMount instead of importing 'monaco-editor' directly.
+ * This prevents the dual-instance bug where the NPM package
+ * and the CDN-loaded instance would conflict.
  */
 
 import { useEffect, useRef, useCallback } from 'react';
 import { Editor, OnMount } from '@monaco-editor/react';
-import { editor } from 'monaco-editor';
+import type { editor } from 'monaco-editor';
 import { useEditorStore } from '@/lib/stores/editor-store';
 import { useUIStore, type CodeforgeTheme } from '@/lib/stores/ui-store';
 import { defaultMonacoOptions } from '@/lib/monaco/monaco-config';
@@ -48,8 +49,8 @@ export default function MonacoEditor() {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<typeof import('monaco-editor') | null>(null);
 
-  // Keyboard shortcuts
-  useMonacoKeyboardShortcuts(editorRef.current);
+  // Keyboard shortcuts — pass both editor and monaco instance
+  useMonacoKeyboardShortcuts(editorRef.current, monacoRef.current);
 
   const activeTab = tabs.find((t) => t.id === activeTabId);
 
@@ -61,14 +62,14 @@ export default function MonacoEditor() {
       // Register all custom themes
       registerCodeForgeThemes(monacoInstance);
 
-      // Configure language providers
-      configureTypeScriptDefaults();
-      configureHTMLDefaults();
-      configureCSSDefaults();
-      configureJSONDefaults();
-      addExtraLibraries();
-      registerCustomSnippets();
-      registerCodeActions();
+      // Configure language providers — pass the CDN-loaded monaco instance
+      configureTypeScriptDefaults(monacoInstance);
+      configureHTMLDefaults(monacoInstance);
+      configureCSSDefaults(monacoInstance);
+      configureJSONDefaults(monacoInstance);
+      addExtraLibraries(monacoInstance);
+      registerCustomSnippets(monacoInstance);
+      registerCodeActions(monacoInstance);
 
       // Apply initial theme via the correct API
       const monacoTheme = getMonacoThemeName(theme);
@@ -104,7 +105,7 @@ export default function MonacoEditor() {
   if (!activeTab) {
     return (
       <div className="flex h-full items-center justify-center text-muted-foreground">
-        <p>لا يوجد ملف مفتوح. افتح ملفاً من المستكشف أو اضغط +</p>
+        <p>\u0644\u0627 \u064a\u0648\u062c\u062f \u0645\u0644\u0641 \u0645\u0641\u062a\u0648\u062d. \u0627\u0641\u062a\u062d \u0645\u0644\u0641\u0627\u064b \u0645\u0646 \u0627\u0644\u0645\u0633\u062a\u0643\u0634\u0641 \u0623\u0648 \u0627\u0636\u063a\u0637 +</p>
       </div>
     );
   }
@@ -122,7 +123,7 @@ export default function MonacoEditor() {
         <div className="flex h-full items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-            <p className="text-xs text-muted-foreground">جاري تحميل المحرر...</p>
+            <p className="text-xs text-muted-foreground">\u062c\u0627\u0631\u064a \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0645\u062d\u0631\u0631...</p>
           </div>
         </div>
       }

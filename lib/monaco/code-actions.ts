@@ -1,9 +1,17 @@
-﻿import * as monaco from 'monaco-editor';
+/**
+ * CodeForge IDE — Monaco Code Actions
+ * Provides quick-fix code actions for TypeScript.
+ *
+ * IMPORTANT: Receives monaco instance from onMount.
+ * Do NOT import 'monaco-editor' directly.
+ */
 
-export function registerCodeActions() {
+type Monaco = typeof import('monaco-editor');
+
+export function registerCodeActions(monaco: Monaco) {
   monaco.languages.registerCodeActionProvider('typescript', {
     provideCodeActions: (model, range, context) => {
-      const actions: monaco.languages.CodeAction[] = [];
+      const actions: import('monaco-editor').languages.CodeAction[] = [];
 
       if (context.only === 'quickfix') {
         const word = model.getWordAtPosition(range.getStartPosition());

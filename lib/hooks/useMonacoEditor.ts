@@ -1,12 +1,22 @@
-﻿import { useEffect } from 'react';
-import { editor } from 'monaco-editor';
-import * as monaco from 'monaco-editor';
+/**
+ * CodeForge IDE — Monaco Keyboard Shortcuts Hook
+ * Registers Ctrl+S, Ctrl+Shift+F, Ctrl+/ shortcuts.
+ *
+ * IMPORTANT: Receives monaco instance from onMount.
+ * Do NOT import 'monaco-editor' directly.
+ */
+
+import { useEffect } from 'react';
+import type { editor } from 'monaco-editor';
+
+type Monaco = typeof import('monaco-editor');
 
 export function useMonacoKeyboardShortcuts(
-  editorInstance: editor.IStandaloneCodeEditor | null
+  editorInstance: editor.IStandaloneCodeEditor | null,
+  monaco: Monaco | null
 ) {
   useEffect(() => {
-    if (!editorInstance) return;
+    if (!editorInstance || !monaco) return;
 
     // Ctrl+S: Save (placeholder)
     editorInstance.addCommand(
@@ -32,5 +42,5 @@ export function useMonacoKeyboardShortcuts(
         editorInstance.getAction('editor.action.commentLine')?.run();
       }
     );
-  }, [editorInstance]);
+  }, [editorInstance, monaco]);
 }
