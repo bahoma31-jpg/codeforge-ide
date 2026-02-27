@@ -16,48 +16,52 @@ import { getSelfAnalysisEngine } from './self-analysis-engine';
 
 // ─── Verification Engine ──────────────────────────────────────
 
-/**
- * VerificationEngine — Post-execution validator.
- *
- * Performs these checks:
- * 1. File existence — all modified files still exist
- * 2. Import validity — all imports resolve to real files
- * 3. Export consistency — exported symbols are actually defined
- * 4. No protected file modifications
- * 5. No unrelated changes (diff scope check)
- * 6. Syntax sanity (basic bracket/parenthesis matching)
- */
 export class VerificationEngine {
   /**
    * Verify all changes made during the ACT phase.
+   *
+   * Defensive: handles non-array changes input gracefully.
    */
   async verify(
     task: SelfImprovementTask,
     allFiles: Map<string, string>,
-    changes: FileChange[]
+    changes?: FileChange[] | Record<string, unknown> | null
   ): Promise<VerificationResult> {
+    // ── Defensive: ensure changes is an array ──
+    let safeChanges: FileChange[];
+    if (Array.isArray(changes)) {
+      safeChanges = changes;
+    } else if (changes && typeof changes === 'object' && 'items' in changes && Array.isArray((changes as any).items)) {
+      safeChanges = (changes as any).items;
+    } else if (changes && typeof changes === 'object' && !Array.isArray(changes)) {
+      // Single change object → wrap in array
+      safeChanges = [changes as unknown as FileChange];
+    } else {
+      safeChanges = [];
+    }
+
     const checks: VerificationCheck[] = [];
 
     // Check 1: File existence
-    checks.push(this.checkFileExistence(changes, allFiles));
+    checks.push(this.checkFileExistence(safeChanges, allFiles));
 
     // Check 2: Import validity
-    checks.push(this.checkImportValidity(changes, allFiles));
+    checks.push(this.checkImportValidity(safeChanges, allFiles));
 
     // Check 3: Export consistency
-    checks.push(this.checkExportConsistency(changes, allFiles));
+    checks.push(this.checkExportConsistency(safeChanges, allFiles));
 
     // Check 4: Protected paths
-    checks.push(this.checkProtectedPaths(changes, task));
+    checks.push(this.checkProtectedPaths(safeChanges, task));
 
     // Check 5: Scope integrity
-    checks.push(this.checkScopeIntegrity(changes, task));
+    checks.push(this.checkScopeIntegrity(safeChanges, task));
 
     // Check 6: Syntax sanity
-    checks.push(this.checkSyntaxSanity(changes, allFiles));
+    checks.push(this.checkSyntaxSanity(safeChanges, allFiles));
 
     // Check 7: Downstream impact
-    checks.push(this.checkDownstreamImpact(changes, allFiles));
+    checks.push(this.checkDownstreamImpact(safeChanges, allFiles));
 
     // Aggregate results
     const failedChecks = checks.filter(c => !c.passed);
@@ -68,9 +72,15 @@ export class VerificationEngine {
       c.name === 'export_consistency'
     );
 
+    // Calculate a 0–1 score
+    const score = checks.length > 0
+      ? checks.filter(c => c.passed).length / checks.length
+      : 0;
+
     return {
       passed,
       checks,
+      score,
       retryNeeded,
       reason: passed
         ? undefined
@@ -80,7 +90,6 @@ export class VerificationEngine {
 
   // ─── Individual Checks ────────────────────────────────────
 
-  /** Check 1: All modified files still exist in the project */
   private checkFileExistence(
     changes: FileChange[],
     allFiles: Map<string, string>
@@ -88,7 +97,7 @@ export class VerificationEngine {
     const missing: string[] = [];
 
     for (const change of changes) {
-      if (change.changeType === 'delete') continue; // Expected to not exist
+      if (change.changeType === 'delete') continue;
       if (!allFiles.has(change.filePath)) {
         missing.push(change.filePath);
       }
@@ -103,7 +112,6 @@ export class VerificationEngine {
     };
   }
 
-  /** Check 2: All imports in modified files resolve to real files */
   private checkImportValidity(
     changes: FileChange[],
     allFiles: Map<string, string>
@@ -119,10 +127,8 @@ export class VerificationEngine {
       const analysis = engine.analyzeComponent(change.filePath, content);
 
       for (const imp of analysis.imports) {
-        // Only check local imports (not node_modules)
         if (!imp.source.startsWith('.') && !imp.source.startsWith('@/')) continue;
 
-        // Resolve the import path
         const resolved = this.resolveImport(change.filePath, imp.source, allFiles);
         if (!resolved) {
           brokenImports.push({ file: change.filePath, import: imp.source });
@@ -139,7 +145,6 @@ export class VerificationEngine {
     };
   }
 
-  /** Check 3: Exported symbols are actually defined in the file */
   private checkExportConsistency(
     changes: FileChange[],
     allFiles: Map<string, string>
@@ -152,13 +157,10 @@ export class VerificationEngine {
       const content = allFiles.get(change.filePath);
       if (!content) continue;
 
-      // Clear cache to force re-analysis with new content
       engine.clearCache();
       const analysis = engine.analyzeComponent(change.filePath, content);
 
-      // Check that exported symbols are defined in the file
       for (const exp of analysis.exports) {
-        // Simple check: the symbol name should appear as a definition
         const definitionPatterns = [
           new RegExp(`(?:function|class|const|let|var|interface|type|enum)\\s+${exp}\\b`),
           new RegExp(`export\\s+default\\s+${exp}\\b`),
@@ -166,7 +168,6 @@ export class VerificationEngine {
 
         const isDefined = definitionPatterns.some(p => p.test(content));
         if (!isDefined) {
-          // Could be a re-export, check for that
           const isReExport = content.includes(`export { ${exp}`) || content.includes(`export {${exp}`);
           if (!isReExport) {
             issues.push(`${change.filePath}: exported '${exp}' may not be defined`);
@@ -184,12 +185,11 @@ export class VerificationEngine {
     };
   }
 
-  /** Check 4: No protected paths were modified */
   private checkProtectedPaths(
     changes: FileChange[],
     task: SelfImprovementTask
   ): VerificationCheck {
-    const protectedPaths = task.orientation.constraints
+    const protectedPaths = (task.orientation?.constraints || [])
       .filter(c => c.startsWith('Protected:'))
       .map(c => c.replace('Protected: ', ''));
 
@@ -214,17 +214,17 @@ export class VerificationEngine {
     };
   }
 
-  /** Check 5: Changes are within the declared scope */
   private checkScopeIntegrity(
     changes: FileChange[],
     task: SelfImprovementTask
   ): VerificationCheck {
-    const scope = new Set(task.orientation.scope);
+    const scope = new Set(task.orientation?.scope || []);
     const outOfScope: string[] = [];
 
     for (const change of changes) {
       if (
         (change.changeType === 'modify' || change.changeType === 'delete') &&
+        scope.size > 0 &&
         !scope.has(change.filePath)
       ) {
         outOfScope.push(change.filePath);
@@ -240,7 +240,6 @@ export class VerificationEngine {
     };
   }
 
-  /** Check 6: Basic syntax sanity (bracket matching) */
   private checkSyntaxSanity(
     changes: FileChange[],
     allFiles: Map<string, string>
@@ -251,8 +250,6 @@ export class VerificationEngine {
       if (change.changeType === 'delete') continue;
       const content = allFiles.get(change.filePath);
       if (!content) continue;
-
-      // Skip non-code files
       if (!change.filePath.match(/\.(ts|tsx|js|jsx|json)$/)) continue;
 
       const issues = this.checkBracketBalance(content, change.filePath);
@@ -268,7 +265,6 @@ export class VerificationEngine {
     };
   }
 
-  /** Check 7: Downstream files that import changed files are not broken */
   private checkDownstreamImpact(
     changes: FileChange[],
     allFiles: Map<string, string>
@@ -278,7 +274,6 @@ export class VerificationEngine {
     const modifiedFiles = new Set(changes.filter(c => c.changeType !== 'delete').map(c => c.filePath));
     const deletedFiles = new Set(changes.filter(c => c.changeType === 'delete').map(c => c.filePath));
 
-    // Check all files that import from deleted files
     for (const deletedFile of deletedFiles) {
       for (const [filePath, content] of allFiles.entries()) {
         if (deletedFiles.has(filePath)) continue;
@@ -293,7 +288,6 @@ export class VerificationEngine {
       }
     }
 
-    // Check that modified files still export symbols that downstream files need
     for (const modifiedFile of modifiedFiles) {
       const newContent = allFiles.get(modifiedFile);
       if (!newContent) continue;
@@ -302,7 +296,6 @@ export class VerificationEngine {
       const newAnalysis = engine.analyzeComponent(modifiedFile, newContent);
       const newExports = new Set(newAnalysis.exports);
 
-      // Find files that import from this modified file
       for (const [filePath, content] of allFiles.entries()) {
         if (filePath === modifiedFile) continue;
         const analysis = engine.analyzeComponent(filePath, content);
@@ -310,7 +303,6 @@ export class VerificationEngine {
         for (const imp of analysis.imports) {
           const resolved = this.resolveImport(filePath, imp.source, allFiles);
           if (resolved === modifiedFile) {
-            // Check if imported symbols still exist
             for (const symbol of imp.symbols) {
               if (symbol && !newExports.has(symbol)) {
                 issues.push(
@@ -334,7 +326,6 @@ export class VerificationEngine {
 
   // ─── Helpers ──────────────────────────────────────────────
 
-  /** Check bracket/parenthesis/brace balance in code */
   private checkBracketBalance(content: string, filePath: string): string[] {
     const issues: string[] = [];
     const stack: Array<{ char: string; line: number }> = [];
@@ -351,14 +342,12 @@ export class VerificationEngine {
       const next = content[i + 1];
       const prev = content[i - 1];
 
-      // Track line numbers
       if (c === '\n') {
         lineNum++;
         inLineComment = false;
         continue;
       }
 
-      // Skip comments
       if (inLineComment) continue;
       if (inComment) {
         if (c === '*' && next === '/') {
@@ -370,7 +359,6 @@ export class VerificationEngine {
       if (c === '/' && next === '/') { inLineComment = true; continue; }
       if (c === '/' && next === '*') { inComment = true; i++; continue; }
 
-      // Skip strings
       if (inString) {
         if (c === stringChar && prev !== '\\') inString = false;
         continue;
@@ -381,7 +369,6 @@ export class VerificationEngine {
         continue;
       }
 
-      // Track brackets
       if (pairs[c]) {
         stack.push({ char: c, line: lineNum });
       } else if (closers.has(c)) {
@@ -396,7 +383,6 @@ export class VerificationEngine {
       }
     }
 
-    // Check unclosed brackets
     for (const unclosed of stack) {
       issues.push(
         `${filePath}:${unclosed.line} — unclosed '${unclosed.char}'`
@@ -406,14 +392,13 @@ export class VerificationEngine {
     return issues;
   }
 
-  /** Resolve an import path relative to the importing file */
   private resolveImport(
     fromFile: string,
     importSource: string,
     allFiles: Map<string, string>
   ): string | null {
     if (!importSource.startsWith('.') && !importSource.startsWith('@/')) {
-      return null; // Node module import
+      return null;
     }
 
     let resolvedBase: string;
