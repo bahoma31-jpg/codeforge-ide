@@ -95,13 +95,17 @@ export class FixExecutor {
       typeof planOrInput === 'object' &&
       !Array.isArray(planOrInput) &&
       'steps' in planOrInput &&
-      Array.isArray((planOrInput as unknown).steps) &&
+      Array.isArray((planOrInput as Record<string, unknown>).steps) &&
       'protectedPaths' in planOrInput
     ) {
       return this.executePlanFlat(planOrInput as PlanInput);
     }
 
-    return this.executePlanLegacy(planOrInput, allFiles!, options!);
+    return this.executePlanLegacy(
+      planOrInput as Record<string, unknown>,
+      allFiles!,
+      options!
+    );
   }
 
   private async executePlanFlat(input: PlanInput): Promise<ExecutionResult> {
@@ -238,9 +242,9 @@ export class FixExecutor {
       plan &&
       typeof plan === 'object' &&
       'steps' in plan &&
-      Array.isArray((plan as unknown).steps)
+      Array.isArray((plan as Record<string, unknown>).steps)
     ) {
-      safePlan = (plan as unknown).steps;
+      safePlan = (plan as Record<string, unknown>).steps as FixStep[];
     } else if (plan && typeof plan === 'object') {
       safePlan = [plan as unknown as FixStep];
     } else {

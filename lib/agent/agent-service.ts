@@ -185,7 +185,7 @@ async function callProvider(
               {
                 text:
                   messages.find((m) => m.role === 'system')?.content ||
-                  SYSTEM_PROMPT_TEMPLATE,
+                  buildSystemPrompt(),
               },
             ],
           },

@@ -5,19 +5,7 @@
  * stay in sync when the agent modifies files.
  */
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import type { FileNode } from '@/lib/db/schema';
-
-import type { FileNode } from '@/lib/db/schema';
 import { logger } from '@/lib/monitoring/error-logger';
-
-interface IDynamicEditorStore {
-  tabs?: Array<{ id: string; fileId?: string }>;
-  activeFileId?: string;
-  updateTabContent?: (fileId: string, content: string) => void;
-  setContent?: (content: string) => void;
-  closeTab?: (fileId: string) => void;
-}
 
 /**
  * Refresh the file tree in the File Explorer.
@@ -48,23 +36,25 @@ export async function refreshOpenFile(
     const { useEditorStore } = await import('@/lib/stores/editor-store');
     const editorStore = useEditorStore.getState();
 
-    // Check if this file is in an open tab
-    const dynamicStore = editorStore as unknown as IDynamicEditorStore;
-    if ('tabs' in editorStore) {
-      const tabs = dynamicStore.tabs;
-      const isOpen = tabs?.some(
-        (tab) => tab.fileId === fileId || tab.id === fileId
-      );
+    if (editorStore && typeof editorStore === 'object') {
+      const store = editorStore as unknown as Record<string, unknown>;
 
-      if (isOpen && typeof dynamicStore.updateTabContent === 'function') {
-        dynamicStore.updateTabContent(fileId, newContent);
+      if ('tabs' in store && Array.isArray(store.tabs)) {
+        const tabs = store.tabs as Array<{ id: string; fileId?: string }>;
+        const isOpen = tabs.some(
+          (tab) => tab.fileId === fileId || tab.id === fileId
+        );
+
+        if (isOpen && typeof store.updateTabContent === 'function') {
+          store.updateTabContent(fileId, newContent);
+        }
       }
-    }
 
-    // If the active file is this file, update it
-    if ('activeFileId' in editorStore && dynamicStore.activeFileId === fileId) {
-      if (typeof dynamicStore.setContent === 'function') {
-        dynamicStore.setContent(newContent);
+      // If the active file is this file, update it
+      if ('activeFileId' in store && store.activeFileId === fileId) {
+        if (typeof store.setContent === 'function') {
+          store.setContent(newContent);
+        }
       }
     }
   } catch (error) {
@@ -84,9 +74,11 @@ export async function closeDeletedFileTab(fileId: string): Promise<void> {
     const { useEditorStore } = await import('@/lib/stores/editor-store');
     const editorStore = useEditorStore.getState();
 
-    const dynamicStore = editorStore as unknown as IDynamicEditorStore;
-    if (typeof dynamicStore.closeTab === 'function') {
-      dynamicStore.closeTab(fileId);
+    if (editorStore && typeof editorStore === 'object') {
+      const store = editorStore as unknown as Record<string, unknown>;
+      if (typeof store.closeTab === 'function') {
+        store.closeTab(fileId);
+      }
     }
   } catch (error) {
     logger.error(
@@ -126,17 +118,17 @@ export async function sendNotification(
   try {
     const { useNotificationStore } =
       await import('@/lib/stores/notification-store');
-    const store = useNotificationStore.getState();
+    const state = useNotificationStore.getState();
 
-    interface IDynamicNotificationStore {
-      add?: (opts: { message: string; type: string }) => void;
-    }
-    if (typeof store.addNotification === 'function') {
-      store.addNotification({ message, type });
-    } else if (
-      typeof (store as unknown as IDynamicNotificationStore).add === 'function'
-    ) {
-      (store as unknown as IDynamicNotificationStore).add!({ message, type });
+    const title = type.charAt(0).toUpperCase() + type.slice(1);
+
+    if (state && typeof state === 'object') {
+      const store = state as unknown as Record<string, unknown>;
+      if (typeof store.addNotification === 'function') {
+        store.addNotification({ title, message, type });
+      } else if (typeof store.add === 'function') {
+        store.add({ title, message, type });
+      }
     }
   } catch (error) {
     logger.warn(
@@ -153,17 +145,15 @@ export async function sendNotification(
 export async function refreshGitState(): Promise<void> {
   try {
     const { useGitStore } = await import('@/lib/stores/git-store');
-    const store = useGitStore.getState();
+    const state = useGitStore.getState();
 
-    interface IDynamicGitStore {
-      loadStatus?: () => Promise<void>;
-    }
-    if (typeof store.refresh === 'function') {
-      await store.refresh();
-    } else if (
-      typeof (store as unknown as IDynamicGitStore).loadStatus === 'function'
-    ) {
-      await (store as unknown as IDynamicGitStore).loadStatus!();
+    if (state && typeof state === 'object') {
+      const store = state as unknown as Record<string, unknown>;
+      if (typeof store.refresh === 'function') {
+        await store.refresh();
+      } else if (typeof store.loadStatus === 'function') {
+        await store.loadStatus();
+      }
     }
   } catch (error) {
     logger.error(

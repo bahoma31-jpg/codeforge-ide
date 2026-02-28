@@ -35,3 +35,6 @@ export {
 
 // Agent LLM Adapter — provider compatibility
 export { AgentLLMAdapter } from './agent-llm-adapter';
+
+// Store Bridge — syncing UI state automatically
+export * from './store-bridge';

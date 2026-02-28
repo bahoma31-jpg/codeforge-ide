@@ -52,6 +52,7 @@ export interface VerificationCheck {
 /** Result of the verification phase */
 export interface VerificationResult {
   passed: boolean;
+  score: number;
   checks: VerificationCheck[];
   retryNeeded: boolean;
   reason?: string;

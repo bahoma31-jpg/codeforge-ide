@@ -214,9 +214,9 @@ export class VerificationEngine {
       changes &&
       typeof changes === 'object' &&
       'items' in changes &&
-      Array.isArray((changes as unknown).items)
+      Array.isArray((changes as Record<string, unknown>).items)
     ) {
-      safeChanges = (changes as unknown).items;
+      safeChanges = (changes as Record<string, unknown>).items as FileChange[];
     } else if (
       changes &&
       typeof changes === 'object' &&
