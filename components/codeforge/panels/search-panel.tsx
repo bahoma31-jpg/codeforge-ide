@@ -49,7 +49,7 @@ export function SearchPanel() {
     // Use setTimeout to avoid blocking the UI
     setTimeout(() => {
       try {
-        const allFiles = nodes.filter(node => node.type === 'file');
+        const allFiles = nodes.filter((node) => node.type === 'file');
         const found: SearchResult[] = [];
 
         let pattern: RegExp;
@@ -87,7 +87,11 @@ export function SearchPanel() {
 
         setResults(found);
       } catch (error) {
-        logger.error(`فشل البحث عن: ${query}`, error instanceof Error ? error : undefined, { source: 'SearchPanel' });
+        logger.error(
+          `فشل البحث عن: ${query}`,
+          error instanceof Error ? error : undefined,
+          { source: 'SearchPanel' }
+        );
       } finally {
         setIsSearching(false);
         setSearchDone(true);

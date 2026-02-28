@@ -40,20 +40,11 @@ export async function refreshOpenFile(
       const store = editorStore as unknown as Record<string, unknown>;
 
       if ('tabs' in store && Array.isArray(store.tabs)) {
-        const tabs = store.tabs as Array<{ id: string; fileId?: string }>;
-        const isOpen = tabs.some(
-          (tab) => tab.fileId === fileId || tab.id === fileId
-        );
+        const tabs = store.tabs as Array<{ id: string; filePath: string }>;
+        const tab = tabs.find((t) => t.filePath === fileId || t.id === fileId);
 
-        if (isOpen && typeof store.updateTabContent === 'function') {
-          store.updateTabContent(fileId, newContent);
-        }
-      }
-
-      // If the active file is this file, update it
-      if ('activeFileId' in store && store.activeFileId === fileId) {
-        if (typeof store.setContent === 'function') {
-          store.setContent(newContent);
+        if (tab && typeof store.updateTabContent === 'function') {
+          store.updateTabContent(tab.id, newContent);
         }
       }
     }
@@ -76,8 +67,14 @@ export async function closeDeletedFileTab(fileId: string): Promise<void> {
 
     if (editorStore && typeof editorStore === 'object') {
       const store = editorStore as unknown as Record<string, unknown>;
-      if (typeof store.closeTab === 'function') {
-        store.closeTab(fileId);
+
+      if ('tabs' in store && Array.isArray(store.tabs)) {
+        const tabs = store.tabs as Array<{ id: string; filePath: string }>;
+        const tab = tabs.find((t) => t.filePath === fileId || t.id === fileId);
+
+        if (tab && typeof store.closeTab === 'function') {
+          store.closeTab(tab.id);
+        }
       }
     }
   } catch (error) {
