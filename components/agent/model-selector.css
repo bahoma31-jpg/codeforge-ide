@@ -332,7 +332,7 @@
 }
 
 .ms-badge--context {
-  background: rgba(203, 166, 247, 0.10);
+  background: rgba(203, 166, 247, 0.1);
   color: #cba6f7;
   font-family: 'JetBrains Mono', monospace;
   font-size: 9px;

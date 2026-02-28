@@ -20,12 +20,14 @@ function formatMessages(messages: AgentMessage[], systemPrompt: string) {
     if (msg.role === 'tool' && msg.toolCalls?.length) {
       contents.push({
         role: 'function',
-        parts: [{
-          functionResponse: {
-            name: msg.toolCalls[0].toolName,
-            response: { result: msg.content },
+        parts: [
+          {
+            functionResponse: {
+              name: msg.toolCalls[0].toolName,
+              response: { result: msg.content },
+            },
           },
-        }],
+        ],
       });
     } else if (msg.role === 'assistant' && msg.toolCalls?.length) {
       contents.push({
@@ -52,13 +54,15 @@ function formatMessages(messages: AgentMessage[], systemPrompt: string) {
  * Convert tool definitions to Gemini function declarations
  */
 function formatTools(tools: ToolDefinition[]) {
-  return [{
-    functionDeclarations: tools.map((tool) => ({
-      name: tool.name,
-      description: tool.description,
-      parameters: tool.parameters,
-    })),
-  }];
+  return [
+    {
+      functionDeclarations: tools.map((tool) => ({
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.parameters,
+      })),
+    },
+  ];
 }
 
 /**
@@ -69,7 +73,10 @@ export async function createGeminiStream(
   messages: AgentMessage[],
   tools: ToolDefinition[]
 ): Promise<Response> {
-  const { contents, systemInstruction } = formatMessages(messages, config.systemPrompt);
+  const { contents, systemInstruction } = formatMessages(
+    messages,
+    config.systemPrompt
+  );
 
   const body = {
     contents,
@@ -107,7 +114,10 @@ export async function createGeminiCompletion(
   messages: AgentMessage[],
   tools: ToolDefinition[]
 ): Promise<Record<string, unknown>> {
-  const { contents, systemInstruction } = formatMessages(messages, config.systemPrompt);
+  const { contents, systemInstruction } = formatMessages(
+    messages,
+    config.systemPrompt
+  );
 
   const body = {
     contents,

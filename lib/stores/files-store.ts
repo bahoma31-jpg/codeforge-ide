@@ -6,6 +6,7 @@
  */
 
 import { create } from 'zustand';
+import { logger } from '@/lib/monitoring/error-logger';
 import type { FileNode } from '../db/schema';
 import {
   createFile as dbCreateFile,
@@ -93,7 +94,11 @@ export const useFilesStore = create<FilesState>((set, get) => ({
           ? error.message
           : 'Failed to initialize file system';
       set({ error: message });
-      console.error('File system initialization error:', error);
+      logger.error(
+        'فشل تهيئة نظام الملفات',
+        error instanceof Error ? error : undefined,
+        { source: 'FilesStore.initialize' }
+      );
     } finally {
       set({ isLoading: false });
     }
@@ -112,7 +117,11 @@ export const useFilesStore = create<FilesState>((set, get) => ({
       const message =
         error instanceof Error ? error.message : 'Failed to load file tree';
       set({ error: message });
-      console.error('Load file tree error:', error);
+      logger.error(
+        'فشل تحميل شجرة الملفات',
+        error instanceof Error ? error : undefined,
+        { source: 'FilesStore.loadFileTree' }
+      );
       throw error;
     } finally {
       set({ isLoading: false });
@@ -134,7 +143,11 @@ export const useFilesStore = create<FilesState>((set, get) => ({
             ? error.message
             : 'Failed to create file';
       set({ error: message });
-      console.error('Create file error:', error);
+      logger.error(
+        'فشل إنشاء الملف',
+        error instanceof Error ? error : undefined,
+        { source: 'FilesStore.createFile', name }
+      );
       throw error;
     } finally {
       set({ isLoading: false });
@@ -160,7 +173,11 @@ export const useFilesStore = create<FilesState>((set, get) => ({
             ? error.message
             : 'Failed to create folder';
       set({ error: message });
-      console.error('Create folder error:', error);
+      logger.error(
+        'فشل إنشاء المجلد',
+        error instanceof Error ? error : undefined,
+        { source: 'FilesStore.createFolder', name }
+      );
       throw error;
     } finally {
       set({ isLoading: false });
@@ -181,7 +198,11 @@ export const useFilesStore = create<FilesState>((set, get) => ({
             ? error.message
             : 'Failed to read file';
       set({ error: message });
-      console.error('Read file error:', error);
+      logger.error(
+        'فشل قراءة الملف',
+        error instanceof Error ? error : undefined,
+        { source: 'FilesStore.readFile', id }
+      );
       throw error;
     } finally {
       set({ isLoading: false });
@@ -205,7 +226,11 @@ export const useFilesStore = create<FilesState>((set, get) => ({
             ? error.message
             : 'Failed to update file';
       set({ error: message });
-      console.error('Update file error:', error);
+      logger.error(
+        'فشل تحديث الملف',
+        error instanceof Error ? error : undefined,
+        { source: 'FilesStore.updateFile', id }
+      );
       throw error;
     }
   },
@@ -232,7 +257,11 @@ export const useFilesStore = create<FilesState>((set, get) => ({
             ? error.message
             : 'Failed to delete node';
       set({ error: message });
-      console.error('Delete node error:', error);
+      logger.error(
+        'فشل حذف العنصر',
+        error instanceof Error ? error : undefined,
+        { source: 'FilesStore.deleteNode', id }
+      );
       throw error;
     } finally {
       set({ isLoading: false });
@@ -254,7 +283,11 @@ export const useFilesStore = create<FilesState>((set, get) => ({
             ? error.message
             : 'Failed to rename node';
       set({ error: message });
-      console.error('Rename node error:', error);
+      logger.error(
+        'فشل إعادة التسمية',
+        error instanceof Error ? error : undefined,
+        { source: 'FilesStore.renameNode', id, newName }
+      );
       throw error;
     } finally {
       set({ isLoading: false });
@@ -280,7 +313,11 @@ export const useFilesStore = create<FilesState>((set, get) => ({
             ? error.message
             : 'Failed to move node';
       set({ error: message });
-      console.error('Move node error:', error);
+      logger.error(
+        'فشل نقل العنصر',
+        error instanceof Error ? error : undefined,
+        { source: 'FilesStore.moveNode', id }
+      );
       throw error;
     } finally {
       set({ isLoading: false });
@@ -292,7 +329,11 @@ export const useFilesStore = create<FilesState>((set, get) => ({
     try {
       return await dbGetChildren(parentId);
     } catch (error) {
-      console.error('Get children error:', error);
+      logger.error(
+        'فشل جلب العناصر الفرعية',
+        error instanceof Error ? error : undefined,
+        { source: 'FilesStore.getChildren', parentId }
+      );
       return [];
     }
   },
@@ -302,7 +343,11 @@ export const useFilesStore = create<FilesState>((set, get) => ({
     try {
       return await dbSearchFiles(query);
     } catch (error) {
-      console.error('Search files error:', error);
+      logger.error(
+        'فشل البحث في الملفات',
+        error instanceof Error ? error : undefined,
+        { source: 'FilesStore.searchFiles', query }
+      );
       return [];
     }
   },

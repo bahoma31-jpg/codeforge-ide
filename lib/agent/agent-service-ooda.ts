@@ -14,9 +14,25 @@
  *   const response = await service.sendMessage(messages);
  */
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { AgentService, buildSystemPrompt } from './agent-service';
-import { OODABridge, getOODABridge, type OODABridgeConfig, type SelfImproveRequest, type SelfImproveResult, type BridgeEvent } from './bridge';
-import type { AgentConfig, AgentMessage, ToolDefinition, ToolCall, PendingApproval, ProjectContext } from './types';
+import {
+  OODABridge,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  getOODABridge,
+  type OODABridgeConfig,
+  type SelfImproveRequest,
+  type SelfImproveResult,
+  type BridgeEvent,
+} from './bridge';
+import type {
+  AgentConfig,
+  AgentMessage,
+  ToolDefinition,
+  ToolCall,
+  PendingApproval,
+  ProjectContext,
+} from './types';
 import type { ToolNotification } from './safety';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -40,12 +56,13 @@ const SELF_IMPROVE_KEYWORDS_AR = [
   'fix the',
   'bug in',
   'broken',
-  'doesn\'t work',
+  "doesn't work",
   'improve',
   'حلّ المشكلة',
   'أصلح الكود',
 ];
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const SELF_IMPROVE_FILE_PATTERNS = [
   'components/',
   'lib/agent/',
@@ -56,15 +73,38 @@ const SELF_IMPROVE_FILE_PATTERNS = [
 
 function detectSelfImproveIntent(message: string): boolean {
   const lower = message.toLowerCase();
-  return SELF_IMPROVE_KEYWORDS_AR.some(kw => lower.includes(kw.toLowerCase()));
+  return SELF_IMPROVE_KEYWORDS_AR.some((kw) =>
+    lower.includes(kw.toLowerCase())
+  );
 }
 
 function extractCategory(message: string): SelfImproveRequest['category'] {
   const lower = message.toLowerCase();
-  if (lower.includes('أداء') || lower.includes('بطيء') || lower.includes('performance')) return 'performance';
-  if (lower.includes('تصميم') || lower.includes('style') || lower.includes('css')) return 'style';
-  if (lower.includes('وصول') || lower.includes('accessibility') || lower.includes('a11y')) return 'accessibility';
-  if (lower.includes('واجه') || lower.includes('ui') || lower.includes('زر') || lower.includes('شاشة')) return 'ui_bug';
+  if (
+    lower.includes('أداء') ||
+    lower.includes('بطيء') ||
+    lower.includes('performance')
+  )
+    return 'performance';
+  if (
+    lower.includes('تصميم') ||
+    lower.includes('style') ||
+    lower.includes('css')
+  )
+    return 'style';
+  if (
+    lower.includes('وصول') ||
+    lower.includes('accessibility') ||
+    lower.includes('a11y')
+  )
+    return 'accessibility';
+  if (
+    lower.includes('واجه') ||
+    lower.includes('ui') ||
+    lower.includes('زر') ||
+    lower.includes('شاشة')
+  )
+    return 'ui_bug';
   return 'logic_error';
 }
 
@@ -73,7 +113,12 @@ function extractCategory(message: string): SelfImproveRequest['category'] {
 export type OODAMode = 'chat' | 'self-improve' | 'hybrid';
 
 export interface OODAAgentEvent {
-  type: 'mode_change' | 'ooda_start' | 'ooda_complete' | 'ooda_error' | 'ooda_phase';
+  type:
+    | 'mode_change'
+    | 'ooda_start'
+    | 'ooda_complete'
+    | 'ooda_error'
+    | 'ooda_phase';
   mode?: OODAMode;
   data?: unknown;
   timestamp: number;
@@ -192,9 +237,11 @@ export class OODAAgentService extends AgentService {
 
         // Format OODA result as agent message
         return this.formatOODAResult(result);
-
       } catch (error) {
-        this.emitOODA({ type: 'ooda_error', data: { error: (error as Error).message } });
+        this.emitOODA({
+          type: 'ooda_error',
+          data: { error: (error as Error).message },
+        });
         // Fallback to normal chat if OODA fails
         this.setMode('chat');
       }
@@ -221,7 +268,7 @@ export class OODAAgentService extends AgentService {
 
   private emitOODA(event: Omit<OODAAgentEvent, 'timestamp'>): void {
     const fullEvent: OODAAgentEvent = { ...event, timestamp: Date.now() };
-    this.oodaEventHandlers.forEach(h => h(fullEvent));
+    this.oodaEventHandlers.forEach((h) => h(fullEvent));
   }
 
   // ─── Format OODA Results ─────────────────────────────────────
@@ -276,11 +323,15 @@ export class OODAAgentService extends AgentService {
           sections.push(`\`\`\`diff\n- ${fix.oldStr}\n+ ${fix.newStr}\n\`\`\``);
         }
       });
-      sections.push(`\n> هل تريدني أن أنفذ هذه الإصلاحات؟ اكتب **"نفّذ"** للمتابعة.`);
+      sections.push(
+        `\n> هل تريدني أن أنفذ هذه الإصلاحات؟ اكتب **"نفّذ"** للمتابعة.`
+      );
     }
 
     // Token usage
-    sections.push(`\n---\n*🪙 الاستهلاك: ${result.tokenUsage.totalTokens.toLocaleString()} tokens*`);
+    sections.push(
+      `\n---\n*🪙 الاستهلاك: ${result.tokenUsage.totalTokens.toLocaleString()} tokens*`
+    );
 
     return {
       id: uuidv4(),

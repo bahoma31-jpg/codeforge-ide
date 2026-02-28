@@ -19,7 +19,13 @@
  *                      └──────────────┘     └──────────────┘
  */
 
-import { GroqProvider, getGroqProvider, type OODAAnalysisRequest, type OODAAnalysisResponse } from '../llm';
+import {
+  GroqProvider,
+  getGroqProvider,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  type OODAAnalysisRequest,
+  type OODAAnalysisResponse,
+} from '../llm';
 import type { AgentConfig } from '../types';
 
 // ─── Types ──────────────────────────────────────────────────────
@@ -41,7 +47,12 @@ export interface SelfImproveRequest {
   /** User's description of the issue */
   issue: string;
   /** Category of the issue */
-  category: 'ui_bug' | 'logic_error' | 'performance' | 'style' | 'accessibility';
+  category:
+    | 'ui_bug'
+    | 'logic_error'
+    | 'performance'
+    | 'style'
+    | 'accessibility';
   /** File contents gathered by self_* tools */
   fileContents: Record<string, string>;
   /** Affected file paths */
@@ -113,9 +124,7 @@ const PROTECTED_PATHS = [
 ];
 
 function isProtectedPath(filePath: string): boolean {
-  return PROTECTED_PATHS.some(
-    p => filePath.startsWith(p) || filePath === p
-  );
+  return PROTECTED_PATHS.some((p) => filePath.startsWith(p) || filePath === p);
 }
 
 // ─── OODA Bridge Class ──────────────────────────────────────────
@@ -142,7 +151,8 @@ export class OODABridge {
   updateConfig(config: Partial<OODABridgeConfig>): void {
     if (config.groqApiKey) this.groq.setApiKey(config.groqApiKey);
     if (config.modelId) this.groq.setModel(config.modelId);
-    if (config.temperature !== undefined) this.groq.setTemperature(config.temperature);
+    if (config.temperature !== undefined)
+      this.groq.setTemperature(config.temperature);
     Object.assign(this.config, config);
   }
 
@@ -174,9 +184,13 @@ export class OODABridge {
 
   private emit(event: Omit<BridgeEvent, 'timestamp'>): void {
     const fullEvent: BridgeEvent = { ...event, timestamp: Date.now() };
-    this.eventHandlers.forEach(h => h(fullEvent));
+    this.eventHandlers.forEach((h) => h(fullEvent));
     if (this.config.debug) {
-      console.log(`[OODABridge] ${event.type}`, event.phase || '', event.data || '');
+      console.log(
+        `[OODABridge] ${event.type}`,
+        event.phase || '',
+        event.data || ''
+      );
     }
   }
 
@@ -190,7 +204,9 @@ export class OODABridge {
    * The AgentService decides whether to proceed with execution
    * based on risk level and user approval.
    */
-  async runAnalysisCycle(request: SelfImproveRequest): Promise<SelfImproveResult> {
+  async runAnalysisCycle(
+    request: SelfImproveRequest
+  ): Promise<SelfImproveResult> {
     const cycleId = `ooda-${++this.cycleCounter}-${Date.now()}`;
 
     // Validate inputs
@@ -246,7 +262,11 @@ export class OODABridge {
     try {
       // ═══ Phase 1: OBSERVE ═══════════════════════════════════
       this.emit({ type: 'phase_start', phase: 'OBSERVE' });
-      this.emit({ type: 'llm_request', phase: 'OBSERVE', data: { issue: request.issue } });
+      this.emit({
+        type: 'llm_request',
+        phase: 'OBSERVE',
+        data: { issue: request.issue },
+      });
 
       const observeResult = await this.groq.analyzeForOODA({
         phase: 'observe',
@@ -257,7 +277,11 @@ export class OODABridge {
 
       result.analyses.observe = observeResult;
       result.phase = 'ORIENT';
-      this.emit({ type: 'llm_response', phase: 'OBSERVE', data: observeResult });
+      this.emit({
+        type: 'llm_response',
+        phase: 'OBSERVE',
+        data: observeResult,
+      });
       this.emit({ type: 'phase_complete', phase: 'OBSERVE' });
 
       // ═══ Phase 2: ORIENT ════════════════════════════════════
@@ -300,13 +324,12 @@ export class OODABridge {
       if (decideResult.fixes && decideResult.fixes.length > 0) {
         // Filter out any fixes targeting protected paths
         result.proposedFixes = decideResult.fixes.filter(
-          fix => !isProtectedPath(fix.filePath)
+          (fix) => !isProtectedPath(fix.filePath)
         );
         this.emit({ type: 'fix_proposed', data: result.proposedFixes });
       }
 
       result.success = true;
-
     } catch (error) {
       result.error = (error as Error).message;
       result.phase = 'ERROR';
@@ -316,8 +339,10 @@ export class OODABridge {
     // Calculate token usage for this cycle
     const usageAfter = this.groq.getUsageStats();
     result.tokenUsage = {
-      promptTokens: usageAfter.totalPromptTokens - usageBefore.totalPromptTokens,
-      completionTokens: usageAfter.totalCompletionTokens - usageBefore.totalCompletionTokens,
+      promptTokens:
+        usageAfter.totalPromptTokens - usageBefore.totalPromptTokens,
+      completionTokens:
+        usageAfter.totalCompletionTokens - usageBefore.totalCompletionTokens,
       totalTokens: usageAfter.totalTokens - usageBefore.totalTokens,
     };
 
@@ -337,7 +362,7 @@ export class OODABridge {
 
   getActiveCycleCount(): number {
     return [...this.activeCycles.values()].filter(
-      c => !['READY', 'COMPLETE', 'ERROR', 'BLOCKED'].includes(c.phase)
+      (c) => !['READY', 'COMPLETE', 'ERROR', 'BLOCKED'].includes(c.phase)
     ).length;
   }
 
@@ -366,7 +391,8 @@ export class OODABridge {
     }
 
     const messages = [];
-    if (systemPrompt) messages.push({ role: 'system' as const, content: systemPrompt });
+    if (systemPrompt)
+      messages.push({ role: 'system' as const, content: systemPrompt });
     messages.push({ role: 'user' as const, content: prompt });
 
     yield* this.groq.chatStream(messages);
@@ -387,8 +413,8 @@ export class OODABridge {
     return {
       totalCycles: cycles.length,
       activeCycles: this.getActiveCycleCount(),
-      successfulCycles: cycles.filter(c => c.success).length,
-      failedCycles: cycles.filter(c => c.phase === 'ERROR').length,
+      successfulCycles: cycles.filter((c) => c.success).length,
+      failedCycles: cycles.filter((c) => c.phase === 'ERROR').length,
       totalTokens: this.groq.getUsageStats().totalTokens,
       model: this.groq.getModel(),
       isReady: this.isReady(),
@@ -412,7 +438,10 @@ export function getOODABridge(config?: OODABridgeConfig): OODABridge {
     bridgeInstance = new OODABridge(config);
   }
   if (!bridgeInstance) {
-    bridgeInstance = new OODABridge({ groqApiKey: '', modelId: 'llama-3.3-70b-versatile' });
+    bridgeInstance = new OODABridge({
+      groqApiKey: '',
+      modelId: 'llama-3.3-70b-versatile',
+    });
   }
   return bridgeInstance;
 }

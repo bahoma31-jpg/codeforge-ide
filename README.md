@@ -151,20 +151,20 @@ CodeForge IDE
 
 ### Technology Stack
 
-| الفئة | التقنية |
-|---|---|
-| **Frontend** | Next.js 14.2, React 18, TypeScript |
-| **Editor** | Monaco Editor |
-| **Terminal** | xterm.js |
-| **UI Library** | shadcn/ui, Tailwind CSS, Framer Motion |
-| **State** | Zustand |
-| **Git** | isomorphic-git |
-| **Storage** | IndexedDB, LightningFS, localStorage |
-| **Auth** | NextAuth.js (GitHub OAuth) |
-| **AI Agent** | Custom engine, Multi-provider (4 LLMs) |
-| **AI Tools** | 45 tools, Triple-layer safety |
-| **Testing** | Jest / Vitest, 13 integration tests |
-| **Package Manager** | pnpm |
+| الفئة               | التقنية                                |
+| ------------------- | -------------------------------------- |
+| **Frontend**        | Next.js 14.2, React 18, TypeScript     |
+| **Editor**          | Monaco Editor                          |
+| **Terminal**        | xterm.js                               |
+| **UI Library**      | shadcn/ui, Tailwind CSS, Framer Motion |
+| **State**           | Zustand                                |
+| **Git**             | isomorphic-git                         |
+| **Storage**         | IndexedDB, LightningFS, localStorage   |
+| **Auth**            | NextAuth.js (GitHub OAuth)             |
+| **AI Agent**        | Custom engine, Multi-provider (4 LLMs) |
+| **AI Tools**        | 45 tools, Triple-layer safety          |
+| **Testing**         | Jest / Vitest, 13 integration tests    |
+| **Package Manager** | pnpm                                   |
 
 ---
 
@@ -172,11 +172,11 @@ CodeForge IDE
 
 كل أداة من الـ 45 مصنّفة في أحد ثلاث مستويات:
 
-| المستوى | الأدوات | السلوك | مثال |
-|---|---|---|---|
-| 🟢 **AUTO** | 15 أداة | ينفّذ فوراً بلا تدخل | `github_read_file`, `git_status`, `fs_list_files` |
-| 🟡 **NOTIFY** | 17 أداة | ينفّذ + يظهر Toast إشعاري | `github_push_file`, `github_edit_file`, `git_commit` |
-| 🔴 **CONFIRM** | 13 أداة | يوقف وينتظر موافقة صريحة | `github_delete_file`, `github_merge_pull_request`, `git_push` |
+| المستوى        | الأدوات | السلوك                    | مثال                                                          |
+| -------------- | ------- | ------------------------- | ------------------------------------------------------------- |
+| 🟢 **AUTO**    | 15 أداة | ينفّذ فوراً بلا تدخل      | `github_read_file`, `git_status`, `fs_list_files`             |
+| 🟡 **NOTIFY**  | 17 أداة | ينفّذ + يظهر Toast إشعاري | `github_push_file`, `github_edit_file`, `git_commit`          |
+| 🔴 **CONFIRM** | 13 أداة | يوقف وينتظر موافقة صريحة  | `github_delete_file`, `github_merge_pull_request`, `git_push` |
 
 راجع [ARCHITECTURE.md](./docs/ARCHITECTURE.md) للقائمة الكاملة.
 
@@ -197,12 +197,12 @@ pnpm test:coverage
 
 ### حالات الاختبار (13 اختبار)
 
-| المجموعة | العدد | يختبر |
-|---|---|---|
-| Type Compatibility | 3 | توافق `ApprovalSource` و `RiskLevel` عبر الوحدات |
-| Safety Classification | 4 | تصنيف AUTO/NOTIFY/CONFIRM + fallback |
-| Audit Logger | 6 | log, logStart, reject, filter, stats, CSV export |
-| Safety→Audit Integration | 2 | التدفق الكامل: safety → execute → audit |
+| المجموعة                 | العدد | يختبر                                            |
+| ------------------------ | ----- | ------------------------------------------------ |
+| Type Compatibility       | 3     | توافق `ApprovalSource` و `RiskLevel` عبر الوحدات |
+| Safety Classification    | 4     | تصنيف AUTO/NOTIFY/CONFIRM + fallback             |
+| Audit Logger             | 6     | log, logStart, reject, filter, stats, CSV export |
+| Safety→Audit Integration | 2     | التدفق الكامل: safety → execute → audit          |
 
 ---
 

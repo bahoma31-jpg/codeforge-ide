@@ -64,7 +64,11 @@ describe('FixExecutor', () => {
     it('should execute a read step', async () => {
       const result = await executor.executePlan({
         steps: [
-          { type: 'read', filePath: 'src/app.ts', description: 'Read app file' },
+          {
+            type: 'read',
+            filePath: 'src/app.ts',
+            description: 'Read app file',
+          },
         ],
         protectedPaths: [],
         maxFiles: 10,
@@ -97,12 +101,12 @@ describe('FixExecutor', () => {
     it('should execute steps in order', async () => {
       const callOrder: string[] = [];
 
-      (bridge.readFile as any).mockImplementation(async (path: string) => {
+      (bridge.readFile as unknown).mockImplementation(async (path: string) => {
         callOrder.push(`read:${path}`);
         return 'content';
       });
 
-      (bridge.editFile as any).mockImplementation(async () => {
+      (bridge.editFile as unknown).mockImplementation(async () => {
         callOrder.push('edit');
         return true;
       });
@@ -110,14 +114,28 @@ describe('FixExecutor', () => {
       await executor.executePlan({
         steps: [
           { type: 'read', filePath: 'src/app.ts', description: 'Read first' },
-          { type: 'edit', filePath: 'src/app.ts', description: 'Edit', oldStr: 'x', newStr: 'y' },
-          { type: 'read', filePath: 'src/utils.ts', description: 'Read second' },
+          {
+            type: 'edit',
+            filePath: 'src/app.ts',
+            description: 'Edit',
+            oldStr: 'x',
+            newStr: 'y',
+          },
+          {
+            type: 'read',
+            filePath: 'src/utils.ts',
+            description: 'Read second',
+          },
         ],
         protectedPaths: [],
         maxFiles: 10,
       });
 
-      expect(callOrder).toEqual(['read:src/app.ts', 'edit', 'read:src/utils.ts']);
+      expect(callOrder).toEqual([
+        'read:src/app.ts',
+        'edit',
+        'read:src/utils.ts',
+      ]);
     });
   });
 
@@ -171,6 +189,7 @@ describe('FixExecutor', () => {
 
   describe('Protected Paths', () => {
     it('should skip editing protected files', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const result = await executor.executePlan({
         steps: [
           {
@@ -247,11 +266,17 @@ describe('FixExecutor', () => {
 
   describe('Error Handling', () => {
     it('should handle read failure gracefully', async () => {
-      (bridge.readFile as any).mockRejectedValueOnce(new Error('File not found'));
+      (
+        bridge.readFile as unknown as ReturnType<typeof vi.fn>
+      ).mockRejectedValueOnce(new Error('File not found'));
 
       const result = await executor.executePlan({
         steps: [
-          { type: 'read', filePath: 'nonexistent.ts', description: 'Read missing' },
+          {
+            type: 'read',
+            filePath: 'nonexistent.ts',
+            description: 'Read missing',
+          },
         ],
         protectedPaths: [],
         maxFiles: 10,
@@ -262,7 +287,9 @@ describe('FixExecutor', () => {
     });
 
     it('should handle edit failure and continue', async () => {
-      (bridge.editFile as any).mockResolvedValueOnce(false);
+      (
+        bridge.editFile as unknown as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce(false);
 
       const result = await executor.executePlan({
         steps: [

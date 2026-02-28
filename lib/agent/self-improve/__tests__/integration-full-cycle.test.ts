@@ -18,7 +18,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mockFiles: Record<string, string> = {};
 
 function resetFiles() {
-  Object.keys(mockFiles).forEach(k => delete mockFiles[k]);
+  Object.keys(mockFiles).forEach((k) => delete mockFiles[k]);
   Object.assign(mockFiles, {
     'src/components/header.tsx': [
       'import React from "react";',
@@ -43,24 +43,34 @@ function resetFiles() {
       '.header.light { background: #fff; color: #333; }',
     ].join('\n'),
     'lib/agent/safety/core.ts': 'export const IMMUTABLE = true;',
+    '.env.local': 'API_KEY=secret',
   });
 }
 
 // Mock Task Store
 let taskCounter = 0;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const tasks = new Map<string, any>();
 
 function makeTask(desc: string, cat: string) {
   const id = `cycle-${++taskCounter}`;
   const t = {
-    id, status: 'running', description: desc, category: cat,
-    createdAt: Date.now(), updatedAt: Date.now(),
+    id,
+    status: 'running',
+    description: desc,
+    category: cat,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
     observation: { affectedArea: '', detectedFiles: [], evidence: [] },
     orientation: { rootCause: '', scope: [], skills: [] },
     decision: { plan: [], riskLevel: 'low', requiresApproval: false },
     execution: {
-      status: 'pending', changes: [] as any[], iterations: 0,
-      maxIterations: 5, verificationResult: null as any, errors: [] as string[],
+      status: 'pending',
+      changes: [] as unknown[],
+      iterations: 0,
+      maxIterations: 5,
+      verificationResult: null as unknown,
+      errors: [] as string[],
     },
   };
   tasks.set(id, t);
@@ -69,30 +79,40 @@ function makeTask(desc: string, cat: string) {
 
 vi.mock('../ooda-controller', () => ({
   getOODAController: () => ({
-    startImprovement: vi.fn().mockImplementation(async (_t: string, d: string, _f: any, o: any) =>
-      makeTask(d, o?.category || 'ui_bug')
-    ),
+    startImprovement: vi
+      .fn()
+      .mockImplementation(
+        async (_t: string, d: string, _f: unknown, o: unknown) =>
+          makeTask(d, o?.category || 'ui_bug')
+      ),
     getTask: vi.fn().mockImplementation((id: string) => tasks.get(id) || null),
-    getActiveTasks: vi.fn().mockImplementation(() =>
-      Array.from(tasks.values()).filter(t => t.status === 'running')
-    ),
-    getHistory: vi.fn().mockImplementation(() =>
-      Array.from(tasks.values()).filter(t => t.status !== 'running')
-    ),
+    getActiveTasks: vi
+      .fn()
+      .mockImplementation(() =>
+        Array.from(tasks.values()).filter((t) => t.status === 'running')
+      ),
+    getHistory: vi
+      .fn()
+      .mockImplementation(() =>
+        Array.from(tasks.values()).filter((t) => t.status !== 'running')
+      ),
     cancelTask: vi.fn().mockImplementation((id: string) => {
       const t = tasks.get(id);
-      if (t) { t.status = 'cancelled'; return true; }
+      if (t) {
+        t.status = 'cancelled';
+        return true;
+      }
       return false;
     }),
   }),
   OODAController: vi.fn(),
 }));
 
-const memoryPatterns: any[] = [];
+const memoryPatterns: unknown[] = [];
 
 vi.mock('../learning-memory', () => ({
   getLearningMemory: () => ({
-    recordSuccess: vi.fn().mockImplementation((task: any) => {
+    recordSuccess: vi.fn().mockImplementation((task: unknown) => {
       memoryPatterns.push({
         id: `p-${memoryPatterns.length + 1}`,
         problemSignature: task.description,
@@ -104,9 +124,13 @@ vi.mock('../learning-memory', () => ({
       });
     }),
     recordFailure: vi.fn(),
-    findSimilar: vi.fn().mockImplementation((_d: string, limit: number) =>
-      memoryPatterns.slice(0, limit).map(p => ({ pattern: p, similarity: 0.5 }))
-    ),
+    findSimilar: vi
+      .fn()
+      .mockImplementation((_d: string, limit: number) =>
+        memoryPatterns
+          .slice(0, limit)
+          .map((p) => ({ pattern: p, similarity: 0.5 }))
+      ),
     getAllPatterns: vi.fn().mockImplementation(() => memoryPatterns),
     findByCategory: vi.fn().mockReturnValue([]),
     getStats: vi.fn().mockImplementation(() => ({
@@ -132,11 +156,13 @@ function makeBridge(): ToolBridge {
       if (mockFiles[p] === undefined) throw new Error(`Not found: ${p}`);
       return mockFiles[p];
     }),
-    editFile: vi.fn().mockImplementation(async (p: string, old: string, neu: string) => {
-      if (!mockFiles[p] || !mockFiles[p].includes(old)) return false;
-      mockFiles[p] = mockFiles[p].replace(old, neu);
-      return true;
-    }),
+    editFile: vi
+      .fn()
+      .mockImplementation(async (p: string, old: string, neu: string) => {
+        if (!mockFiles[p] || !mockFiles[p].includes(old)) return false;
+        mockFiles[p] = mockFiles[p].replace(old, neu);
+        return true;
+      }),
     writeFile: vi.fn().mockImplementation(async (p: string, c: string) => {
       mockFiles[p] = c;
       return true;
@@ -159,7 +185,7 @@ function makeLoader() {
 // ─── Tests ────────────────────────────────────────────────────
 
 describe('Full OODA Cycle — Integration', () => {
-  let exec: Record<string, (args: Record<string, unknown>) => Promise<any>>;
+  let exec: Record<string, (args: Record<string, unknown>) => Promise<unknown>>;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -194,13 +220,15 @@ describe('Full OODA Cycle — Integration', () => {
       // 2. Execute fix
       const fixRes = await exec.ooda_execute_fix({
         cycleId,
-        fixes: [{
-          filePath: 'src/components/header.tsx',
-          type: 'edit',
-          oldStr: 'className={`header ${theme}`}',
-          newStr: 'className={`header header--${theme}`}',
-          commitMessage: 'fix: theme class naming',
-        }],
+        fixes: [
+          {
+            filePath: 'src/components/header.tsx',
+            type: 'edit',
+            oldStr: 'className={`header ${theme}`}',
+            newStr: 'className={`header header--${theme}`}',
+            commitMessage: 'fix: theme class naming',
+          },
+        ],
       });
       expect(fixRes.success).toBe(true);
       expect(fixRes.data.applied).toBe(1);
@@ -240,13 +268,15 @@ describe('Full OODA Cycle — Integration', () => {
 
       await exec.ooda_execute_fix({
         cycleId: startRes.data.cycleId,
-        fixes: [{
-          filePath: 'src/styles/main.css',
-          type: 'edit',
-          oldStr: 'padding: 1rem',
-          newStr: 'padding: 0.5rem',
-          commitMessage: 'style: reduce header padding',
-        }],
+        fixes: [
+          {
+            filePath: 'src/styles/main.css',
+            type: 'edit',
+            oldStr: 'padding: 1rem',
+            newStr: 'padding: 0.5rem',
+            commitMessage: 'style: reduce header padding',
+          },
+        ],
       });
 
       expect(mockFiles['src/styles/main.css']).toContain('padding: 0.5rem');
@@ -254,6 +284,7 @@ describe('Full OODA Cycle — Integration', () => {
     });
 
     it('should create backup before modifying files', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const originalContent = mockFiles['src/components/header.tsx'];
 
       const startRes = await exec.ooda_start_cycle({
@@ -264,12 +295,14 @@ describe('Full OODA Cycle — Integration', () => {
 
       const fixRes = await exec.ooda_execute_fix({
         cycleId: startRes.data.cycleId,
-        fixes: [{
-          filePath: 'src/components/header.tsx',
-          type: 'rewrite',
-          content: 'export function Header() { return <h1>New</h1>; }',
-          commitMessage: 'refactor: simplify header',
-        }],
+        fixes: [
+          {
+            filePath: 'src/components/header.tsx',
+            type: 'rewrite',
+            content: 'export function Header() { return <h1>New</h1>; }',
+            commitMessage: 'refactor: simplify header',
+          },
+        ],
       });
 
       expect(fixRes.data.backupsCreated).toBeGreaterThan(0);
@@ -296,10 +329,14 @@ describe('Full OODA Cycle — Integration', () => {
         { filePath: 'src/nonexistent.tsx', changeType: 'edit' },
       ];
 
-      const verifyRes = await exec.ooda_verify_fix({ cycleId: startRes.data.cycleId });
+      const verifyRes = await exec.ooda_verify_fix({
+        cycleId: startRes.data.cycleId,
+      });
       expect(verifyRes.success).toBe(true);
       // With a mix of existing and non-existing files, some checks fail
-      expect(['RETRY_FIX', 'ESCALATE', 'COMPLETE']).toContain(verifyRes.data.recommendedAction);
+      expect(['RETRY_FIX', 'ESCALATE', 'COMPLETE']).toContain(
+        verifyRes.data.recommendedAction
+      );
     });
 
     it('should handle edit that finds no match gracefully', async () => {
@@ -311,13 +348,15 @@ describe('Full OODA Cycle — Integration', () => {
 
       const fixRes = await exec.ooda_execute_fix({
         cycleId: startRes.data.cycleId,
-        fixes: [{
-          filePath: 'src/components/header.tsx',
-          type: 'edit',
-          oldStr: 'THIS STRING DOES NOT EXIST IN THE FILE',
-          newStr: 'replacement',
-          commitMessage: 'fix: bad match',
-        }],
+        fixes: [
+          {
+            filePath: 'src/components/header.tsx',
+            type: 'edit',
+            oldStr: 'THIS STRING DOES NOT EXIST IN THE FILE',
+            newStr: 'replacement',
+            commitMessage: 'fix: bad match',
+          },
+        ],
       });
 
       // Fix should report failure for this specific file but not crash
@@ -328,12 +367,14 @@ describe('Full OODA Cycle — Integration', () => {
     it('should return error for non-existent cycle', async () => {
       const fixRes = await exec.ooda_execute_fix({
         cycleId: 'nonexistent-cycle-id',
-        fixes: [{
-          filePath: 'src/app.ts',
-          type: 'rewrite',
-          content: 'test',
-          commitMessage: 'test',
-        }],
+        fixes: [
+          {
+            filePath: 'src/app.ts',
+            type: 'rewrite',
+            content: 'test',
+            commitMessage: 'test',
+          },
+        ],
       });
       expect(fixRes.success).toBe(false);
       expect(fixRes.error).toContain('not found');
@@ -347,18 +388,24 @@ describe('Full OODA Cycle — Integration', () => {
   describe('Concurrent Cycles', () => {
     it('should track multiple cycles independently', async () => {
       const cycle1 = await exec.ooda_start_cycle({
-        issue: 'Header bug', category: 'ui_bug',
+        issue: 'Header bug',
+        category: 'ui_bug',
         affectedFiles: ['src/components/header.tsx'],
       });
       const cycle2 = await exec.ooda_start_cycle({
-        issue: 'Theme performance', category: 'performance',
+        issue: 'Theme performance',
+        category: 'performance',
         affectedFiles: ['src/hooks/useTheme.ts'],
       });
 
       expect(cycle1.data.cycleId).not.toBe(cycle2.data.cycleId);
 
-      const status1 = await exec.ooda_get_status({ cycleId: cycle1.data.cycleId });
-      const status2 = await exec.ooda_get_status({ cycleId: cycle2.data.cycleId });
+      const status1 = await exec.ooda_get_status({
+        cycleId: cycle1.data.cycleId,
+      });
+      const status2 = await exec.ooda_get_status({
+        cycleId: cycle2.data.cycleId,
+      });
 
       expect(status1.data.category).toBe('ui_bug');
       expect(status2.data.category).toBe('performance');
@@ -366,13 +413,19 @@ describe('Full OODA Cycle — Integration', () => {
 
     it('should list all active cycles in status overview', async () => {
       await exec.ooda_start_cycle({
-        issue: 'A', category: 'ui_bug', affectedFiles: ['src/components/header.tsx'],
+        issue: 'A',
+        category: 'ui_bug',
+        affectedFiles: ['src/components/header.tsx'],
       });
       await exec.ooda_start_cycle({
-        issue: 'B', category: 'style', affectedFiles: ['src/styles/main.css'],
+        issue: 'B',
+        category: 'style',
+        affectedFiles: ['src/styles/main.css'],
       });
       await exec.ooda_start_cycle({
-        issue: 'C', category: 'performance', affectedFiles: ['src/hooks/useTheme.ts'],
+        issue: 'C',
+        category: 'performance',
+        affectedFiles: ['src/hooks/useTheme.ts'],
       });
 
       const all = await exec.ooda_get_status({});
@@ -392,7 +445,9 @@ describe('Full OODA Cycle — Integration', () => {
         affectedFiles: ['src/components/header.tsx'],
       });
 
-      const statusRes = await exec.ooda_get_status({ cycleId: startRes.data.cycleId });
+      const statusRes = await exec.ooda_get_status({
+        cycleId: startRes.data.cycleId,
+      });
       expect(statusRes.data.cycleId).toBe(startRes.data.cycleId);
       expect(statusRes.data.description).toContain('Consistency check');
     });
@@ -405,9 +460,11 @@ describe('Full OODA Cycle — Integration', () => {
       });
 
       // Small delay
-      await new Promise(r => setTimeout(r, 50));
+      await new Promise((r) => setTimeout(r, 50));
 
-      const statusRes = await exec.ooda_get_status({ cycleId: startRes.data.cycleId });
+      const statusRes = await exec.ooda_get_status({
+        cycleId: startRes.data.cycleId,
+      });
       expect(statusRes.data.elapsedMs).toBeGreaterThanOrEqual(0);
     });
   });
@@ -420,27 +477,35 @@ describe('Full OODA Cycle — Integration', () => {
     it('should accumulate patterns across multiple cycles', async () => {
       // Cycle 1
       const c1 = await exec.ooda_start_cycle({
-        issue: 'Pattern 1', category: 'ui_bug',
+        issue: 'Pattern 1',
+        category: 'ui_bug',
         affectedFiles: ['src/components/header.tsx'],
       });
       await exec.ooda_learn_pattern({
         cycleId: c1.data.cycleId,
         pattern: {
-          description: 'First pattern', rootCause: 'A', fixApproach: 'B',
-          tags: ['first'], confidence: 0.8,
+          description: 'First pattern',
+          rootCause: 'A',
+          fixApproach: 'B',
+          tags: ['first'],
+          confidence: 0.8,
         },
       });
 
       // Cycle 2
       const c2 = await exec.ooda_start_cycle({
-        issue: 'Pattern 2', category: 'style',
+        issue: 'Pattern 2',
+        category: 'style',
         affectedFiles: ['src/styles/main.css'],
       });
       const learnRes = await exec.ooda_learn_pattern({
         cycleId: c2.data.cycleId,
         pattern: {
-          description: 'Second pattern', rootCause: 'C', fixApproach: 'D',
-          tags: ['second'], confidence: 0.9,
+          description: 'Second pattern',
+          rootCause: 'C',
+          fixApproach: 'D',
+          tags: ['second'],
+          confidence: 0.9,
         },
       });
 
@@ -472,18 +537,22 @@ describe('Full OODA Cycle — Integration', () => {
 
       const fixRes = await exec.ooda_execute_fix({
         cycleId: validStart.data.cycleId,
-        fixes: [{
-          filePath: '.env.local',
-          type: 'rewrite',
-          content: 'HACKED=true',
-          commitMessage: 'hack env',
-        }],
+        fixes: [
+          {
+            filePath: '.env.local',
+            type: 'rewrite',
+            content: 'HACKED=true',
+            commitMessage: 'hack env',
+          },
+        ],
       });
       expect(fixRes.success).toBe(false);
       expect(fixRes.error).toContain('protected');
 
       // Verify safety file wasn't touched
-      expect(mockFiles['lib/agent/safety/core.ts']).toBe('export const IMMUTABLE = true;');
+      expect(mockFiles['lib/agent/safety/core.ts']).toBe(
+        'export const IMMUTABLE = true;'
+      );
       expect(mockFiles['.env.local']).toBe('API_KEY=secret');
     });
   });

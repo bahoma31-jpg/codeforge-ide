@@ -18,7 +18,13 @@ import type {
   AuditLogEntry,
   RiskLevel,
 } from '../types';
-import { classifyRisk, classifyGitHubRisk, getRiskEmoji } from './risk-classifier';
+import {
+  classifyRisk,
+  classifyGitHubRisk,
+  getRiskEmoji,
+} from './risk-classifier';
+import { logger } from '@/lib/monitoring/error-logger';
+import { validateToolArgs } from './validation';
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -72,7 +78,10 @@ export class ApprovalManager {
   /**
    * Create a pending approval request (for CONFIRM tools)
    */
-  createApproval(toolCall: ToolCall, toolDef?: ToolDefinition): PendingApproval {
+  createApproval(
+    toolCall: ToolCall,
+    toolDef?: ToolDefinition
+  ): PendingApproval {
     const risk = this.getEffectiveRisk(toolCall, toolDef);
     // Ensure owner/repo are resolved before building description
     const resolvedToolCall = this.resolveToolCallArgs(toolCall);
@@ -157,13 +166,17 @@ export class ApprovalManager {
     // Only resolve for github_* tools that need owner/repo
     if (!toolCall.name.startsWith('github_')) return toolCall;
 
-    const args = { ...toolCall.arguments };
-    const currentOwner = (args.owner as string) || '';
-    const currentRepo = (args.repo as string) || '';
+    const validArgs = validateToolArgs(toolCall.name, toolCall.arguments);
+    const args = { ...toolCall.arguments } as Record<string, unknown>;
+
+    const currentOwner = validArgs.owner || '';
+    const currentRepo = validArgs.repo || '';
 
     // Check if owner/repo need resolution
-    const ownerMissing = !currentOwner || currentOwner === 'unknown' || currentOwner === '?';
-    const repoMissing = !currentRepo || currentRepo === 'unknown' || currentRepo === '?';
+    const ownerMissing =
+      !currentOwner || currentOwner === 'unknown' || currentOwner === '?';
+    const repoMissing =
+      !currentRepo || currentRepo === 'unknown' || currentRepo === '?';
 
     if (!ownerMissing && !repoMissing) return toolCall;
 
@@ -207,7 +220,13 @@ export class ApprovalManager {
         if (!owner && config.owner) owner = config.owner;
         if (!repo && config.repo) repo = config.repo;
       }
-    } catch { /* ignore parse errors */ }
+    } catch (err) {
+      logger.warn(
+        'فشل في تحليل Agent Config',
+        err instanceof Error ? err : undefined,
+        { source: 'getStoredOwnerRepo.config' }
+      );
+    }
 
     try {
       // Source 2: Project context
@@ -225,7 +244,13 @@ export class ApprovalManager {
           }
         }
       }
-    } catch { /* ignore parse errors */ }
+    } catch (err) {
+      logger.warn(
+        'فشل في تحليل Project Context',
+        err instanceof Error ? err : undefined,
+        { source: 'getStoredOwnerRepo.context' }
+      );
+    }
 
     try {
       // Source 3: GitHub user info (owner only)
@@ -234,7 +259,13 @@ export class ApprovalManager {
         const user = JSON.parse(userRaw);
         if (user.login) owner = user.login;
       }
-    } catch { /* ignore parse errors */ }
+    } catch (err) {
+      logger.warn(
+        'فشل في تحليل GitHub User Context',
+        err instanceof Error ? err : undefined,
+        { source: 'getStoredOwnerRepo.user' }
+      );
+    }
 
     return { owner, repo };
   }
@@ -243,19 +274,19 @@ export class ApprovalManager {
    * Extract affected file paths from tool arguments
    */
   private extractAffectedFiles(toolCall: ToolCall): string[] {
-    const args = toolCall.arguments;
+    const args = validateToolArgs(toolCall.name, toolCall.arguments);
     const files: string[] = [];
 
     // Single file path
-    const singlePath = (args.filePath as string) || (args.path as string) || '';
+    const singlePath = args.filePath || args.path || '';
     if (singlePath) files.push(singlePath);
 
     // Node ID (for fs_* tools — we can't resolve to path here, so we note the ID)
-    const nodeId = args.nodeId as string;
+    const nodeId = args.nodeId;
     if (nodeId && files.length === 0) files.push(`[id:${nodeId}]`);
 
     // Multiple files (github_push_files)
-    const multiFiles = args.files as Array<{ path: string }> | undefined;
+    const multiFiles = args.files;
     if (multiFiles && Array.isArray(multiFiles)) {
       for (const f of multiFiles) {
         if (f.path) files.push(f.path);
@@ -263,7 +294,7 @@ export class ApprovalManager {
     }
 
     // Git stage paths
-    const paths = args.paths as string[] | undefined;
+    const paths = args.paths;
     if (paths && Array.isArray(paths)) {
       files.push(...paths);
     }
@@ -276,33 +307,33 @@ export class ApprovalManager {
    * Covers all 45 tools across 4 categories.
    */
   private generateDescription(toolCall: ToolCall): string {
-    const args = toolCall.arguments;
-    const path = (args.path as string) || (args.filePath as string) || '';
-    const owner = (args.owner as string) || '';
-    const repo = (args.repo as string) || '';
+    const args = validateToolArgs(toolCall.name, toolCall.arguments);
+    const path = args.path || args.filePath || '';
+    const owner = args.owner || '';
+    const repo = args.repo || '';
     const repoStr = owner && repo ? `${owner}/${repo}` : repo || '';
-    const branch = (args.branch as string) || '';
+    const branch = args.branch || '';
 
     switch (toolCall.name) {
       // ── FS Tools ──
       case 'fs_list_files':
         return 'عرض ملفات المشروع المحلي';
       case 'fs_read_file':
-        return `قراءة ملف: ${path || (args.fileId as string) || '?'}`;
+        return `قراءة ملف: ${path || args.fileId || '?'}`;
       case 'fs_search_files':
-        return `بحث عن: "${(args.query as string) || '?'}"`;
+        return `بحث عن: "${args.query || '?'}"`;
       case 'fs_create_file':
-        return `إنشاء ملف: ${(args.name as string) || '?'}`;
+        return `إنشاء ملف: ${args.name || '?'}`;
       case 'fs_update_file':
-        return `تحديث ملف: ${path || (args.fileId as string) || '?'}`;
+        return `تحديث ملف: ${path || args.fileId || '?'}`;
       case 'fs_create_folder':
-        return `إنشاء مجلد: ${(args.name as string) || '?'}`;
+        return `إنشاء مجلد: ${args.name || '?'}`;
       case 'fs_delete_file':
-        return `⚠️ حذف: ${(args.nodeId as string) || '?'}`;
+        return `⚠️ حذف: ${args.nodeId || '?'}`;
       case 'fs_rename_file':
-        return `إعادة تسمية إلى: ${(args.newName as string) || '?'}`;
+        return `إعادة تسمية إلى: ${args.newName || '?'}`;
       case 'fs_move_file':
-        return `نقل ملف: ${(args.nodeId as string) || '?'}`;
+        return `نقل ملف: ${args.nodeId || '?'}`;
 
       // ── Git Tools ──
       case 'git_status':
@@ -310,21 +341,21 @@ export class ApprovalManager {
       case 'git_diff':
         return path ? `عرض التغييرات: ${path}` : 'عرض جميع التغييرات';
       case 'git_log':
-        return `عرض سجل الحفظ (آخر ${(args.maxCount as number) || 10})`;
+        return `عرض سجل الحفظ (آخر ${args.maxCount || 10})`;
       case 'git_stage':
-        return `تجهيز ملفات للحفظ: ${((args.paths as string[]) || []).join(', ') || '.'}`;
+        return `تجهيز ملفات للحفظ: ${(args.paths || []).join(', ') || '.'}`;
       case 'git_commit':
-        return `حفظ: "${(args.message as string) || '?'}"`;
+        return `حفظ: "${args.message || '?'}"`;
       case 'git_push':
         return `⚠️ دفع التغييرات${branch ? ` (فرع: ${branch})` : ''}`;
       case 'git_create_branch':
-        return `إنشاء فرع: ${(args.name as string) || '?'}`;
+        return `إنشاء فرع: ${args.name || '?'}`;
       case 'git_create_pr':
-        return `⚠️ إنشاء PR: "${(args.title as string) || '?'}"`;
+        return `⚠️ إنشاء PR: "${args.title || '?'}"`;
 
       // ── GitHub: Repo Tools ──
       case 'github_create_repo':
-        return `⚠️ إنشاء مستودع: ${(args.name as string) || '?'}`;
+        return `⚠️ إنشاء مستودع: ${args.name || '?'}`;
       case 'github_delete_repo':
         return `🚨 حذف مستودع نهائياً: ${repoStr || '?'}`;
       case 'github_list_repos':
@@ -332,13 +363,13 @@ export class ApprovalManager {
       case 'github_get_repo_info':
         return `معلومات: ${repoStr}`;
       case 'github_search_repos':
-        return `بحث عن مستودعات: "${(args.query as string) || '?'}"`;
+        return `بحث عن مستودعات: "${args.query || '?'}"`;
 
       // ── GitHub: File Tools ──
       case 'github_push_file':
         return `رفع ملف: ${path} → ${repoStr}`;
       case 'github_push_files': {
-        const count = ((args.files as unknown[]) || []).length;
+        const count = (args.files || []).length;
         return `⚠️ رفع ${count} ملف(ات) → ${repoStr}`;
       }
       case 'github_read_file':
@@ -360,27 +391,27 @@ export class ApprovalManager {
 
       // ── GitHub: PR Tools ──
       case 'github_create_pull_request':
-        return `إنشاء PR: "${(args.title as string) || '?'}" في ${repoStr}`;
+        return `إنشاء PR: "${args.title || '?'}" في ${repoStr}`;
       case 'github_list_pull_requests':
         return `عرض PRs: ${repoStr}`;
       case 'github_get_pull_request':
-        return `تفاصيل PR #${(args.pullNumber as number) || '?'}`;
+        return `تفاصيل PR #${args.pullNumber || '?'}`;
       case 'github_merge_pull_request':
-        return `⚠️ دمج PR #${(args.pullNumber as number) || '?'} في ${repoStr}`;
+        return `⚠️ دمج PR #${args.pullNumber || '?'} في ${repoStr}`;
 
       // ── GitHub: Issue Tools ──
       case 'github_create_issue':
-        return `إنشاء Issue: "${(args.title as string) || '?'}" في ${repoStr}`;
+        return `إنشاء Issue: "${args.title || '?'}" في ${repoStr}`;
       case 'github_list_issues':
         return `عرض Issues: ${repoStr}`;
       case 'github_update_issue':
-        return `تحديث Issue #${(args.issueNumber as number) || '?'}`;
+        return `تحديث Issue #${args.issueNumber || '?'}`;
       case 'github_add_comment':
-        return `تعليق على #${(args.issueNumber as number) || '?'} في ${repoStr}`;
+        return `تعليق على #${args.issueNumber || '?'} في ${repoStr}`;
 
       // ── GitHub: Search & History ──
       case 'github_search_code':
-        return `بحث في الكود: "${(args.query as string) || '?'}" — ${repoStr}`;
+        return `بحث في الكود: "${args.query || '?'}" — ${repoStr}`;
       case 'github_get_commit_history':
         return `سجل الحفظ: ${repoStr}${branch ? ` (${branch})` : ''}`;
       case 'github_get_user_info':

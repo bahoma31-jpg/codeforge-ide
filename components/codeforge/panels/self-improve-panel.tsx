@@ -69,7 +69,7 @@ const PHASES = [
 ];
 
 function PhaseIndicator({ currentPhase }: { currentPhase: string }) {
-  const currentIndex = PHASES.findIndex(p => p.key === currentPhase);
+  const currentIndex = PHASES.findIndex((p) => p.key === currentPhase);
 
   return (
     <div className="si-phase-indicator">
@@ -85,9 +85,11 @@ function PhaseIndicator({ currentPhase }: { currentPhase: string }) {
               <span className="si-phase-label">{phase.labelAr}</span>
             </div>
             {index < PHASES.length - 1 && (
-              <div className={`si-phase-connector ${
-                index < currentIndex ? 'si-connector-done' : ''
-              }`} />
+              <div
+                className={`si-phase-connector ${
+                  index < currentIndex ? 'si-connector-done' : ''
+                }`}
+              />
             )}
           </React.Fragment>
         );
@@ -125,10 +127,14 @@ function EventTimeline({ events }: { events: OODAEvent[] }) {
           second: '2-digit',
         });
 
-        const phaseEmoji = PHASES.find(p => p.key === event.phase)?.icon || '🔄';
+        const phaseEmoji =
+          PHASES.find((p) => p.key === event.phase)?.icon || '🔄';
 
         return (
-          <div key={index} className={`si-timeline-event si-event-${event.type}`}>
+          <div
+            key={index}
+            className={`si-timeline-event si-event-${event.type}`}
+          >
             <div className="si-event-time">{time}</div>
             <div className="si-event-dot" />
             <div className="si-event-content">
@@ -166,7 +172,9 @@ function TaskCard({ task, isActive }: { task: TaskInfo; isActive: boolean }) {
   }[task.status];
 
   return (
-    <div className={`si-task-card si-task-${task.status} ${isActive ? 'si-task-active' : ''}`}>
+    <div
+      className={`si-task-card si-task-${task.status} ${isActive ? 'si-task-active' : ''}`}
+    >
       <div
         className="si-task-header"
         onClick={() => setExpanded(!expanded)}
@@ -221,9 +229,10 @@ function TaskCard({ task, isActive }: { task: TaskInfo; isActive: boolean }) {
 // ─── Stats Dashboard Component ────────────────────────────────
 
 function StatsDashboard({ stats }: { stats: SelfImproveStats }) {
-  const successRate = stats.totalTasks > 0
-    ? ((stats.successfulTasks / stats.totalTasks) * 100).toFixed(0)
-    : '0';
+  const successRate =
+    stats.totalTasks > 0
+      ? ((stats.successfulTasks / stats.totalTasks) * 100).toFixed(0)
+      : '0';
 
   return (
     <div className="si-stats-dashboard">
@@ -241,7 +250,9 @@ function StatsDashboard({ stats }: { stats: SelfImproveStats }) {
           <span className="si-stat-label">ملفات معدّلة</span>
         </div>
         <div className="si-stat-card">
-          <span className="si-stat-value">{stats.averageIterations.toFixed(1)}</span>
+          <span className="si-stat-value">
+            {stats.averageIterations.toFixed(1)}
+          </span>
           <span className="si-stat-label">متوسط الدورات</span>
         </div>
       </div>
@@ -334,7 +345,7 @@ export function SelfImprovePanel({
     if (!onSubscribe) return;
 
     const unsubscribe = onSubscribe((event: OODAEvent) => {
-      setActiveTask(prev => {
+      setActiveTask((prev) => {
         if (!prev) return prev;
         return {
           ...prev,
@@ -419,7 +430,7 @@ export function SelfImprovePanel({
           { key: 'history' as TabKey, label: 'السجل', icon: '📜' },
           { key: 'stats' as TabKey, label: 'إحصائيات', icon: '📊' },
           { key: 'memory' as TabKey, label: 'الذاكرة', icon: '🧠' },
-        ].map(tab => (
+        ].map((tab) => (
           <button
             key={tab.key}
             className={`si-tab ${activeTab === tab.key ? 'si-tab-active' : ''}`}
@@ -516,11 +527,18 @@ export function SelfImprovePanel({
                 {patterns.map((pattern, i) => (
                   <div key={i} className="si-pattern-card">
                     <div className="si-pattern-header">
-                      <span className="si-pattern-category">{pattern.category}</span>
-                      <span className={`si-pattern-rate ${
-                        pattern.successRate >= 0.7 ? 'si-rate-good' :
-                        pattern.successRate >= 0.4 ? 'si-rate-mid' : 'si-rate-low'
-                      }`}>
+                      <span className="si-pattern-category">
+                        {pattern.category}
+                      </span>
+                      <span
+                        className={`si-pattern-rate ${
+                          pattern.successRate >= 0.7
+                            ? 'si-rate-good'
+                            : pattern.successRate >= 0.4
+                              ? 'si-rate-mid'
+                              : 'si-rate-low'
+                        }`}
+                      >
                         {(pattern.successRate * 100).toFixed(0)}%
                       </span>
                     </div>
@@ -528,7 +546,8 @@ export function SelfImprovePanel({
                     <div className="si-pattern-meta">
                       <span>استخدام: {pattern.totalUses}×</span>
                       <span>
-                        آخر: {new Date(pattern.lastUsed).toLocaleDateString('ar-DZ')}
+                        آخر:{' '}
+                        {new Date(pattern.lastUsed).toLocaleDateString('ar-DZ')}
                       </span>
                     </div>
                   </div>
@@ -538,7 +557,9 @@ export function SelfImprovePanel({
               <div className="si-empty-state">
                 <span className="si-empty-icon">🧠</span>
                 <p>لم يتعلم الوكيل أنماطاً بعد</p>
-                <p className="si-empty-hint">ستظهر الأنماط بعد إكمال أولى مهام التحسين</p>
+                <p className="si-empty-hint">
+                  ستظهر الأنماط بعد إكمال أولى مهام التحسين
+                </p>
               </div>
             )}
           </div>

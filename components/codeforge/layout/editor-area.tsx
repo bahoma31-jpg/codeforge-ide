@@ -25,13 +25,7 @@ export default function EditorArea() {
     <div className="flex flex-1 flex-col overflow-hidden bg-[hsl(var(--cf-editor))]">
       {tabs.length > 0 && <EditorTabs />}
       <div className="flex-1 overflow-hidden">
-        {activeTab ? (
-          <MonacoEditor
-            key={activeTab.id}
-          />
-        ) : (
-          <WelcomeScreen />
-        )}
+        {activeTab ? <MonacoEditor key={activeTab.id} /> : <WelcomeScreen />}
       </div>
     </div>
   );

@@ -43,13 +43,20 @@ export const oodaPhase3ToolDefinitions: ToolDefinition[] = [
         },
         category: {
           type: 'string',
-          enum: ['ui_bug', 'logic_error', 'performance', 'style', 'accessibility'],
+          enum: [
+            'ui_bug',
+            'logic_error',
+            'performance',
+            'style',
+            'accessibility',
+          ],
           description: 'Category of the issue',
         },
         affectedFiles: {
           type: 'array',
           items: { type: 'string' },
-          description: 'Array of file paths identified during analysis as affected',
+          description:
+            'Array of file paths identified during analysis as affected',
         },
       },
       required: ['issue', 'category', 'affectedFiles'],
@@ -66,7 +73,7 @@ export const oodaPhase3ToolDefinitions: ToolDefinition[] = [
       'Applies file changes (edit or rewrite) with automatic backup for rollback. ' +
       'Validates the cycle is in DECIDE or ACT phase, enforces protected paths ' +
       '(lib/agent/safety/*, .env*), and limits to 10 files per cycle. ' +
-      'All fixes are reversible through the cycle\'s backup system.',
+      "All fixes are reversible through the cycle's backup system.",
     parameters: {
       type: 'object',
       properties: {
@@ -79,16 +86,32 @@ export const oodaPhase3ToolDefinitions: ToolDefinition[] = [
           items: {
             type: 'object',
             properties: {
-              filePath: { type: 'string', description: 'Path to the file to fix' },
+              filePath: {
+                type: 'string',
+                description: 'Path to the file to fix',
+              },
               type: {
                 type: 'string',
                 enum: ['edit', 'rewrite'],
-                description: 'edit = surgical old_str/new_str replacement, rewrite = full file content',
+                description:
+                  'edit = surgical old_str/new_str replacement, rewrite = full file content',
               },
-              oldStr: { type: 'string', description: 'Text to find and replace (for edit type)' },
-              newStr: { type: 'string', description: 'Replacement text (for edit type)' },
-              content: { type: 'string', description: 'Full new file content (for rewrite type)' },
-              commitMessage: { type: 'string', description: 'Commit message for this change' },
+              oldStr: {
+                type: 'string',
+                description: 'Text to find and replace (for edit type)',
+              },
+              newStr: {
+                type: 'string',
+                description: 'Replacement text (for edit type)',
+              },
+              content: {
+                type: 'string',
+                description: 'Full new file content (for rewrite type)',
+              },
+              commitMessage: {
+                type: 'string',
+                description: 'Commit message for this change',
+              },
             },
             required: ['filePath', 'type', 'commitMessage'],
           },
@@ -121,7 +144,14 @@ export const oodaPhase3ToolDefinitions: ToolDefinition[] = [
           type: 'array',
           items: {
             type: 'string',
-            enum: ['exists', 'content', 'imports', 'protected', 'syntax', 'related'],
+            enum: [
+              'exists',
+              'content',
+              'imports',
+              'protected',
+              'syntax',
+              'related',
+            ],
           },
           description: 'Specific checks to run (defaults to all 6 if omitted)',
         },
@@ -137,7 +167,7 @@ export const oodaPhase3ToolDefinitions: ToolDefinition[] = [
     name: 'ooda_learn_pattern',
     description:
       'Save a learned pattern from a completed OODA cycle to persistent memory. ' +
-      'Builds the agent\'s experience database for future improvements. ' +
+      "Builds the agent's experience database for future improvements. " +
       'Patterns include root cause, fix approach, affected file types, ' +
       'success/failure outcome, and similarity tags for matching. ' +
       'Use this AFTER ooda_verify_fix passes to capture knowledge.',
@@ -151,20 +181,37 @@ export const oodaPhase3ToolDefinitions: ToolDefinition[] = [
         pattern: {
           type: 'object',
           properties: {
-            description: { type: 'string', description: 'What was learned from this fix' },
-            rootCause: { type: 'string', description: 'The root cause identified' },
-            fixApproach: { type: 'string', description: 'The approach used to fix it' },
+            description: {
+              type: 'string',
+              description: 'What was learned from this fix',
+            },
+            rootCause: {
+              type: 'string',
+              description: 'The root cause identified',
+            },
+            fixApproach: {
+              type: 'string',
+              description: 'The approach used to fix it',
+            },
             tags: {
               type: 'array',
               items: { type: 'string' },
-              description: 'Tags for future similarity matching (e.g., ["css", "rtl", "sidebar"])',
+              description:
+                'Tags for future similarity matching (e.g., ["css", "rtl", "sidebar"])',
             },
             confidence: {
               type: 'number',
-              description: 'Confidence level 0–1 (1 = very confident the pattern is correct)',
+              description:
+                'Confidence level 0–1 (1 = very confident the pattern is correct)',
             },
           },
-          required: ['description', 'rootCause', 'fixApproach', 'tags', 'confidence'],
+          required: [
+            'description',
+            'rootCause',
+            'fixApproach',
+            'tags',
+            'confidence',
+          ],
           description: 'The pattern to save',
         },
       },
@@ -187,7 +234,8 @@ export const oodaPhase3ToolDefinitions: ToolDefinition[] = [
       properties: {
         cycleId: {
           type: 'string',
-          description: 'The ID of the cycle to check (omit for all active cycles)',
+          description:
+            'The ID of the cycle to check (omit for all active cycles)',
         },
       },
       required: [],
@@ -211,7 +259,7 @@ const PROTECTED_PATHS = [
 ];
 
 function isProtectedPath(filePath: string): boolean {
-  return PROTECTED_PATHS.some(p => filePath.startsWith(p) || filePath === p);
+  return PROTECTED_PATHS.some((p) => filePath.startsWith(p) || filePath === p);
 }
 
 /**
@@ -237,7 +285,8 @@ export function createOODAPhase3Executors(
       if (!issue || !category || !affectedFiles?.length) {
         return {
           success: false,
-          error: 'Required: issue (string), category (string), affectedFiles (string[])',
+          error:
+            'Required: issue (string), category (string), affectedFiles (string[])',
         };
       }
 
@@ -308,7 +357,9 @@ export function createOODAPhase3Executors(
       }
 
       // Check protected paths
-      const protectedFound = fixes.map(f => f.filePath).filter(isProtectedPath);
+      const protectedFound = fixes
+        .map((f) => f.filePath)
+        .filter(isProtectedPath);
       if (protectedFound.length > 0) {
         return {
           success: false,
@@ -322,10 +373,17 @@ export function createOODAPhase3Executors(
         return { success: false, error: `Cycle not found: ${cycleId}` };
       }
       if (task.status === 'completed' || task.status === 'failed') {
-        return { success: false, error: `Cycle already ${task.status}: ${cycleId}` };
+        return {
+          success: false,
+          error: `Cycle already ${task.status}: ${cycleId}`,
+        };
       }
 
-      const results: Array<{ filePath: string; success: boolean; error?: string }> = [];
+      const results: Array<{
+        filePath: string;
+        success: boolean;
+        error?: string;
+      }> = [];
       const backups: Array<{ filePath: string; originalContent: string }> = [];
 
       try {
@@ -343,17 +401,23 @@ export function createOODAPhase3Executors(
             let success = false;
             if (fix.type === 'edit' && fix.oldStr && fix.newStr) {
               success = await toolBridge.editFile(
-                fix.filePath, fix.oldStr, fix.newStr, fix.commitMessage
+                fix.filePath,
+                fix.oldStr,
+                fix.newStr,
+                fix.commitMessage
               );
             } else if (fix.type === 'rewrite' && fix.content) {
               success = await toolBridge.writeFile(
-                fix.filePath, fix.content, fix.commitMessage
+                fix.filePath,
+                fix.content,
+                fix.commitMessage
               );
             } else {
               results.push({
                 filePath: fix.filePath,
                 success: false,
-                error: 'Invalid fix: edit requires oldStr+newStr, rewrite requires content',
+                error:
+                  'Invalid fix: edit requires oldStr+newStr, rewrite requires content',
               });
               continue;
             }
@@ -368,8 +432,8 @@ export function createOODAPhase3Executors(
           }
         }
 
-        const successCount = results.filter(r => r.success).length;
-        const failCount = results.filter(r => !r.success).length;
+        const successCount = results.filter((r) => r.success).length;
+        const failCount = results.filter((r) => !r.success).length;
 
         return {
           success: failCount === 0,
@@ -379,9 +443,10 @@ export function createOODAPhase3Executors(
             failed: failCount,
             results,
             backupsCreated: backups.length,
-            message: failCount === 0
-              ? `✅ All ${successCount} fixes applied successfully`
-              : `⚠️ ${successCount} applied, ${failCount} failed`,
+            message:
+              failCount === 0
+                ? `✅ All ${successCount} fixes applied successfully`
+                : `⚠️ ${successCount} applied, ${failCount} failed`,
             rollbackAvailable: backups.length > 0,
           },
         };
@@ -390,7 +455,9 @@ export function createOODAPhase3Executors(
         for (const backup of backups) {
           try {
             await toolBridge.writeFile(
-              backup.filePath, backup.originalContent, 'Rollback: catastrophic failure'
+              backup.filePath,
+              backup.originalContent,
+              'Rollback: catastrophic failure'
             );
           } catch {
             // Best-effort rollback
@@ -419,11 +486,22 @@ export function createOODAPhase3Executors(
         return { success: false, error: `Cycle not found: ${cycleId}` };
       }
 
-      const allChecks = ['exists', 'content', 'imports', 'protected', 'syntax', 'related'];
+      const allChecks = [
+        'exists',
+        'content',
+        'imports',
+        'protected',
+        'syntax',
+        'related',
+      ];
       const checksToRun = requestedChecks?.length ? requestedChecks : allChecks;
-      const results: Array<{ check: string; passed: boolean; details: string }> = [];
+      const results: Array<{
+        check: string;
+        passed: boolean;
+        details: string;
+      }> = [];
 
-      const modifiedFiles = task.execution.changes.map(c => c.filePath);
+      const modifiedFiles = task.execution.changes.map((c) => c.filePath);
 
       for (const check of checksToRun) {
         try {
@@ -432,9 +510,17 @@ export function createOODAPhase3Executors(
               for (const filePath of modifiedFiles) {
                 try {
                   await toolBridge.readFile(filePath);
-                  results.push({ check: `exists:${filePath}`, passed: true, details: 'File exists' });
+                  results.push({
+                    check: `exists:${filePath}`,
+                    passed: true,
+                    details: 'File exists',
+                  });
                 } catch {
-                  results.push({ check: `exists:${filePath}`, passed: false, details: 'File not found' });
+                  results.push({
+                    check: `exists:${filePath}`,
+                    passed: false,
+                    details: 'File not found',
+                  });
                 }
               }
               break;
@@ -447,7 +533,9 @@ export function createOODAPhase3Executors(
                   results.push({
                     check: `content:${change.filePath}`,
                     passed: hasContent,
-                    details: hasContent ? `${content.length} chars` : 'Empty file',
+                    details: hasContent
+                      ? `${content.length} chars`
+                      : 'Empty file',
                   });
                 } catch {
                   results.push({
@@ -463,7 +551,8 @@ export function createOODAPhase3Executors(
               for (const filePath of modifiedFiles) {
                 try {
                   const content = await toolBridge.readFile(filePath);
-                  const importLines = content.match(/^import\s.+from\s+['"](.+)['"];?$/gm) || [];
+                  const importLines =
+                    content.match(/^import\s.+from\s+['"](.+)['"];?$/gm) || [];
                   const brokenImports: string[] = [];
                   for (const line of importLines) {
                     const match = line.match(/from\s+['"](.+)['"]/);
@@ -479,12 +568,17 @@ export function createOODAPhase3Executors(
                   results.push({
                     check: `imports:${filePath}`,
                     passed: brokenImports.length === 0,
-                    details: brokenImports.length === 0
-                      ? `${importLines.length} imports OK`
-                      : `Broken: ${brokenImports.join(', ')}`,
+                    details:
+                      brokenImports.length === 0
+                        ? `${importLines.length} imports OK`
+                        : `Broken: ${brokenImports.join(', ')}`,
                   });
                 } catch {
-                  results.push({ check: `imports:${filePath}`, passed: false, details: 'Cannot read' });
+                  results.push({
+                    check: `imports:${filePath}`,
+                    passed: false,
+                    details: 'Cannot read',
+                  });
                 }
               }
               break;
@@ -494,9 +588,10 @@ export function createOODAPhase3Executors(
               results.push({
                 check: 'protected',
                 passed: violations.length === 0,
-                details: violations.length === 0
-                  ? 'No protected files modified'
-                  : `⛔ VIOLATION: ${violations.join(', ')}`,
+                details:
+                  violations.length === 0
+                    ? 'No protected files modified'
+                    : `⛔ VIOLATION: ${violations.join(', ')}`,
               });
               break;
             }
@@ -509,7 +604,8 @@ export function createOODAPhase3Executors(
                   const closeBraces = (content.match(/\}/g) || []).length;
                   const openParens = (content.match(/\(/g) || []).length;
                   const closeParens = (content.match(/\)/g) || []).length;
-                  const balanced = openBraces === closeBraces && openParens === closeParens;
+                  const balanced =
+                    openBraces === closeBraces && openParens === closeParens;
                   results.push({
                     check: `syntax:${filePath}`,
                     passed: balanced,
@@ -518,7 +614,11 @@ export function createOODAPhase3Executors(
                       : `Unbalanced: {${openBraces}/${closeBraces}} (${openParens}/${closeParens})`,
                   });
                 } catch {
-                  results.push({ check: `syntax:${filePath}`, passed: false, details: 'Cannot read' });
+                  results.push({
+                    check: `syntax:${filePath}`,
+                    passed: false,
+                    details: 'Cannot read',
+                  });
                 }
               }
               break;
@@ -533,15 +633,23 @@ export function createOODAPhase3Executors(
               break;
             }
             default:
-              results.push({ check, passed: false, details: `Unknown check: ${check}` });
+              results.push({
+                check,
+                passed: false,
+                details: `Unknown check: ${check}`,
+              });
           }
         } catch (error) {
-          results.push({ check, passed: false, details: (error as Error).message });
+          results.push({
+            check,
+            passed: false,
+            details: (error as Error).message,
+          });
         }
       }
 
-      const passedCount = results.filter(r => r.passed).length;
-      const failedCount = results.filter(r => !r.passed).length;
+      const passedCount = results.filter((r) => r.passed).length;
+      const failedCount = results.filter((r) => !r.passed).length;
       const allPassed = failedCount === 0;
 
       let recommendedAction: 'COMPLETE' | 'RETRY_FIX' | 'ESCALATE';
@@ -586,7 +694,8 @@ export function createOODAPhase3Executors(
       if (!cycleId || !pattern) {
         return {
           success: false,
-          error: 'Required: cycleId (string), pattern (object with description, rootCause, fixApproach, tags, confidence)',
+          error:
+            'Required: cycleId (string), pattern (object with description, rootCause, fixApproach, tags, confidence)',
         };
       }
 
@@ -627,7 +736,7 @@ export function createOODAPhase3Executors(
             tags: pattern.tags,
             confidence: `${Math.round(pattern.confidence * 100)}%`,
             totalPatternsInMemory: allPatterns.length,
-            similarExisting: similar.map(s => ({
+            similarExisting: similar.map((s) => ({
               problem: s.pattern.problemSignature.substring(0, 60),
               similarity: `${Math.round(s.similarity * 100)}%`,
             })),
@@ -678,7 +787,7 @@ export function createOODAPhase3Executors(
             },
             execution: {
               changesCount: task.execution.changes.length,
-              changes: task.execution.changes.map(c => ({
+              changes: task.execution.changes.map((c) => ({
                 file: c.filePath,
                 type: c.changeType,
               })),
@@ -698,7 +807,7 @@ export function createOODAPhase3Executors(
       return {
         success: true,
         data: {
-          activeCycles: activeTasks.map(t => ({
+          activeCycles: activeTasks.map((t) => ({
             id: t.id,
             status: t.status,
             category: t.category,
@@ -707,7 +816,7 @@ export function createOODAPhase3Executors(
             changes: t.execution.changes.length,
             iterations: t.execution.iterations,
           })),
-          recentHistory: history.map(t => ({
+          recentHistory: history.map((t) => ({
             id: t.id,
             status: t.status,
             category: t.category,
@@ -740,6 +849,7 @@ async function loadProjectFiles(): Promise<Map<string, string>> {
 }
 
 /** Helper: Create ToolBridge from AgentService */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function createToolBridgeFromService(service: AgentService): ToolBridge {
   return {
     readFile: async (filePath: string) => {
@@ -747,8 +857,10 @@ function createToolBridgeFromService(service: AgentService): ToolBridge {
       const file = await readFileByPath(filePath);
       return file.content || '';
     },
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     editFile: async (filePath, oldStr, newStr, commitMessage) => {
-      const { readFileByPath, updateFileContent } = await import('@/lib/db/file-operations');
+      const { readFileByPath, updateFileContent } =
+        await import('@/lib/db/file-operations');
       const file = await readFileByPath(filePath);
       const content = file.content || '';
       const newContent = content.replace(oldStr, newStr);

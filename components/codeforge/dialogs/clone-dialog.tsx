@@ -17,7 +17,14 @@ import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { useNotificationStore } from '@/lib/stores/notification-store';
 import { cloneRepository } from '@/lib/services/github.service';
-import { GitBranch, Loader2, AlertCircle, CheckCircle, Github } from 'lucide-react';
+import {
+  GitBranch,
+  Loader2,
+  AlertCircle,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  CheckCircle,
+  Github,
+} from 'lucide-react';
 
 interface CloneDialogProps {
   open: boolean;

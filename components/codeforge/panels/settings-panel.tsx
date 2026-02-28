@@ -75,7 +75,9 @@ function SecretField({
         setValue(stored);
         setHasStored(true);
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, [storageKey]);
 
   const handleSave = useCallback(() => {
@@ -147,10 +149,12 @@ function SecretField({
         <div className="relative flex-1">
           <input
             type={visible || isUrl ? 'text' : 'password'}
-            value={visible || isUrl ? value : (hasStored && !value ? '' : value)}
+            value={visible || isUrl ? value : hasStored && !value ? '' : value}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={visible ? placeholder : (hasStored ? maskValue(value) : placeholder)}
+            placeholder={
+              visible ? placeholder : hasStored ? maskValue(value) : placeholder
+            }
             className={cn(
               'w-full rounded-md border border-[#313244] bg-[#1e1e2e] px-3 py-1.5',
               'text-xs font-mono text-[#cdd6f4] placeholder:text-[#45475a]',
@@ -221,7 +225,9 @@ export function SettingsPanel() {
       const model = localStorage.getItem(STORAGE_KEYS.agentModel);
       if (provider) setAgentProvider(provider);
       if (model) setAgentModel(model);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   const saveAgentConfig = useCallback(() => {
@@ -230,7 +236,9 @@ export function SettingsPanel() {
       if (agentModel.trim()) {
         localStorage.setItem(STORAGE_KEYS.agentModel, agentModel.trim());
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, [agentProvider, agentModel]);
 
   const themes: { id: CodeforgeTheme; label: string; color: string }[] = [
@@ -258,7 +266,8 @@ export function SettingsPanel() {
           helpText="إنشاء توكن"
         />
         <p className="text-[10px] text-[#6c7086] mt-1.5 px-1">
-          يُستخدم لعمليات GitHub (push, pull, إنشاء مستودعات...). يحتاج صلاحيات: repo, delete_repo
+          يُستخدم لعمليات GitHub (push, pull, إنشاء مستودعات...). يحتاج صلاحيات:
+          repo, delete_repo
         </p>
       </div>
 
@@ -313,7 +322,9 @@ export function SettingsPanel() {
           <div className="flex flex-col gap-2">
             {/* Provider select */}
             <div>
-              <label className="text-[10px] text-[#a6adc8] mb-1 block">المزود</label>
+              <label className="text-[10px] text-[#a6adc8] mb-1 block">
+                المزود
+              </label>
               <select
                 value={agentProvider}
                 onChange={(e) => {
@@ -330,7 +341,9 @@ export function SettingsPanel() {
 
             {/* Model name */}
             <div>
-              <label className="text-[10px] text-[#a6adc8] mb-1 block">اسم النموذج</label>
+              <label className="text-[10px] text-[#a6adc8] mb-1 block">
+                اسم النموذج
+              </label>
               <input
                 type="text"
                 value={agentModel}
@@ -386,9 +399,17 @@ export function SettingsPanel() {
       <div className="mt-2 pt-3 border-t border-[#313244]">
         <button
           onClick={() => {
-            if (confirm('هل تريد مسح جميع الإعدادات المحفوظة؟ هذا لن يحذف ملفاتك.')) {
+            if (
+              confirm(
+                'هل تريد مسح جميع الإعدادات المحفوظة؟ هذا لن يحذف ملفاتك.'
+              )
+            ) {
               Object.values(STORAGE_KEYS).forEach((key) => {
-                try { localStorage.removeItem(key); } catch { /* ignore */ }
+                try {
+                  localStorage.removeItem(key);
+                } catch {
+                  /* ignore */
+                }
               });
               window.location.reload();
             }

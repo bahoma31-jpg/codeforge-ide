@@ -16,7 +16,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { useNotificationStore } from '@/lib/stores/notification-store';
-import { Github, Loader2, Eye, EyeOff, ExternalLink, LogOut } from 'lucide-react';
+import {
+  Github,
+  Loader2,
+  Eye,
+  EyeOff,
+  ExternalLink,
+  LogOut,
+} from 'lucide-react';
 
 interface AuthDialogProps {
   open: boolean;
@@ -26,8 +33,15 @@ interface AuthDialogProps {
 export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
   const [token, setToken] = useState('');
   const [showToken, setShowToken] = useState(false);
-  const { signIn, signOut, isLoading, isAuthenticated, user, error, clearError } =
-    useAuthStore();
+  const {
+    signIn,
+    signOut,
+    isLoading,
+    isAuthenticated,
+    user,
+    error,
+    clearError,
+  } = useAuthStore();
   const { addNotification } = useNotificationStore();
 
   const handleSignIn = async () => {
@@ -83,8 +97,12 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
                 className="h-10 w-10 rounded-full"
               />
               <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{user.name || user.login}</p>
-                <p className="text-sm text-muted-foreground truncate">@{user.login}</p>
+                <p className="font-medium truncate">
+                  {user.name || user.login}
+                </p>
+                <p className="text-sm text-muted-foreground truncate">
+                  @{user.login}
+                </p>
               </div>
             </div>
             {user.bio && (
@@ -136,14 +154,16 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
                   className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
                   aria-label={showToken ? 'Hide token' : 'Show token'}
                 >
-                  {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showToken ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </div>
 
-            {error && (
-              <p className="text-sm text-destructive">{error}</p>
-            )}
+            {error && <p className="text-sm text-destructive">{error}</p>}
 
             <Button
               onClick={handleSignIn}
@@ -167,8 +187,11 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
               <p className="text-xs font-medium">كيف تحصل على Token؟</p>
               <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
                 <li>Settings → Developer settings → Personal access tokens</li>
-                <li>اختر "Fine-grained" أو "Classic"</li>
-                <li>فعّل صلاحيات: <code className="bg-background px-1 rounded">repo</code></li>
+                <li>اختر &quot;Fine-grained&quot; أو &quot;Classic&quot;</li>
+                <li>
+                  فعّل صلاحيات:{' '}
+                  <code className="bg-background px-1 rounded">repo</code>
+                </li>
               </ol>
               <a
                 href="https://github.com/settings/tokens/new"

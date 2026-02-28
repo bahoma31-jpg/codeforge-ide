@@ -60,7 +60,8 @@ export function ApprovalDialog({ approval }: ApprovalDialogProps) {
 
   if (approval.status !== 'pending') return null;
 
-  const toolName = approval.toolCall.name || approval.toolCall.toolName || 'unknown';
+  const toolName =
+    approval.toolCall.name || approval.toolCall.toolName || 'unknown';
   const isGitOp = toolName.startsWith('git_');
   const isGitHubOp = toolName.startsWith('github_');
 
@@ -114,29 +115,37 @@ export function ApprovalDialog({ approval }: ApprovalDialogProps) {
         )}
 
         {/* Tool arguments preview */}
-        {approval.toolCall.arguments && Object.keys(approval.toolCall.arguments).length > 0 && (
-          <div className="mt-2 rounded-lg bg-[#181825] border border-[#313244] p-2">
-            <div className="text-[10px] text-[#45475a] mb-1">المعطيات:</div>
-            {Object.entries(approval.toolCall.arguments).map(([key, value]) => (
-              <div key={key} className="text-[10px] font-mono text-[#cdd6f4] mt-0.5">
-                <span className="text-[#89b4fa]">{key}</span>
-                <span className="text-[#45475a]">: </span>
-                <span className="text-[#a6e3a1]">
-                  {typeof value === 'string'
-                    ? value.length > 80
-                      ? value.slice(0, 80) + '...'
-                      : value
-                    : JSON.stringify(value)}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+        {approval.toolCall.arguments &&
+          Object.keys(approval.toolCall.arguments).length > 0 && (
+            <div className="mt-2 rounded-lg bg-[#181825] border border-[#313244] p-2">
+              <div className="text-[10px] text-[#45475a] mb-1">المعطيات:</div>
+              {Object.entries(approval.toolCall.arguments).map(
+                ([key, value]) => (
+                  <div
+                    key={key}
+                    className="text-[10px] font-mono text-[#cdd6f4] mt-0.5"
+                  >
+                    <span className="text-[#89b4fa]">{key}</span>
+                    <span className="text-[#45475a]">: </span>
+                    <span className="text-[#a6e3a1]">
+                      {typeof value === 'string'
+                        ? value.length > 80
+                          ? value.slice(0, 80) + '...'
+                          : value
+                        : JSON.stringify(value)}
+                    </span>
+                  </div>
+                )
+              )}
+            </div>
+          )}
 
         {/* Affected files */}
         {approval.affectedFiles && approval.affectedFiles.length > 0 && (
           <div className="mt-2">
-            <div className="text-[10px] text-[#45475a] mb-1">الملفات المتأثرة:</div>
+            <div className="text-[10px] text-[#45475a] mb-1">
+              الملفات المتأثرة:
+            </div>
             {approval.affectedFiles.map((file) => (
               <div
                 key={file}

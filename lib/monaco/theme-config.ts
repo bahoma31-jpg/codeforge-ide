@@ -79,8 +79,8 @@ export const codeforgeHighContrast: editor.IStandaloneThemeData = {
     'editorLineNumber.activeForeground': '#ffffff',
     'editorCursor.foreground': '#ffffff',
     'editor.selectionHighlightBorder': '#f9e2af',
-    'contrastBorder': '#6c7086',
-    'contrastActiveBorder': '#89b4fa',
+    contrastBorder: '#6c7086',
+    contrastActiveBorder: '#89b4fa',
   },
 };
 

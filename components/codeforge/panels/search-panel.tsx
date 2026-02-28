@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { useFilesStore } from '@/lib/stores/files-store';
 import { useEditorStore } from '@/lib/stores/editor-store';
 import type { FileNode } from '@/lib/db/schema';
+import { logger } from '@/lib/monitoring/error-logger';
 
 interface SearchResult {
   file: FileNode;
@@ -29,7 +30,7 @@ interface SearchResult {
 }
 
 export function SearchPanel() {
-  const { fileTree } = useFilesStore();
+  const { nodes } = useFilesStore();
   const { openFile } = useEditorStore();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -39,68 +40,60 @@ export function SearchPanel() {
   const [searchDone, setSearchDone] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Flatten file tree to get all files
-  const flattenFiles = useCallback((nodes: FileNode[]): FileNode[] => {
-    const files: FileNode[] = [];
-    const walk = (list: (FileNode & { children?: FileNode[] })[]) => {
-      for (const node of list) {
-        if (node.type === 'file') files.push(node);
-        if (node.children) walk(node.children);
-      }
-    };
-    walk(nodes as (FileNode & { children?: FileNode[] })[]);
-    return files;
-  }, []);
-
   const handleSearch = useCallback(() => {
-    if (!query.trim() || !fileTree) return;
+    if (!query.trim() || !nodes) return;
 
     setIsSearching(true);
     setSearchDone(false);
 
     // Use setTimeout to avoid blocking the UI
     setTimeout(() => {
-      const allFiles = flattenFiles(fileTree);
-      const found: SearchResult[] = [];
-
-      let pattern: RegExp;
       try {
-        if (useRegex) {
-          pattern = new RegExp(query, caseSensitive ? 'g' : 'gi');
-        } else {
-          const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          pattern = new RegExp(escaped, caseSensitive ? 'g' : 'gi');
+        const allFiles = nodes.filter(node => node.type === 'file');
+        const found: SearchResult[] = [];
+
+        let pattern: RegExp;
+        try {
+          if (useRegex) {
+            pattern = new RegExp(query, caseSensitive ? 'g' : 'gi');
+          } else {
+            const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            pattern = new RegExp(escaped, caseSensitive ? 'g' : 'gi');
+          }
+        } catch {
+          setIsSearching(false);
+          setSearchDone(true);
+          return;
         }
-      } catch {
+
+        for (const file of allFiles) {
+          if (!file.content) continue;
+          const lines = file.content.split('\n');
+          for (let i = 0; i < lines.length; i++) {
+            const match = pattern.exec(lines[i]);
+            if (match) {
+              found.push({
+                file,
+                line: i + 1,
+                content: lines[i].trim(),
+                matchStart: match.index,
+                matchEnd: match.index + match[0].length,
+              });
+            }
+            pattern.lastIndex = 0; // Reset for next line
+          }
+          if (found.length > 200) break; // Limit results
+        }
+
+        setResults(found);
+      } catch (error) {
+        logger.error(`فشل البحث عن: ${query}`, error instanceof Error ? error : undefined, { source: 'SearchPanel' });
+      } finally {
         setIsSearching(false);
         setSearchDone(true);
-        return;
       }
-
-      for (const file of allFiles) {
-        if (!file.content) continue;
-        const lines = file.content.split('\n');
-        for (let i = 0; i < lines.length; i++) {
-          const match = pattern.exec(lines[i]);
-          if (match) {
-            found.push({
-              file,
-              line: i + 1,
-              content: lines[i].trim(),
-              matchStart: match.index,
-              matchEnd: match.index + match[0].length,
-            });
-          }
-          pattern.lastIndex = 0; // Reset for next line
-        }
-        if (found.length > 200) break; // Limit results
-      }
-
-      setResults(found);
-      setIsSearching(false);
-      setSearchDone(true);
     }, 50);
-  }, [query, fileTree, caseSensitive, useRegex, flattenFiles]);
+  }, [query, nodes, caseSensitive, useRegex]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -140,7 +133,11 @@ export function SearchPanel() {
           />
           {query && (
             <button
-              onClick={() => { setQuery(''); setResults([]); setSearchDone(false); }}
+              onClick={() => {
+                setQuery('');
+                setResults([]);
+                setSearchDone(false);
+              }}
               className="text-[#6c7086] hover:text-[#cdd6f4]"
             >
               <X size={12} />
@@ -195,7 +192,7 @@ export function SearchPanel() {
 
         {!isSearching && searchDone && results.length === 0 && (
           <div className="p-4 text-center text-[11px] text-[#6c7086]">
-            لا توجد نتائج لـ "{query}"
+            لا توجد نتائج لـ &quot;{query}&quot;
           </div>
         )}
 
@@ -207,15 +204,23 @@ export function SearchPanel() {
                 onClick={() => openResult(result)}
                 className="flex w-full items-start gap-2 px-3 py-1.5 text-left hover:bg-[#313244]/50 transition-colors"
               >
-                <FileText size={12} className="text-[#6c7086] shrink-0 mt-0.5" />
+                <FileText
+                  size={12}
+                  className="text-[#6c7086] shrink-0 mt-0.5"
+                />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1">
                     <span className="text-[10px] font-medium text-[#89b4fa] truncate">
                       {result.file.name}
                     </span>
-                    <span className="text-[9px] text-[#45475a]">:{result.line}</span>
+                    <span className="text-[9px] text-[#45475a]">
+                      :{result.line}
+                    </span>
                   </div>
-                  <div className="text-[10px] font-mono text-[#a6adc8] truncate" dir="ltr">
+                  <div
+                    className="text-[10px] font-mono text-[#a6adc8] truncate"
+                    dir="ltr"
+                  >
                     {result.content.length > 100
                       ? result.content.slice(0, 100) + '...'
                       : result.content}

@@ -17,11 +17,15 @@ import type {
 // ─── Import/Export Parsing ────────────────────────────────────
 
 /** Extract import statements from TypeScript/JavaScript source code */
-function parseImports(content: string): Array<{ source: string; symbols: string[] }> {
+function parseImports(
+  content: string
+): Array<{ source: string; symbols: string[] }> {
   const imports: Array<{ source: string; symbols: string[] }> = [];
-  const importRegex = /import\s+(?:(?:\{([^}]*)\})|(?:(\w+))(?:\s*,\s*\{([^}]*)\})?)\s+from\s+['"]([^'"]+)['"]/g;
+  const importRegex =
+    /import\s+(?:(?:\{([^}]*)\})|(?:(\w+))(?:\s*,\s*\{([^}]*)\})?)\s+from\s+['"]([^'"]+)['"]/g;
   const sideEffectImport = /import\s+['"]([^'"]+)['"]/g;
-  const typeImportRegex = /import\s+type\s+(?:\{([^}]*)\})\s+from\s+['"]([^'"]+)['"]/g;
+  const typeImportRegex =
+    /import\s+type\s+(?:\{([^}]*)\})\s+from\s+['"]([^'"]+)['"]/g;
 
   let match;
 
@@ -36,7 +40,12 @@ function parseImports(content: string): Array<{ source: string; symbols: string[
 
     if (defaultSymbol) symbols.push(defaultSymbol);
     if (namedSymbols) {
-      symbols.push(...namedSymbols.split(',').map(s => s.trim().split(' as ')[0].trim()).filter(Boolean));
+      symbols.push(
+        ...namedSymbols
+          .split(',')
+          .map((s) => s.trim().split(' as ')[0].trim())
+          .filter(Boolean)
+      );
     }
 
     imports.push({ source, symbols });
@@ -44,14 +53,17 @@ function parseImports(content: string): Array<{ source: string; symbols: string[
 
   // Type imports: import type { A } from 'x'
   while ((match = typeImportRegex.exec(content)) !== null) {
-    const symbols = match[1].split(',').map(s => s.trim().split(' as ')[0].trim()).filter(Boolean);
+    const symbols = match[1]
+      .split(',')
+      .map((s) => s.trim().split(' as ')[0].trim())
+      .filter(Boolean);
     imports.push({ source: match[2], symbols });
   }
 
   // Side-effect imports: import 'x'
   while ((match = sideEffectImport.exec(content)) !== null) {
     // Avoid duplicates from previous regex
-    if (!imports.some(i => i.source === match![1])) {
+    if (!imports.some((i) => i.source === match![1])) {
       imports.push({ source: match[1], symbols: [] });
     }
   }
@@ -73,7 +85,12 @@ function parseExports(content: string): string[] {
     while ((match = pattern.exec(content)) !== null) {
       if (pattern === patterns[2]) {
         // export { A, B, C }
-        exports.push(...match[1].split(',').map(s => s.trim().split(' as ')[0].trim()).filter(Boolean));
+        exports.push(
+          ...match[1]
+            .split(',')
+            .map((s) => s.trim().split(' as ')[0].trim())
+            .filter(Boolean)
+        );
       } else {
         exports.push(match[1]);
       }
@@ -90,19 +107,32 @@ function detectComponentType(
 ): ComponentAnalysis['type'] {
   const lower = filePath.toLowerCase();
 
-  if (lower.includes('.test.') || lower.includes('.spec.') || lower.includes('__tests__')) return 'test';
-  if (lower.endsWith('.css') || lower.endsWith('.scss') || lower.endsWith('.module.css')) return 'style';
-  if (lower.includes('/types') || lower.endsWith('.d.ts')) return 'type_definition';
+  if (
+    lower.includes('.test.') ||
+    lower.includes('.spec.') ||
+    lower.includes('__tests__')
+  )
+    return 'test';
+  if (
+    lower.endsWith('.css') ||
+    lower.endsWith('.scss') ||
+    lower.endsWith('.module.css')
+  )
+    return 'style';
+  if (lower.includes('/types') || lower.endsWith('.d.ts'))
+    return 'type_definition';
   if (lower.includes('config') || lower.includes('.config.')) return 'config';
   if (lower.includes('/stores/') || lower.includes('-store')) return 'store';
   if (lower.includes('/hooks/') || lower.includes('use-')) return 'hook';
-  if (lower.includes('-service') || lower.includes('/services/')) return 'service';
+  if (lower.includes('-service') || lower.includes('/services/'))
+    return 'service';
 
   // Check content for React component patterns
   if (
     content.includes('React') ||
     content.includes('jsx') ||
-    /export\s+(?:default\s+)?function\s+\w+.*\(/.test(content) && content.includes('return (')
+    (/export\s+(?:default\s+)?function\s+\w+.*\(/.test(content) &&
+      content.includes('return ('))
   ) {
     return 'react_component';
   }
@@ -117,9 +147,9 @@ function extractProps(content: string): string[] {
 
   return propsMatch[1]
     .split('\n')
-    .map(line => line.trim())
-    .filter(line => line && !line.startsWith('//'))
-    .map(line => line.split(':')[0]?.replace('?', '').trim())
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith('//'))
+    .map((line) => line.split(':')[0]?.replace('?', '').trim())
     .filter(Boolean);
 }
 
@@ -147,10 +177,13 @@ function extractStateUsage(content: string): string[] {
 function estimateComplexity(content: string): 'low' | 'medium' | 'high' {
   const lines = content.split('\n').length;
   const conditionals = (content.match(/if\s*\(|\?\s*[^:]/g) || []).length;
-  const loops = (content.match(/for\s*\(|while\s*\(|\.map\(|\.forEach\(|\.reduce\(/g) || []).length;
+  const loops = (
+    content.match(/for\s*\(|while\s*\(|\.map\(|\.forEach\(|\.reduce\(/g) || []
+  ).length;
   const callbacks = (content.match(/=>|function\s/g) || []).length;
 
-  const score = (conditionals * 2) + (loops * 3) + (callbacks * 1) + (lines > 200 ? 10 : 0);
+  const score =
+    conditionals * 2 + loops * 3 + callbacks * 1 + (lines > 200 ? 10 : 0);
 
   if (score > 30) return 'high';
   if (score > 12) return 'medium';
@@ -184,10 +217,12 @@ export class SelfAnalysisEngine {
     const imports = parseImports(content);
     const exports = parseExports(content);
     const type = detectComponentType(filePath, content);
-    const props = type === 'react_component' ? extractProps(content) : undefined;
-    const stateUsage = (type === 'react_component' || type === 'hook')
-      ? extractStateUsage(content)
-      : undefined;
+    const props =
+      type === 'react_component' ? extractProps(content) : undefined;
+    const stateUsage =
+      type === 'react_component' || type === 'hook'
+        ? extractStateUsage(content)
+        : undefined;
     const lineCount = content.split('\n').length;
     const complexity = estimateComplexity(content);
 
@@ -197,8 +232,8 @@ export class SelfAnalysisEngine {
 
     // Resolve dependencies (relative imports)
     const dependencies = imports
-      .map(i => i.source)
-      .filter(s => s.startsWith('.') || s.startsWith('@/'));
+      .map((i) => i.source)
+      .filter((s) => s.startsWith('.') || s.startsWith('@/'));
 
     const analysis: ComponentAnalysis = {
       filePath,
@@ -258,7 +293,11 @@ export class SelfAnalysisEngine {
       if (otherPath === filePath) continue;
       const otherImports = parseImports(otherContent);
       for (const imp of otherImports) {
-        const resolved = this.resolveImportPath(otherPath, imp.source, allFiles);
+        const resolved = this.resolveImportPath(
+          otherPath,
+          imp.source,
+          allFiles
+        );
         if (resolved === filePath) {
           downstream.add(otherPath);
         }
@@ -273,7 +312,12 @@ export class SelfAnalysisEngine {
     }
 
     // Build trace tree
-    const traceTree = this.buildTraceTree(filePath, allFiles, maxDepth, new Set());
+    const traceTree = this.buildTraceTree(
+      filePath,
+      allFiles,
+      maxDepth,
+      new Set()
+    );
 
     return {
       rootFile: filePath,
@@ -319,7 +363,7 @@ export class SelfAnalysisEngine {
 
       dependencyGraph[filePath] = {
         filePath,
-        imports: imports.map(i => i.source),
+        imports: imports.map((i) => i.source),
         exportedSymbols: exports,
         importedBy: [], // Filled in second pass
         language: ext,
@@ -327,10 +371,18 @@ export class SelfAnalysisEngine {
       };
 
       // Categorize
-      if (filePath.includes('page.tsx') || filePath.includes('layout.tsx') || filePath === 'app/page.tsx') {
+      if (
+        filePath.includes('page.tsx') ||
+        filePath.includes('layout.tsx') ||
+        filePath === 'app/page.tsx'
+      ) {
         entryPoints.push(filePath);
       }
-      if (filePath.includes('.config.') || filePath === 'package.json' || filePath === 'tsconfig.json') {
+      if (
+        filePath.includes('.config.') ||
+        filePath === 'package.json' ||
+        filePath === 'tsconfig.json'
+      ) {
         configFiles.push(filePath);
       }
       if (filePath.includes('/components/') || filePath.endsWith('.tsx')) {
@@ -377,32 +429,36 @@ export class SelfAnalysisEngine {
     const keywords = issueDescription
       .toLowerCase()
       .split(/[\s,.;:!?()\[\]{}]+/)
-      .filter(k => k.length > 2);
+      .filter((k) => k.length > 2);
 
-    const results: Array<{ filePath: string; relevanceScore: number; reason: string }> = [];
+    const results: Array<{
+      filePath: string;
+      relevanceScore: number;
+      reason: string;
+    }> = [];
 
     // UI-related keyword mappings
     const areaKeywords: Record<string, string[]> = {
-      'sidebar': ['sidebar', 'file-explorer', 'panel', 'activity-bar'],
-      'editor': ['editor', 'monaco', 'tab', 'code-editor'],
-      'terminal': ['terminal', 'console', 'output'],
-      'header': ['header', 'menu-bar', 'title-bar', 'toolbar'],
-      'status': ['status-bar', 'footer', 'status'],
-      'dialog': ['dialog', 'modal', 'popup'],
-      'settings': ['settings', 'config', 'preferences'],
-      'agent': ['agent', 'chat', 'ai', 'assistant'],
-      'git': ['git', 'source-control', 'version'],
-      'left': ['sidebar', 'file-explorer', 'activity-bar', 'panel'],
-      'right': ['panel', 'agent', 'chat'],
-      'bottom': ['terminal', 'output', 'status-bar', 'problems'],
-      'top': ['header', 'menu-bar', 'title-bar', 'toolbar'],
-      'button': ['button', 'btn', 'action', 'click'],
-      'layout': ['layout', 'grid', 'flex', 'resize', 'split'],
-      'واجهة': ['layout', 'ui', 'component', 'panel'],
-      'يسرى': ['sidebar', 'file-explorer', 'activity-bar', 'panel'],
-      'يمنى': ['panel', 'agent', 'chat'],
-      'زاوية': ['corner', 'sidebar', 'panel', 'layout'],
-      'أزرار': ['button', 'btn', 'action', 'icon'],
+      sidebar: ['sidebar', 'file-explorer', 'panel', 'activity-bar'],
+      editor: ['editor', 'monaco', 'tab', 'code-editor'],
+      terminal: ['terminal', 'console', 'output'],
+      header: ['header', 'menu-bar', 'title-bar', 'toolbar'],
+      status: ['status-bar', 'footer', 'status'],
+      dialog: ['dialog', 'modal', 'popup'],
+      settings: ['settings', 'config', 'preferences'],
+      agent: ['agent', 'chat', 'ai', 'assistant'],
+      git: ['git', 'source-control', 'version'],
+      left: ['sidebar', 'file-explorer', 'activity-bar', 'panel'],
+      right: ['panel', 'agent', 'chat'],
+      bottom: ['terminal', 'output', 'status-bar', 'problems'],
+      top: ['header', 'menu-bar', 'title-bar', 'toolbar'],
+      button: ['button', 'btn', 'action', 'click'],
+      layout: ['layout', 'grid', 'flex', 'resize', 'split'],
+      واجهة: ['layout', 'ui', 'component', 'panel'],
+      يسرى: ['sidebar', 'file-explorer', 'activity-bar', 'panel'],
+      يمنى: ['panel', 'agent', 'chat'],
+      زاوية: ['corner', 'sidebar', 'panel', 'layout'],
+      أزرار: ['button', 'btn', 'action', 'icon'],
     };
 
     for (const [filePath, content] of allFiles.entries()) {
@@ -439,7 +495,13 @@ export class SelfAnalysisEngine {
       }
 
       // Boost UI files for UI-related issues
-      if (keywords.some(k => ['ui', 'واجهة', 'button', 'أزرار', 'layout', 'style', 'css'].includes(k))) {
+      if (
+        keywords.some((k) =>
+          ['ui', 'واجهة', 'button', 'أزرار', 'layout', 'style', 'css'].includes(
+            k
+          )
+        )
+      ) {
         if (filePath.endsWith('.tsx') || filePath.endsWith('.css')) score += 2;
       }
 
@@ -504,7 +566,16 @@ export class SelfAnalysisEngine {
     }
 
     // Try different extensions
-    const extensions = ['', '.ts', '.tsx', '.js', '.jsx', '/index.ts', '/index.tsx', '/index.js'];
+    const extensions = [
+      '',
+      '.ts',
+      '.tsx',
+      '.js',
+      '.jsx',
+      '/index.ts',
+      '/index.tsx',
+      '/index.js',
+    ];
     for (const ext of extensions) {
       const candidate = resolvedBase + ext;
       if (allFiles.has(candidate)) return candidate;
@@ -542,7 +613,13 @@ export class SelfAnalysisEngine {
       const resolved = this.resolveImportPath(filePath, imp.source, allFiles);
       if (resolved) {
         node.children.push(
-          this.buildTraceTree(resolved, allFiles, maxDepth, new Set(visited), currentDepth + 1)
+          this.buildTraceTree(
+            resolved,
+            allFiles,
+            maxDepth,
+            new Set(visited),
+            currentDepth + 1
+          )
         );
       }
     }

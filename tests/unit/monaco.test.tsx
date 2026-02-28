@@ -2,7 +2,9 @@
 import { detectLanguage, supportedLanguages } from '@/lib/monaco/monaco-config';
 import {
   getOrCreateModel,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   disposeModel,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   clearAllModels,
 } from '@/lib/monaco/model-cache';
 

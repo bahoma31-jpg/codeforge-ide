@@ -95,7 +95,7 @@ describe('Tool Registry v2.3 — Integration', () => {
     });
 
     it('should have no duplicate tool names', () => {
-      const names = allTools.map(t => t.name);
+      const names = allTools.map((t) => t.name);
       const uniqueNames = new Set(names);
       expect(uniqueNames.size).toBe(names.length);
     });
@@ -108,7 +108,14 @@ describe('Tool Registry v2.3 — Integration', () => {
     });
 
     it('should have all tools with valid categories', () => {
-      const validCategories = ['filesystem', 'git', 'github', 'utility', 'self-improve', 'ooda'];
+      const validCategories = [
+        'filesystem',
+        'git',
+        'github',
+        'utility',
+        'self-improve',
+        'ooda',
+      ];
       for (const tool of allTools) {
         expect(validCategories).toContain(tool.category);
       }
@@ -121,27 +128,27 @@ describe('Tool Registry v2.3 — Integration', () => {
 
   describe('Category Distribution', () => {
     it('should have 9 filesystem tools', () => {
-      const fsTools = allTools.filter(t => t.category === 'filesystem');
+      const fsTools = allTools.filter((t) => t.category === 'filesystem');
       expect(fsTools.length).toBe(9);
-      expect(fsTools.every(t => t.name.startsWith('fs_'))).toBe(true);
+      expect(fsTools.every((t) => t.name.startsWith('fs_'))).toBe(true);
     });
 
     it('should have 8 git tools', () => {
-      const gitTools = allTools.filter(t => t.category === 'git');
+      const gitTools = allTools.filter((t) => t.category === 'git');
       expect(gitTools.length).toBe(8);
-      expect(gitTools.every(t => t.name.startsWith('git_'))).toBe(true);
+      expect(gitTools.every((t) => t.name.startsWith('git_'))).toBe(true);
     });
 
     it('should have 25 github tools', () => {
-      const ghTools = allTools.filter(t => t.category === 'github');
+      const ghTools = allTools.filter((t) => t.category === 'github');
       expect(ghTools.length).toBe(25);
-      expect(ghTools.every(t => t.name.startsWith('github_'))).toBe(true);
+      expect(ghTools.every((t) => t.name.startsWith('github_'))).toBe(true);
     });
 
     it('should have 5 ooda tools with ooda_ prefix', () => {
-      const oodaTools = allTools.filter(t => t.category === 'ooda');
+      const oodaTools = allTools.filter((t) => t.category === 'ooda');
       expect(oodaTools.length).toBe(5);
-      expect(oodaTools.every(t => t.name.startsWith('ooda_'))).toBe(true);
+      expect(oodaTools.every((t) => t.name.startsWith('ooda_'))).toBe(true);
 
       const expectedNames = [
         'ooda_start_cycle',
@@ -150,7 +157,7 @@ describe('Tool Registry v2.3 — Integration', () => {
         'ooda_learn_pattern',
         'ooda_get_status',
       ];
-      const actualNames = oodaTools.map(t => t.name).sort();
+      const actualNames = oodaTools.map((t) => t.name).sort();
       expect(actualNames).toEqual(expectedNames.sort());
     });
   });
@@ -168,7 +175,7 @@ describe('Tool Registry v2.3 — Integration', () => {
     });
 
     it('should have correct risk levels for ooda tools', () => {
-      const oodaTools = allTools.filter(t => t.category === 'ooda');
+      const oodaTools = allTools.filter((t) => t.category === 'ooda');
       const riskMap: Record<string, string> = {};
       for (const t of oodaTools) riskMap[t.name] = t.riskLevel;
 
@@ -201,7 +208,7 @@ describe('Tool Registry v2.3 — Integration', () => {
     it('should filter tools by category', () => {
       const oodaTools = getToolsByCategory('ooda');
       expect(oodaTools.length).toBe(5);
-      expect(oodaTools.every(t => t.category === 'ooda')).toBe(true);
+      expect(oodaTools.every((t) => t.category === 'ooda')).toBe(true);
 
       const selfTools = getToolsByCategory('self-improve');
       expect(selfTools.length).toBe(8);
@@ -212,7 +219,9 @@ describe('Tool Registry v2.3 — Integration', () => {
       const notifyTools = getToolsByRiskLevel('notify');
       const confirmTools = getToolsByRiskLevel('confirm');
 
-      expect(autoTools.length + notifyTools.length + confirmTools.length).toBe(58);
+      expect(autoTools.length + notifyTools.length + confirmTools.length).toBe(
+        58
+      );
       expect(autoTools.length).toBeGreaterThan(0);
       expect(notifyTools.length).toBeGreaterThan(0);
     });
@@ -242,7 +251,10 @@ describe('Tool Registry v2.3 — Integration', () => {
       expect(categories).toContain('ooda');
 
       // Sum of all categories should equal total
-      const categorySum = Object.values(stats.byCategory).reduce((a, b) => a + b, 0);
+      const categorySum = Object.values(stats.byCategory).reduce(
+        (a, b) => a + b,
+        0
+      );
       expect(categorySum).toBe(stats.total);
     });
   });

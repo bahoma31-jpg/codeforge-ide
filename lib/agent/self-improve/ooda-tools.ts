@@ -28,12 +28,21 @@ export const oodaToolDefinitions: ToolDefinition[] = [
       properties: {
         description: {
           type: 'string',
-          description: 'Detailed description of the issue or improvement request',
+          description:
+            'Detailed description of the issue or improvement request',
         },
         category: {
           type: 'string',
-          enum: ['ui_bug', 'logic_error', 'performance', 'style', 'accessibility', 'feature_enhancement'],
-          description: 'Category of the issue (optional — auto-detected if not provided)',
+          enum: [
+            'ui_bug',
+            'logic_error',
+            'performance',
+            'style',
+            'accessibility',
+            'feature_enhancement',
+          ],
+          description:
+            'Category of the issue (optional — auto-detected if not provided)',
         },
         trigger: {
           type: 'string',
@@ -55,7 +64,8 @@ export const oodaToolDefinitions: ToolDefinition[] = [
       properties: {
         taskId: {
           type: 'string',
-          description: 'The ID of the task to check. If not provided, returns all active tasks.',
+          description:
+            'The ID of the task to check. If not provided, returns all active tasks.',
         },
       },
       required: [],
@@ -92,7 +102,14 @@ export const oodaToolDefinitions: ToolDefinition[] = [
         },
         category: {
           type: 'string',
-          enum: ['ui_bug', 'logic_error', 'performance', 'style', 'accessibility', 'feature_enhancement'],
+          enum: [
+            'ui_bug',
+            'logic_error',
+            'performance',
+            'style',
+            'accessibility',
+            'feature_enhancement',
+          ],
           description: 'Filter suggestions by category (optional)',
         },
       },
@@ -139,7 +156,8 @@ export function createOODAToolExecutors(
     self_start_improvement: async (args): Promise<ToolCallResult> => {
       const description = args.description as string;
       const category = args.category as IssueCategory | undefined;
-      const trigger = (args.trigger as 'user_report' | 'self_detected') || 'user_report';
+      const trigger =
+        (args.trigger as 'user_report' | 'self_detected') || 'user_report';
 
       if (!description) {
         return { success: false, error: 'Description is required' };
@@ -198,8 +216,8 @@ export function createOODAToolExecutors(
       return {
         success: true,
         data: {
-          activeTasks: activeTasks.map(t => formatTaskBrief(t)),
-          recentHistory: history.map(t => formatTaskBrief(t)),
+          activeTasks: activeTasks.map((t) => formatTaskBrief(t)),
+          recentHistory: history.map((t) => formatTaskBrief(t)),
         },
       };
     },
@@ -232,7 +250,7 @@ export function createOODAToolExecutors(
       let results;
       if (category) {
         const categoryPatterns = memory.findByCategory(category);
-        results = categoryPatterns.map(p => ({
+        results = categoryPatterns.map((p) => ({
           pattern: p,
           similarity: 0.5, // Category match but no keyword comparison
         }));
@@ -243,7 +261,7 @@ export function createOODAToolExecutors(
       return {
         success: true,
         data: {
-          suggestions: results.map(r => ({
+          suggestions: results.map((r) => ({
             id: r.pattern.id,
             category: r.pattern.category,
             problem: r.pattern.problemSignature,
@@ -281,7 +299,10 @@ export function createOODAToolExecutors(
 
 function formatTaskResult(
   task: SelfImprovementTask,
-  suggestions: Array<{ pattern: { problemSignature: string; solution: string }; similarity: number }>,
+  suggestions: Array<{
+    pattern: { problemSignature: string; solution: string };
+    similarity: number;
+  }>,
   events?: OODAEvent[]
 ): Record<string, unknown> {
   return {
@@ -310,12 +331,12 @@ function formatTaskResult(
       verified: task.execution.verificationResult?.passed ?? null,
       errors: task.execution.errors,
     },
-    pastSuggestions: suggestions.map(s => ({
+    pastSuggestions: suggestions.map((s) => ({
       problem: s.pattern.problemSignature.substring(0, 80),
       solution: s.pattern.solution.substring(0, 80),
       similarity: `${Math.round(s.similarity * 100)}%`,
     })),
-    timeline: events?.map(e => ({
+    timeline: events?.map((e) => ({
       phase: e.phase,
       status: e.status,
       message: e.message,
@@ -345,7 +366,7 @@ function formatTaskStatus(
     execution: {
       status: task.execution.status,
       changesCount: task.execution.changes.length,
-      changes: task.execution.changes.map(c => ({
+      changes: task.execution.changes.map((c) => ({
         file: c.filePath,
         type: c.changeType,
       })),
@@ -353,7 +374,7 @@ function formatTaskStatus(
       verification: task.execution.verificationResult,
       errors: task.execution.errors,
     },
-    timeline: events?.map(e => ({
+    timeline: events?.map((e) => ({
       phase: e.phase,
       status: e.status,
       message: e.message,

@@ -24,8 +24,14 @@ import { fileTools, registerFileExecutors } from './file-tools';
 import { gitTools, registerGitExecutors } from './git-tools';
 import { githubTools, registerGitHubExecutors } from './github-tools';
 import { utilityTools, registerUtilityExecutors } from './utility-tools';
-import { selfImproveTools, registerSelfImproveExecutors } from '../self-improve';
-import { oodaPhase3ToolDefinitions, registerOODAPhase3Executors } from '../self-improve';
+import {
+  selfImproveTools,
+  registerSelfImproveExecutors,
+} from '../self-improve';
+import {
+  oodaPhase3ToolDefinitions,
+  registerOODAPhase3Executors,
+} from '../self-improve';
 
 /** OODA Phase 3 tools (category: 'ooda') */
 const oodaTools: ToolDefinition[] = oodaPhase3ToolDefinitions;
@@ -71,9 +77,7 @@ export function registerAllExecutors(service: AgentService): void {
 /**
  * Get tools by category
  */
-export function getToolsByCategory(
-  category: ToolCategory
-): ToolDefinition[] {
+export function getToolsByCategory(category: ToolCategory): ToolDefinition[] {
   return getAllTools().filter((t) => t.category === category);
 }
 

@@ -193,7 +193,7 @@ export class GroqProvider {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`,
+        Authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify(request),
     });
@@ -242,7 +242,9 @@ export class GroqProvider {
 
   // ─── OODA Integration ────────────────────────────────────
 
-  async analyzeForOODA(request: OODAAnalysisRequest): Promise<OODAAnalysisResponse> {
+  async analyzeForOODA(
+    request: OODAAnalysisRequest
+  ): Promise<OODAAnalysisResponse> {
     const systemPrompt = OODA_SYSTEM_PROMPTS[request.phase];
     if (!systemPrompt) {
       throw new Error(`Unknown OODA phase: ${request.phase}`);
@@ -277,9 +279,10 @@ export class GroqProvider {
 
     try {
       // Extract JSON from response (handle markdown code blocks)
-      const jsonMatch = content.match(/```json\s*([\s\S]*?)```/) ||
-                        content.match(/\{[\s\S]*\}/);
-      const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : content;
+      const jsonMatch =
+        content.match(/```json\s*([\s\S]*?)```/) ||
+        content.match(/\{[\s\S]*\}/);
+      const jsonStr = jsonMatch ? jsonMatch[1] || jsonMatch[0] : content;
       return JSON.parse(jsonStr);
     } catch {
       return {
@@ -329,10 +332,7 @@ export class GroqProvider {
 
   async validateApiKey(): Promise<{ valid: boolean; error?: string }> {
     try {
-      await this.chat(
-        [{ role: 'user', content: 'Hi' }],
-        { maxTokens: 1 }
-      );
+      await this.chat([{ role: 'user', content: 'Hi' }], { maxTokens: 1 });
       return { valid: true };
     } catch (error) {
       return {
@@ -348,7 +348,7 @@ export class GroqProvider {
     endpoint: string,
     body: Record<string, unknown>,
     retries = MAX_RETRIES
-  ): Promise<any> {
+  ): Promise<unknown> {
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt <= retries; attempt++) {
@@ -357,14 +357,16 @@ export class GroqProvider {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.apiKey}`,
+            Authorization: `Bearer ${this.apiKey}`,
           },
           body: JSON.stringify(body),
         });
 
         if (response.status === 429) {
           // Rate limited — wait and retry
-          const retryAfter = parseInt(response.headers.get('retry-after') || '2');
+          const retryAfter = parseInt(
+            response.headers.get('retry-after') || '2'
+          );
           await this.sleep(retryAfter * 1000);
           continue;
         }
@@ -387,7 +389,7 @@ export class GroqProvider {
   }
 
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 

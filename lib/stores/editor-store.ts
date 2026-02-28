@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { logger } from '@/lib/monitoring/error-logger';
 import {
   getLanguageFromExtension,
   getExtension,
@@ -117,7 +118,11 @@ async function fetchFileFromGitHub(
 
     return { content: '', found: false };
   } catch (error) {
-    console.error('[EditorStore] Failed to fetch from GitHub:', error);
+    logger.error(
+      'فشل جلب الملف من GitHub',
+      error instanceof Error ? error : undefined,
+      { source: 'EditorStore.fetchFileFromGitHub' }
+    );
     return { content: '', found: false };
   }
 }
@@ -181,9 +186,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set((state) => {
       const newTabs = state.tabs.filter((t) => t.id !== id);
       const newActiveId =
-        state.activeTabId === id
-          ? (newTabs[0]?.id ?? null)
-          : state.activeTabId;
+        state.activeTabId === id ? (newTabs[0]?.id ?? null) : state.activeTabId;
       return { tabs: newTabs, activeTabId: newActiveId };
     }),
 
@@ -197,70 +200,107 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     })),
 
   openFile: (file) => {
-    const tab: EditorTab = {
-      id: file.id,
-      filePath: file.path,
-      fileName: file.name,
-      language: file.language || 'plaintext',
-      content: file.content,
-      isDirty: false,
-      isActive: true,
-    };
-
-    set((state) => {
-      const exists = state.tabs.find((t) => t.id === file.id);
-      if (exists) {
-        return { activeTabId: exists.id };
+    try {
+      // التحقق من المدخلات الإلزامية
+      if (!file?.id || !file?.name || !file?.path) {
+        logger.error('بيانات الملف غير مكتملة', undefined, {
+          source: 'EditorStore.openFile',
+          hasId: !!file?.id,
+          hasName: !!file?.name,
+          hasPath: !!file?.path,
+        });
+        return;
       }
-      return {
-        tabs: [...state.tabs, tab],
-        activeTabId: tab.id,
+
+      const tab: EditorTab = {
+        id: file.id,
+        filePath: file.path,
+        fileName: file.name,
+        language: file.language || 'plaintext',
+        content: file.content ?? '',
+        isDirty: false,
+        isActive: true,
       };
-    });
+
+      set((state) => {
+        const exists = state.tabs.find((t) => t.id === file.id);
+        if (exists) {
+          return { activeTabId: exists.id };
+        }
+        return {
+          tabs: [...state.tabs, tab],
+          activeTabId: tab.id,
+        };
+      });
+    } catch (error) {
+      logger.error(
+        'خطأ غير متوقع في فتح الملف',
+        error instanceof Error ? error : undefined,
+        { source: 'EditorStore.openFile' }
+      );
+    }
   },
 
   openFileFromPath: async (filePath: string, language?: string) => {
-    const state = get();
-    const cleanPath = filePath.replace(/^\/+/, '');
-
-    const existingTab = state.tabs.find(
-      (t) => t.filePath === cleanPath || t.filePath === '/' + cleanPath
-    );
-    if (existingTab) {
-      set({ activeTabId: existingTab.id });
+    // التحقق من المدخلات
+    if (!filePath || typeof filePath !== 'string') {
+      logger.warn('مسار الملف مطلوب', {
+        source: 'EditorStore.openFileFromPath',
+      });
       return;
     }
 
-    const ext = getExtension(cleanPath);
-    const lang = language || getLanguageFromExtension(ext);
-    const fileName = getFileName(cleanPath);
-    const tabId = `file-${cleanPath}-${Date.now()}`;
+    try {
+      const state = get();
+      const cleanPath = filePath.replace(/^\/+/, '');
 
-    const { content, found } = await fetchFileFromGitHub(cleanPath);
+      const existingTab = state.tabs.find(
+        (t) => t.filePath === cleanPath || t.filePath === '/' + cleanPath
+      );
+      if (existingTab) {
+        set({ activeTabId: existingTab.id });
+        return;
+      }
 
-    const tab: EditorTab = {
-      id: tabId,
-      filePath: cleanPath,
-      fileName,
-      language: lang,
-      content: found
-        ? content
-        : `// ⏳ لم يتم العثور على محتوى الملف: ${cleanPath}\n// تأكد من تسجيل الدخول وإعداد بيانات المستودع\n// أو قم بتعديل المحتوى يدوياً هنا\n`,
-      isDirty: false,
-      isActive: true,
-    };
+      const ext = getExtension(cleanPath);
+      const lang = language || getLanguageFromExtension(ext);
+      const fileName = getFileName(cleanPath);
+      const tabId = `file-${cleanPath}-${Date.now()}`;
 
-    set((s) => ({
-      tabs: [...s.tabs, tab],
-      activeTabId: tab.id,
-    }));
+      const { content, found } = await fetchFileFromGitHub(cleanPath);
+
+      const tab: EditorTab = {
+        id: tabId,
+        filePath: cleanPath,
+        fileName,
+        language: lang,
+        content: found
+          ? content
+          : `// ⏳ لم يتم العثور على محتوى الملف: ${cleanPath}\n// تأكد من تسجيل الدخول وإعداد بيانات المستودع\n// أو قم بتعديل المحتوى يدوياً هنا\n`,
+        isDirty: false,
+        isActive: true,
+      };
+
+      set((s) => ({
+        tabs: [...s.tabs, tab],
+        activeTabId: tab.id,
+      }));
+    } catch (error) {
+      logger.error(
+        'خطأ في فتح الملف من المسار',
+        error instanceof Error ? error : undefined,
+        { source: 'EditorStore.openFileFromPath', filePath }
+      );
+    }
   },
 
   // ── Load repo tree into sidebar ──
   loadRepoTree: async (owner: string, repo: string, branch?: string) => {
     const token = getGitHubToken();
     if (!token) {
-      console.error('[EditorStore] No GitHub token — please sign in first');
+      logger.warn('لا يوجد GitHub token — يجب تسجيل الدخول أولاً', {
+        source: 'EditorStore.loadRepoTree',
+      });
       return;
     }
 
@@ -286,7 +326,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         `[EditorStore] Loaded repo tree: ${owner}/${repo} (${nodes.length} items)`
       );
     } catch (error) {
-      console.error('[EditorStore] Failed to load repo tree:', error);
+      logger.error(
+        'فشل تحميل شجرة المستودع',
+        error instanceof Error ? error : undefined,
+        { source: 'EditorStore.loadRepoTree' }
+      );
       set({ repoTreeLoading: false });
       throw error;
     }
@@ -324,7 +368,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
       set((s) => ({ repoTree: updateNodes(s.repoTree) }));
     } catch (error) {
-      console.error('[EditorStore] Failed to load children for:', path, error);
+      logger.error(
+        'فشل تحميل محتويات المجلد',
+        error instanceof Error ? error : undefined,
+        { source: 'EditorStore.loadRepoTreeChildren', path }
+      );
     }
   },
 

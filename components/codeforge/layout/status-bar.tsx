@@ -81,12 +81,13 @@ export default function StatusBar() {
                 ? 'bg-[#89b4fa]/20 text-[#89b4fa]'
                 : 'hover:bg-[#313244] text-[#6c7086] hover:text-[#cdd6f4]'
             }`}
-            title={isAgentOpen ? 'إغلاق الوكيل (Ctrl+Shift+A)' : 'فتح الوكيل (Ctrl+Shift+A)'}
+            title={
+              isAgentOpen
+                ? 'إغلاق الوكيل (Ctrl+Shift+A)'
+                : 'فتح الوكيل (Ctrl+Shift+A)'
+            }
           >
-            <Bot
-              size={13}
-              className={isProcessing ? 'animate-pulse' : ''}
-            />
+            <Bot size={13} className={isProcessing ? 'animate-pulse' : ''} />
             <span className="text-[10px]">الوكيل</span>
 
             {/* Pending approvals badge */}

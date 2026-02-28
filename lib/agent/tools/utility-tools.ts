@@ -12,7 +12,8 @@ import type { AgentService } from '../agent-service';
 export const utilityTools: ToolDefinition[] = [
   {
     name: 'get_project_context',
-    description: 'Get project information including package.json, file count, folder structure, dependencies, and scripts.',
+    description:
+      'Get project information including package.json, file count, folder structure, dependencies, and scripts.',
     parameters: {
       type: 'object',
       properties: {},
@@ -23,7 +24,8 @@ export const utilityTools: ToolDefinition[] = [
   },
   {
     name: 'explain_code',
-    description: 'Explain a piece of code. Returns a structured explanation (this tool does not call LLM — it prepares context for the agent to explain).',
+    description:
+      'Explain a piece of code. Returns a structured explanation (this tool does not call LLM — it prepares context for the agent to explain).',
     parameters: {
       type: 'object',
       properties: {
@@ -43,7 +45,8 @@ export const utilityTools: ToolDefinition[] = [
   },
   {
     name: 'suggest_fix',
-    description: 'Analyze an error message and the relevant code context to suggest a fix.',
+    description:
+      'Analyze an error message and the relevant code context to suggest a fix.',
     parameters: {
       type: 'object',
       properties: {
@@ -134,7 +137,8 @@ export function registerUtilityExecutors(service: AgentService): void {
       data: {
         code: args.code,
         language: args.language || 'unknown',
-        instruction: 'Please explain this code to the user in their preferred language.',
+        instruction:
+          'Please explain this code to the user in their preferred language.',
       },
     };
   });
@@ -161,7 +165,8 @@ export function registerUtilityExecutors(service: AgentService): void {
           filePath: args.filePath || 'unknown',
           lineNumber: args.lineNumber,
           fileContent,
-          instruction: 'Analyze this error and suggest a fix. Show the corrected code.',
+          instruction:
+            'Analyze this error and suggest a fix. Show the corrected code.',
         },
       };
     } catch (error) {

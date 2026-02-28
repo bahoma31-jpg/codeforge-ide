@@ -6,10 +6,7 @@
  * Phase 2: OODA Loop Implementation.
  */
 
-import type {
-  FixStep,
-  FileChange,
-} from './types';
+import type { FixStep, FileChange } from './types';
 import { getSelfAnalysisEngine } from './self-analysis-engine';
 
 // ─── Tool Bridge Interface ────────────────────────────────────
@@ -84,7 +81,12 @@ export class FixExecutor {
   }
 
   async executePlan(
-    planOrInput: FixStep[] | PlanInput | Record<string, unknown> | undefined | null,
+    planOrInput:
+      | FixStep[]
+      | PlanInput
+      | Record<string, unknown>
+      | undefined
+      | null,
     allFiles?: Map<string, string>,
     options?: ExecutionOptions
   ): Promise<ExecutionResult | FileChange[]> {
@@ -93,7 +95,7 @@ export class FixExecutor {
       typeof planOrInput === 'object' &&
       !Array.isArray(planOrInput) &&
       'steps' in planOrInput &&
-      Array.isArray((planOrInput as any).steps) &&
+      Array.isArray((planOrInput as unknown).steps) &&
       'protectedPaths' in planOrInput
     ) {
       return this.executePlanFlat(planOrInput as PlanInput);
@@ -147,7 +149,11 @@ export class FixExecutor {
           } else {
             const oldStr = step.oldStr || '';
             const newStr = step.newStr || '';
-            const success = await this.toolBridge.editFile(filePath, oldStr, newStr);
+            const success = await this.toolBridge.editFile(
+              filePath,
+              oldStr,
+              newStr
+            );
             if (success && !filesModified.includes(filePath)) {
               filesModified.push(filePath);
               filesModifiedCount++;
@@ -180,7 +186,9 @@ export class FixExecutor {
             try {
               const currentContent = await this.toolBridge.readFile(filePath);
               backupData.set(filePath, currentContent);
-            } catch { /* ignore */ }
+            } catch {
+              /* ignore */
+            }
           }
 
           if (!input.dryRun) {
@@ -226,15 +234,22 @@ export class FixExecutor {
     let safePlan: FixStep[];
     if (Array.isArray(plan)) {
       safePlan = plan;
-    } else if (plan && typeof plan === 'object' && 'steps' in plan && Array.isArray((plan as any).steps)) {
-      safePlan = (plan as any).steps;
+    } else if (
+      plan &&
+      typeof plan === 'object' &&
+      'steps' in plan &&
+      Array.isArray((plan as unknown).steps)
+    ) {
+      safePlan = (plan as unknown).steps;
     } else if (plan && typeof plan === 'object') {
       safePlan = [plan as unknown as FixStep];
     } else {
       safePlan = [];
     }
 
-    const sortedPlan = [...safePlan].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    const sortedPlan = [...safePlan].sort(
+      (a, b) => (a.order ?? 0) - (b.order ?? 0)
+    );
 
     for (const step of sortedPlan) {
       if (step.completed) continue;
@@ -246,7 +261,9 @@ export class FixExecutor {
       }
 
       if (
-        (step.action === 'edit' || step.action === 'create' || step.action === 'delete') &&
+        (step.action === 'edit' ||
+          step.action === 'create' ||
+          step.action === 'delete') &&
         filesModified >= options.maxFiles
       ) {
         step.completed = true;
@@ -259,7 +276,10 @@ export class FixExecutor {
         if (change) {
           changes.push(change);
           this.rollbackStack.push(change);
-          if (change.changeType !== 'modify' || change.newContent !== change.oldContent) {
+          if (
+            change.changeType !== 'modify' ||
+            change.newContent !== change.oldContent
+          ) {
             filesModified++;
           }
         }
@@ -289,7 +309,9 @@ export class FixExecutor {
           );
           rolledBack++;
         } catch (error) {
-          console.error(`Rollback failed for ${filePath}: ${(error as Error).message}`);
+          console.error(
+            `Rollback failed for ${filePath}: ${(error as Error).message}`
+          );
         }
       }
       return rolledBack;
@@ -315,7 +337,10 @@ export class FixExecutor {
             branch
           );
           rolledBack++;
-        } else if (change.changeType === 'delete' && change.oldContent !== undefined) {
+        } else if (
+          change.changeType === 'delete' &&
+          change.oldContent !== undefined
+        ) {
           await this.toolBridge.writeFile(
             change.filePath,
             change.oldContent,
@@ -325,7 +350,9 @@ export class FixExecutor {
           rolledBack++;
         }
       } catch (error) {
-        console.error(`Rollback failed for ${change.filePath}: ${(error as Error).message}`);
+        console.error(
+          `Rollback failed for ${change.filePath}: ${(error as Error).message}`
+        );
       }
     }
 
@@ -400,7 +427,9 @@ export class FixExecutor {
   ): Promise<FileChange> {
     const oldContent = allFiles.get(step.target);
     if (!oldContent) {
-      throw new Error(`Cannot edit ${step.target} — file not loaded. Read it first.`);
+      throw new Error(
+        `Cannot edit ${step.target} — file not loaded. Read it first.`
+      );
     }
 
     if (options.dryRun) {
@@ -469,6 +498,6 @@ export class FixExecutor {
   }
 
   private isProtected(filePath: string, protectedPaths: string[]): boolean {
-    return protectedPaths.some(p => filePath.startsWith(p) || filePath === p);
+    return protectedPaths.some((p) => filePath.startsWith(p) || filePath === p);
   }
 }

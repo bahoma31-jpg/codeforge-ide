@@ -33,6 +33,7 @@
     "tailwind-merge": "^2.2.0",
     "uuid": "^9.0.1",
     "web-vitals": "^3.5.0",
+    "zod": "^4.3.6",
     "zustand": "^4.5.0"
   },
   "devDependencies": {

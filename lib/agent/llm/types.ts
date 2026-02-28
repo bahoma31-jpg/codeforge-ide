@@ -172,7 +172,8 @@ export const GROQ_MODELS: GroqModel[] = [
     type: 'text',
     contextWindow: 131072,
     maxOutputTokens: 16384,
-    description: 'Llama 4 with 128 experts MoE. Top-tier for complex code tasks.',
+    description:
+      'Llama 4 with 128 experts MoE. Top-tier for complex code tasks.',
     descriptionAr: 'لاما 4 مع 128 خبيرًا. الأفضل للمهام البرمجية المعقدة.',
     speed: 'medium',
     quality: 'high',
@@ -247,8 +248,10 @@ export const GROQ_MODELS: GroqModel[] = [
     type: 'compound',
     contextWindow: 131072,
     maxOutputTokens: 32768,
-    description: 'Multi-step reasoning with tool use. Best for complex workflows.',
-    descriptionAr: 'تفكير متعدد الخطوات مع استخدام أدوات. الأفضل لسير العمل المعقد.',
+    description:
+      'Multi-step reasoning with tool use. Best for complex workflows.',
+    descriptionAr:
+      'تفكير متعدد الخطوات مع استخدام أدوات. الأفضل لسير العمل المعقد.',
     speed: 'medium',
     quality: 'high',
     recommended: true,
@@ -274,7 +277,8 @@ export const GROQ_MODELS: GroqModel[] = [
     type: 'stt',
     contextWindow: 0,
     maxOutputTokens: 0,
-    description: 'OpenAI Whisper. High-accuracy speech-to-text in 99 languages.',
+    description:
+      'OpenAI Whisper. High-accuracy speech-to-text in 99 languages.',
     descriptionAr: 'ويسبر من OpenAI. تحويل صوت لنص بدقة عالية في 99 لغة.',
     speed: 'medium',
     quality: 'high',
@@ -286,7 +290,8 @@ export const GROQ_MODELS: GroqModel[] = [
     type: 'stt',
     contextWindow: 0,
     maxOutputTokens: 0,
-    description: 'Faster Whisper variant. Slightly lower accuracy, much faster.',
+    description:
+      'Faster Whisper variant. Slightly lower accuracy, much faster.',
     descriptionAr: 'نسخة أسرع من ويسبر. دقة أقل قليلاً، أسرع بكثير.',
     speed: 'fast',
     quality: 'medium',
@@ -300,7 +305,8 @@ export const GROQ_MODELS: GroqModel[] = [
     type: 'tts',
     contextWindow: 0,
     maxOutputTokens: 0,
-    description: 'Arabic TTS with Saudi dialect. Natural-sounding Arabic speech.',
+    description:
+      'Arabic TTS with Saudi dialect. Natural-sounding Arabic speech.',
     descriptionAr: 'تحويل نص لصوت باللهجة السعودية. نطق عربي طبيعي.',
     speed: 'fast',
     quality: 'high',
@@ -315,45 +321,45 @@ export const MODEL_GROUPS: ModelGroup[] = [
     label: 'Text Generation',
     labelAr: '🧠 توليد النصوص',
     icon: '🧠',
-    models: GROQ_MODELS.filter(m => m.type === 'text'),
+    models: GROQ_MODELS.filter((m) => m.type === 'text'),
   },
   {
     type: 'compound',
     label: 'Compound AI',
     labelAr: '🔗 ذكاء مركب',
     icon: '🔗',
-    models: GROQ_MODELS.filter(m => m.type === 'compound'),
+    models: GROQ_MODELS.filter((m) => m.type === 'compound'),
   },
   {
     type: 'stt',
     label: 'Speech-to-Text',
     labelAr: '🎤 صوت → نص',
     icon: '🎤',
-    models: GROQ_MODELS.filter(m => m.type === 'stt'),
+    models: GROQ_MODELS.filter((m) => m.type === 'stt'),
   },
   {
     type: 'tts',
     label: 'Text-to-Speech',
     labelAr: '🔊 نص → صوت',
     icon: '🔊',
-    models: GROQ_MODELS.filter(m => m.type === 'tts'),
+    models: GROQ_MODELS.filter((m) => m.type === 'tts'),
   },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────
 
 export function getModelById(id: string): GroqModel | undefined {
-  return GROQ_MODELS.find(m => m.id === id);
+  return GROQ_MODELS.find((m) => m.id === id);
 }
 
 export function getTextModels(): GroqModel[] {
-  return GROQ_MODELS.filter(m => m.type === 'text' || m.type === 'compound');
+  return GROQ_MODELS.filter((m) => m.type === 'text' || m.type === 'compound');
 }
 
 export function getRecommendedModels(): GroqModel[] {
-  return GROQ_MODELS.filter(m => m.recommended);
+  return GROQ_MODELS.filter((m) => m.recommended);
 }
 
 export function getDefaultModel(): GroqModel {
-  return GROQ_MODELS.find(m => m.id === 'llama-3.3-70b-versatile')!;
+  return GROQ_MODELS.find((m) => m.id === 'llama-3.3-70b-versatile')!;
 }

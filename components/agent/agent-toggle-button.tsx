@@ -12,10 +12,13 @@ import { AgentSettings } from './agent-settings';
 import { Bot, Settings } from 'lucide-react';
 
 export function AgentToggleButton() {
-  const { isPanelOpen, togglePanel, pendingApprovals, isProcessing } = useAgentStore();
+  const { isPanelOpen, togglePanel, pendingApprovals, isProcessing } =
+    useAgentStore();
   const [showSettings, setShowSettings] = useState(false);
 
-  const pendingCount = pendingApprovals.filter((a) => a.status === 'pending').length;
+  const pendingCount = pendingApprovals.filter(
+    (a) => a.status === 'pending'
+  ).length;
 
   return (
     <>

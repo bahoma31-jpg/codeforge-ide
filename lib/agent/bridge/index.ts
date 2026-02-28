@@ -34,6 +34,4 @@ export {
 } from './ooda-bridge';
 
 // Agent LLM Adapter — provider compatibility
-export {
-  AgentLLMAdapter,
-} from './agent-llm-adapter';
+export { AgentLLMAdapter } from './agent-llm-adapter';

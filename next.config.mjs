@@ -46,9 +46,10 @@ const withPWA = withPWAInit({
   ],
 });
 
-// CSP string shared between middleware (dynamic) and next.config (static fallback).
-// Keep in sync with middleware.ts if you update either.
-const cspFallback = [
+// CSP directives — مصدر الحقيقة: lib/security/csp.ts
+// next.config.mjs يعمل في build-time قبل ترجمة TypeScript
+// لذلك ننسخ القيم هنا كـ fallback. أي تغيير يجب أن يُطبّق في csp.ts أولاً ثم هنا.
+const CSP_DIRECTIVES = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-eval' 'unsafe-inline' blob:",
   "style-src 'self' 'unsafe-inline'",
@@ -57,7 +58,8 @@ const cspFallback = [
   "connect-src 'self' https:",
   "worker-src 'self' blob:",
   "frame-src 'none'",
-].join('; ');
+];
+const cspFallback = CSP_DIRECTIVES.join('; ');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -83,14 +85,14 @@ const nextConfig = {
       {
         source: '/(.*)',
         headers: [
-          { key: 'Content-Security-Policy',      value: cspFallback },
-          { key: 'Strict-Transport-Security',    value: 'max-age=31536000; includeSubDomains; preload' },
-          { key: 'X-DNS-Prefetch-Control',       value: 'on' },
-          { key: 'X-Content-Type-Options',       value: 'nosniff' },
-          { key: 'X-Frame-Options',              value: 'DENY' },
-          { key: 'Referrer-Policy',              value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy',           value: 'camera=(), microphone=(), geolocation=()' },
-          { key: 'X-XSS-Protection',             value: '1; mode=block' },
+          { key: 'Content-Security-Policy', value: cspFallback },
+          { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' },
+          { key: 'X-DNS-Prefetch-Control', value: 'on' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+          { key: 'X-XSS-Protection', value: '1; mode=block' },
         ],
       },
     ];

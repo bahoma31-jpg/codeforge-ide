@@ -20,6 +20,7 @@ import type {
   RiskLevel,
   AuditLogEntry,
   ApprovalSource,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   PendingApproval,
 } from '../types';
 
@@ -32,10 +33,18 @@ const mockStorage: Record<string, string> = {};
 if (typeof globalThis.localStorage === 'undefined') {
   (globalThis as Record<string, unknown>).localStorage = {
     getItem: (key: string) => mockStorage[key] || null,
-    setItem: (key: string, value: string) => { mockStorage[key] = value; },
-    removeItem: (key: string) => { delete mockStorage[key]; },
-    clear: () => { Object.keys(mockStorage).forEach((k) => delete mockStorage[k]); },
-    get length() { return Object.keys(mockStorage).length; },
+    setItem: (key: string, value: string) => {
+      mockStorage[key] = value;
+    },
+    removeItem: (key: string) => {
+      delete mockStorage[key];
+    },
+    clear: () => {
+      Object.keys(mockStorage).forEach((k) => delete mockStorage[k]);
+    },
+    get length() {
+      return Object.keys(mockStorage).length;
+    },
     key: (i: number) => Object.keys(mockStorage)[i] || null,
   };
 }
@@ -44,7 +53,10 @@ if (typeof globalThis.localStorage === 'undefined') {
 // TEST HELPERS
 // ═══════════════════════════════════════════════════════════════
 
-function makeToolCall(name: string, args: Record<string, unknown> = {}): ToolCall {
+function makeToolCall(
+  name: string,
+  args: Record<string, unknown> = {}
+): ToolCall {
   return {
     id: `tc-${name}-${Date.now()}`,
     name,
@@ -81,9 +93,27 @@ describe('Type Compatibility', () => {
 
   test('AuditLogEntry.approvedBy accepts all ApprovalSource values', () => {
     const entries: AuditLogEntry[] = [
-      { id: '1', toolName: 'test', args: {}, approvedBy: 'auto', timestamp: Date.now() },
-      { id: '2', toolName: 'test', args: {}, approvedBy: 'notify', timestamp: Date.now() },
-      { id: '3', toolName: 'test', args: {}, approvedBy: 'user', timestamp: Date.now() },
+      {
+        id: '1',
+        toolName: 'test',
+        args: {},
+        approvedBy: 'auto',
+        timestamp: Date.now(),
+      },
+      {
+        id: '2',
+        toolName: 'test',
+        args: {},
+        approvedBy: 'notify',
+        timestamp: Date.now(),
+      },
+      {
+        id: '3',
+        toolName: 'test',
+        args: {},
+        approvedBy: 'user',
+        timestamp: Date.now(),
+      },
     ];
     expect(entries[0].approvedBy).toBe('auto');
     expect(entries[1].approvedBy).toBe('notify');
@@ -102,7 +132,7 @@ describe('Type Compatibility', () => {
 
 describe('Safety Classification', () => {
   // Lazy import to avoid issues with localStorage
-  let processToolSafety: typeof import('../safety')['processToolSafety'];
+  let processToolSafety: (typeof import('../safety'))['processToolSafety'];
 
   beforeAll(async () => {
     const safety = await import('../safety');
@@ -118,7 +148,10 @@ describe('Safety Classification', () => {
   });
 
   test('NOTIFY tools return type "notify" with notification', () => {
-    const tc = makeToolCall('github_push_file', { path: 'src/app.ts', content: '// new' });
+    const tc = makeToolCall('github_push_file', {
+      path: 'src/app.ts',
+      content: '// new',
+    });
     const td = makeToolDef('github_push_file', 'notify');
     const action = processToolSafety(tc, td);
     expect(action.type).toBe('notify');
@@ -156,8 +189,8 @@ describe('Safety Classification', () => {
 // ═══════════════════════════════════════════════════════════════
 
 describe('Audit Logger', () => {
-  let AuditLogger: typeof import('../audit-logger')['AuditLogger'];
-  let logger: InstanceType<typeof import('../audit-logger')['AuditLogger']>;
+  let AuditLogger: (typeof import('../audit-logger'))['AuditLogger'];
+  let logger: InstanceType<(typeof import('../audit-logger'))['AuditLogger']>;
 
   beforeAll(async () => {
     const mod = await import('../audit-logger');
@@ -187,7 +220,11 @@ describe('Audit Logger', () => {
   });
 
   test('logStart() + finish() records duration', async () => {
-    const tracker = logger.logStart('github_read_file', { path: 'x.ts' }, 'auto');
+    const tracker = logger.logStart(
+      'github_read_file',
+      { path: 'x.ts' },
+      'auto'
+    );
     // Simulate some work
     await new Promise((r) => setTimeout(r, 50));
     const entry = tracker.finish({ success: true }, true, 'auto');
@@ -197,7 +234,11 @@ describe('Audit Logger', () => {
   });
 
   test('logStart() + reject() records rejection', () => {
-    const tracker = logger.logStart('github_delete_file', { path: 'x.ts' }, 'confirm');
+    const tracker = logger.logStart(
+      'github_delete_file',
+      { path: 'x.ts' },
+      'confirm'
+    );
     const entry = tracker.reject();
 
     expect(entry.approved).toBe(false);
@@ -206,7 +247,12 @@ describe('Audit Logger', () => {
   });
 
   test('logStart() + finish() with notify approvedBy', () => {
-    const tracker = logger.logStart('fs_create_file', { name: 'new.ts' }, 'notify', 'filesystem');
+    const tracker = logger.logStart(
+      'fs_create_file',
+      { name: 'new.ts' },
+      'notify',
+      'filesystem'
+    );
     const entry = tracker.finish({ success: true }, true, 'notify');
 
     expect(entry.approvedBy).toBe('notify');
@@ -224,9 +270,27 @@ describe('Audit Logger', () => {
   });
 
   test('getStats() counts correctly', () => {
-    logger.log({ toolName: 'a', args: {}, result: { success: true }, riskLevel: 'auto', approved: true });
-    logger.log({ toolName: 'b', args: {}, result: { success: true }, riskLevel: 'notify', approved: true });
-    logger.log({ toolName: 'c', args: {}, result: { success: false, error: 'rejected' }, riskLevel: 'confirm', approved: false });
+    logger.log({
+      toolName: 'a',
+      args: {},
+      result: { success: true },
+      riskLevel: 'auto',
+      approved: true,
+    });
+    logger.log({
+      toolName: 'b',
+      args: {},
+      result: { success: true },
+      riskLevel: 'notify',
+      approved: true,
+    });
+    logger.log({
+      toolName: 'c',
+      args: {},
+      result: { success: false, error: 'rejected' },
+      riskLevel: 'confirm',
+      approved: false,
+    });
 
     const stats = logger.getStats();
     expect(stats.totalOperations).toBe(3);

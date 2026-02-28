@@ -7,19 +7,61 @@
 // Common code file extensions
 const CODE_EXTENSIONS = new Set([
   // JavaScript / TypeScript
-  'js', 'jsx', 'ts', 'tsx', 'mjs', 'cjs',
+  'js',
+  'jsx',
+  'ts',
+  'tsx',
+  'mjs',
+  'cjs',
   // Web
-  'html', 'htm', 'css', 'scss', 'sass', 'less', 'vue', 'svelte',
+  'html',
+  'htm',
+  'css',
+  'scss',
+  'sass',
+  'less',
+  'vue',
+  'svelte',
   // Data / Config
-  'json', 'yaml', 'yml', 'toml', 'xml', 'env', 'ini', 'conf',
+  'json',
+  'yaml',
+  'yml',
+  'toml',
+  'xml',
+  'env',
+  'ini',
+  'conf',
   // Backend
-  'py', 'rb', 'php', 'go', 'rs', 'java', 'kt', 'swift', 'c', 'cpp', 'h',
+  'py',
+  'rb',
+  'php',
+  'go',
+  'rs',
+  'java',
+  'kt',
+  'swift',
+  'c',
+  'cpp',
+  'h',
   // Shell / DevOps
-  'sh', 'bash', 'zsh', 'ps1', 'bat', 'cmd', 'dockerfile',
+  'sh',
+  'bash',
+  'zsh',
+  'ps1',
+  'bat',
+  'cmd',
+  'dockerfile',
   // Docs
-  'md', 'mdx', 'txt', 'csv', 'sql',
+  'md',
+  'mdx',
+  'txt',
+  'csv',
+  'sql',
   // Config files
-  'gitignore', 'eslintrc', 'prettierrc', 'editorconfig',
+  'gitignore',
+  'eslintrc',
+  'prettierrc',
+  'editorconfig',
 ]);
 
 // Map file extensions to Monaco language IDs
@@ -80,7 +122,8 @@ const EXTENSION_TO_LANGUAGE: Record<string, string> = {
  *   - .eslintrc.json
  *   - next.config.mjs
  */
-const FILE_PATH_REGEX = /(?:^|[\s`"'(\[{,])(\.?\.?\/?)([a-zA-Z0-9_@.-]+(?:\/[a-zA-Z0-9_@.-]+)*\.[a-zA-Z0-9]+)(?=[\s`"')\]},.:;!?]|$)/g;
+const FILE_PATH_REGEX =
+  /(?:^|[\s`"'(\[{,])(\.?\.?\/?)([a-zA-Z0-9_@.-]+(?:\/[a-zA-Z0-9_@.-]+)*\.[a-zA-Z0-9]+)(?=[\s`"')\]},.:;!?]|$)/g;
 
 export interface TextSegment {
   type: 'text' | 'filepath';

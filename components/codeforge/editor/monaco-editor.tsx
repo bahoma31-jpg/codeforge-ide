@@ -105,7 +105,13 @@ export default function MonacoEditor() {
   if (!activeTab) {
     return (
       <div className="flex h-full items-center justify-center text-muted-foreground">
-        <p>\u0644\u0627 \u064a\u0648\u062c\u062f \u0645\u0644\u0641 \u0645\u0641\u062a\u0648\u062d. \u0627\u0641\u062a\u062d \u0645\u0644\u0641\u0627\u064b \u0645\u0646 \u0627\u0644\u0645\u0633\u062a\u0643\u0634\u0641 \u0623\u0648 \u0627\u0636\u063a\u0637 +</p>
+        <p>
+          \u0644\u0627 \u064a\u0648\u062c\u062f \u0645\u0644\u0641
+          \u0645\u0641\u062a\u0648\u062d. \u0627\u0641\u062a\u062d
+          \u0645\u0644\u0641\u0627\u064b \u0645\u0646
+          \u0627\u0644\u0645\u0633\u062a\u0643\u0634\u0641 \u0623\u0648
+          \u0627\u0636\u063a\u0637 +
+        </p>
       </div>
     );
   }
@@ -123,7 +129,10 @@ export default function MonacoEditor() {
         <div className="flex h-full items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-            <p className="text-xs text-muted-foreground">\u062c\u0627\u0631\u064a \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0645\u062d\u0631\u0631...</p>
+            <p className="text-xs text-muted-foreground">
+              \u062c\u0627\u0631\u064a \u062a\u062d\u0645\u064a\u0644
+              \u0627\u0644\u0645\u062d\u0631\u0631...
+            </p>
           </div>
         </div>
       }

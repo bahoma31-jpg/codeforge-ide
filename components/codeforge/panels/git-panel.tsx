@@ -18,6 +18,7 @@ import {
   Minus,
   Edit3,
   Trash2,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   FileText,
   Check,
   CheckCheck,
@@ -53,6 +54,7 @@ export function GitPanel() {
     isPushing,
     isPulling,
     pushProgress,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     pullProgress,
     lastPushResult,
     error,
@@ -158,7 +160,9 @@ export function GitPanel() {
       <div className="flex items-center justify-between border-b px-3 py-2">
         <div className="flex items-center gap-2">
           <GitBranch className="h-4 w-4 text-primary" />
-          <span className="font-medium">{repoContext.owner}/{repoContext.repo}</span>
+          <span className="font-medium">
+            {repoContext.owner}/{repoContext.repo}
+          </span>
         </div>
         <div className="flex items-center gap-1">
           <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
@@ -181,7 +185,10 @@ export function GitPanel() {
         <div className="flex items-start gap-2 border-b bg-destructive/10 px-3 py-2">
           <AlertCircle className="mt-0.5 h-4 w-4 text-destructive shrink-0" />
           <div className="flex-1 text-xs text-destructive">{error}</div>
-          <button onClick={clearError} className="text-destructive hover:text-destructive/80">
+          <button
+            onClick={clearError}
+            className="text-destructive hover:text-destructive/80"
+          >
             <XCircle className="h-3 w-3" />
           </button>
         </div>
@@ -203,7 +210,9 @@ export function GitPanel() {
             size="sm"
             className="flex-1 h-7 text-xs"
             onClick={handlePush}
-            disabled={isPushing || stagedChanges.length === 0 || !commitMessage.trim()}
+            disabled={
+              isPushing || stagedChanges.length === 0 || !commitMessage.trim()
+            }
           >
             {isPushing ? (
               <>

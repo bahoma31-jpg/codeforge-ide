@@ -17,7 +17,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mockFiles: Record<string, string> = {};
 
 function resetMockFiles() {
-  Object.keys(mockFiles).forEach(k => delete mockFiles[k]);
+  Object.keys(mockFiles).forEach((k) => delete mockFiles[k]);
   Object.assign(mockFiles, {
     'src/components/sidebar.tsx': [
       'import React from "react";',
@@ -89,19 +89,37 @@ function createMockTask(description: string, category: string) {
 
 vi.mock('../ooda-controller', () => ({
   getOODAController: () => ({
-    startImprovement: vi.fn().mockImplementation(async (_trigger: string, desc: string, _files: Map<string, string>, opts: { category?: string }) => {
-      return createMockTask(desc, opts?.category || 'ui_bug');
-    }),
-    getTask: vi.fn().mockImplementation((id: string) => mockTasks.get(id) || null),
-    getActiveTasks: vi.fn().mockImplementation(() =>
-      Array.from(mockTasks.values()).filter(t => t.status === 'running')
-    ),
-    getHistory: vi.fn().mockImplementation(() =>
-      Array.from(mockTasks.values()).filter(t => t.status !== 'running')
-    ),
+    startImprovement: vi
+      .fn()
+      .mockImplementation(
+        async (
+          _trigger: string,
+          desc: string,
+          _files: Map<string, string>,
+          opts: { category?: string }
+        ) => {
+          return createMockTask(desc, opts?.category || 'ui_bug');
+        }
+      ),
+    getTask: vi
+      .fn()
+      .mockImplementation((id: string) => mockTasks.get(id) || null),
+    getActiveTasks: vi
+      .fn()
+      .mockImplementation(() =>
+        Array.from(mockTasks.values()).filter((t) => t.status === 'running')
+      ),
+    getHistory: vi
+      .fn()
+      .mockImplementation(() =>
+        Array.from(mockTasks.values()).filter((t) => t.status !== 'running')
+      ),
     cancelTask: vi.fn().mockImplementation((id: string) => {
       const task = mockTasks.get(id);
-      if (task) { task.status = 'cancelled'; return true; }
+      if (task) {
+        task.status = 'cancelled';
+        return true;
+      }
       return false;
     }),
   }),
@@ -109,27 +127,37 @@ vi.mock('../ooda-controller', () => ({
 }));
 
 // Mock LearningMemory
-const storedPatterns: Array<{ id: string; problemSignature: string; solution: string; category: string; successRate: number; timesUsed: number; filesInvolved: string[] }> = [];
+const storedPatterns: Array<{
+  id: string;
+  problemSignature: string;
+  solution: string;
+  category: string;
+  successRate: number;
+  timesUsed: number;
+  filesInvolved: string[];
+}> = [];
 
 vi.mock('../learning-memory', () => ({
   getLearningMemory: () => ({
-    recordSuccess: vi.fn().mockImplementation((task: { description: string }) => {
-      storedPatterns.push({
-        id: `pattern-${storedPatterns.length + 1}`,
-        problemSignature: task.description,
-        solution: 'auto-resolved',
-        category: 'ui_bug',
-        successRate: 1.0,
-        timesUsed: 1,
-        filesInvolved: [],
-      });
-    }),
+    recordSuccess: vi
+      .fn()
+      .mockImplementation((task: { description: string }) => {
+        storedPatterns.push({
+          id: `pattern-${storedPatterns.length + 1}`,
+          problemSignature: task.description,
+          solution: 'auto-resolved',
+          category: 'ui_bug',
+          successRate: 1.0,
+          timesUsed: 1,
+          filesInvolved: [],
+        });
+      }),
     recordFailure: vi.fn(),
     findSimilar: vi.fn().mockImplementation((desc: string, limit: number) => {
       return storedPatterns
-        .filter(p => p.problemSignature.includes(desc.split(' ')[0]))
+        .filter((p) => p.problemSignature.includes(desc.split(' ')[0]))
         .slice(0, limit)
-        .map(p => ({ pattern: p, similarity: 0.7 }));
+        .map((p) => ({ pattern: p, similarity: 0.7 }));
     }),
     getAllPatterns: vi.fn().mockImplementation(() => storedPatterns),
     findByCategory: vi.fn().mockReturnValue([]),
@@ -153,18 +181,26 @@ import type { ToolBridge } from '../fix-executor';
 function createToolBridge(): ToolBridge {
   return {
     readFile: vi.fn().mockImplementation(async (path: string) => {
-      if (mockFiles[path] === undefined) throw new Error(`File not found: ${path}`);
+      if (mockFiles[path] === undefined)
+        throw new Error(`File not found: ${path}`);
       return mockFiles[path];
     }),
-    editFile: vi.fn().mockImplementation(async (path: string, oldStr: string, newStr: string) => {
-      if (!mockFiles[path] || !mockFiles[path].includes(oldStr)) return false;
-      mockFiles[path] = mockFiles[path].replace(oldStr, newStr);
-      return true;
-    }),
-    writeFile: vi.fn().mockImplementation(async (path: string, content: string) => {
-      mockFiles[path] = content;
-      return true;
-    }),
+    editFile: vi
+      .fn()
+      .mockImplementation(
+        async (path: string, oldStr: string, newStr: string) => {
+          if (!mockFiles[path] || !mockFiles[path].includes(oldStr))
+            return false;
+          mockFiles[path] = mockFiles[path].replace(oldStr, newStr);
+          return true;
+        }
+      ),
+    writeFile: vi
+      .fn()
+      .mockImplementation(async (path: string, content: string) => {
+        mockFiles[path] = content;
+        return true;
+      }),
     deleteFile: vi.fn().mockImplementation(async (path: string) => {
       if (!mockFiles[path]) return false;
       delete mockFiles[path];
@@ -184,7 +220,10 @@ function createFileLoader() {
 }
 
 describe('OODA Phase 3 Tools — Integration', () => {
-  let executors: Record<string, (args: Record<string, unknown>) => Promise<any>>;
+  let executors: Record<
+    string,
+    (args: Record<string, unknown>) => Promise<unknown>
+  >;
   let bridge: ToolBridge;
 
   beforeEach(() => {
@@ -257,30 +296,37 @@ describe('OODA Phase 3 Tools — Integration', () => {
     it('should execute an edit fix successfully', async () => {
       const result = await executors.ooda_execute_fix({
         cycleId,
-        fixes: [{
-          filePath: 'src/components/sidebar.tsx',
-          type: 'edit',
-          oldStr: 'className="sidebar"',
-          newStr: 'className="sidebar sidebar--fixed"',
-          commitMessage: 'fix: add fixed class to sidebar',
-        }],
+        fixes: [
+          {
+            filePath: 'src/components/sidebar.tsx',
+            type: 'edit',
+            oldStr: 'className="sidebar"',
+            newStr: 'className="sidebar sidebar--fixed"',
+            commitMessage: 'fix: add fixed class to sidebar',
+          },
+        ],
       });
       expect(result.success).toBe(true);
       expect(result.data.applied).toBe(1);
       expect(result.data.failed).toBe(0);
-      expect(mockFiles['src/components/sidebar.tsx']).toContain('sidebar--fixed');
+      expect(mockFiles['src/components/sidebar.tsx']).toContain(
+        'sidebar--fixed'
+      );
     });
 
     it('should execute a rewrite fix successfully', async () => {
-      const newContent = 'export function Sidebar() { return <div>New Sidebar</div>; }';
+      const newContent =
+        'export function Sidebar() { return <div>New Sidebar</div>; }';
       const result = await executors.ooda_execute_fix({
         cycleId,
-        fixes: [{
-          filePath: 'src/components/sidebar.tsx',
-          type: 'rewrite',
-          content: newContent,
-          commitMessage: 'refactor: rewrite sidebar component',
-        }],
+        fixes: [
+          {
+            filePath: 'src/components/sidebar.tsx',
+            type: 'rewrite',
+            content: newContent,
+            commitMessage: 'refactor: rewrite sidebar component',
+          },
+        ],
       });
       expect(result.success).toBe(true);
       expect(mockFiles['src/components/sidebar.tsx']).toBe(newContent);
@@ -289,12 +335,14 @@ describe('OODA Phase 3 Tools — Integration', () => {
     it('should reject fixes to protected paths', async () => {
       const result = await executors.ooda_execute_fix({
         cycleId,
-        fixes: [{
-          filePath: 'lib/agent/safety/index.ts',
-          type: 'rewrite',
-          content: 'HACKED',
-          commitMessage: 'hack safety',
-        }],
+        fixes: [
+          {
+            filePath: 'lib/agent/safety/index.ts',
+            type: 'rewrite',
+            content: 'HACKED',
+            commitMessage: 'hack safety',
+          },
+        ],
       });
       expect(result.success).toBe(false);
       expect(result.error).toContain('protected');
@@ -348,7 +396,9 @@ describe('OODA Phase 3 Tools — Integration', () => {
       expect(result.success).toBe(true);
       expect(result.data.results.length).toBeGreaterThanOrEqual(5);
 
-      const checkTypes = result.data.results.map((r: { check: string }) => r.check.split(':')[0]);
+      const checkTypes = result.data.results.map(
+        (r: { check: string }) => r.check.split(':')[0]
+      );
       expect(checkTypes).toContain('exists');
       expect(checkTypes).toContain('content');
       expect(checkTypes).toContain('imports');
@@ -362,7 +412,9 @@ describe('OODA Phase 3 Tools — Integration', () => {
         checks: ['exists', 'protected'],
       });
       expect(result.success).toBe(true);
-      const checkTypes = result.data.results.map((r: { check: string }) => r.check.split(':')[0]);
+      const checkTypes = result.data.results.map(
+        (r: { check: string }) => r.check.split(':')[0]
+      );
       expect(checkTypes).toContain('exists');
       expect(checkTypes).toContain('protected');
       expect(checkTypes).not.toContain('syntax');
@@ -375,7 +427,9 @@ describe('OODA Phase 3 Tools — Integration', () => {
         checks: ['syntax'],
       });
       expect(result.success).toBe(true);
-      const syntaxCheck = result.data.results.find((r: { check: string }) => r.check.startsWith('syntax'));
+      const syntaxCheck = result.data.results.find((r: { check: string }) =>
+        r.check.startsWith('syntax')
+      );
       expect(syntaxCheck?.passed).toBe(true);
     });
   });
@@ -463,10 +517,14 @@ describe('OODA Phase 3 Tools — Integration', () => {
 
     it('should return all active cycles when no cycleId given', async () => {
       await executors.ooda_start_cycle({
-        issue: 'Cycle 1', category: 'ui_bug', affectedFiles: ['src/components/sidebar.tsx'],
+        issue: 'Cycle 1',
+        category: 'ui_bug',
+        affectedFiles: ['src/components/sidebar.tsx'],
       });
       await executors.ooda_start_cycle({
-        issue: 'Cycle 2', category: 'style', affectedFiles: ['src/utils/helpers.ts'],
+        issue: 'Cycle 2',
+        category: 'style',
+        affectedFiles: ['src/utils/helpers.ts'],
       });
 
       const result = await executors.ooda_get_status({});

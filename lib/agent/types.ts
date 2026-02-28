@@ -49,7 +49,13 @@ export type RiskLevel = 'auto' | 'notify' | 'confirm';
  * - self-improve: Self-analysis tools (self_* prefix)
  * - ooda: Active OODA loop tools (ooda_* prefix)
  */
-export type ToolCategory = 'filesystem' | 'git' | 'github' | 'utility' | 'self-improve' | 'ooda';
+export type ToolCategory =
+  | 'filesystem'
+  | 'git'
+  | 'github'
+  | 'utility'
+  | 'self-improve'
+  | 'ooda';
 
 export interface ToolDefinition {
   name: string;
@@ -66,7 +72,13 @@ export interface ToolCall {
   /** Optional extended fields (used in UI) */
   toolName?: string;
   args?: Record<string, unknown>;
-  status?: 'pending' | 'approved' | 'rejected' | 'executing' | 'completed' | 'failed';
+  status?:
+    | 'pending'
+    | 'approved'
+    | 'rejected'
+    | 'executing'
+    | 'completed'
+    | 'failed';
   result?: ToolCallResult;
   createdAt?: number;
 }

@@ -6,13 +6,7 @@
 
 'use client';
 
-import {
-  Files,
-  Search,
-  GitBranch,
-  Terminal,
-  Settings,
-} from 'lucide-react';
+import { Files, Search, GitBranch, Terminal, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore, type ActivityBarView } from '@/lib/stores/ui-store';
 import { useGitStore } from '@/lib/stores/git-store';

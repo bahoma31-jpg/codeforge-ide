@@ -29,8 +29,10 @@ const SAMPLE_REQUEST: SelfImproveRequest = {
   issue: 'زر الحفظ لا يعمل في صفحة الإعدادات',
   category: 'ui_bug',
   fileContents: {
-    'components/settings.tsx': 'export function Settings() { return <div>Settings</div>; }',
-    'lib/stores/settings-store.ts': 'export const useSettings = () => ({ save: () => {} });',
+    'components/settings.tsx':
+      'export function Settings() { return <div>Settings</div>; }',
+    'lib/stores/settings-store.ts':
+      'export const useSettings = () => ({ save: () => {} });',
   },
   affectedFiles: ['components/settings.tsx', 'lib/stores/settings-store.ts'],
 };
@@ -146,7 +148,7 @@ describe('OODABridge — Event System', () => {
 
   test('should register and unregister event handlers', () => {
     const events: BridgeEvent[] = [];
-    const unsubscribe = bridge.onEvent(e => events.push(e));
+    const unsubscribe = bridge.onEvent((e) => events.push(e));
 
     expect(typeof unsubscribe).toBe('function');
     unsubscribe();
@@ -157,8 +159,8 @@ describe('OODABridge — Event System', () => {
     const events1: BridgeEvent[] = [];
     const events2: BridgeEvent[] = [];
 
-    const unsub1 = bridge.onEvent(e => events1.push(e));
-    const unsub2 = bridge.onEvent(e => events2.push(e));
+    const unsub1 = bridge.onEvent((e) => events1.push(e));
+    const unsub2 = bridge.onEvent((e) => events2.push(e));
 
     expect(typeof unsub1).toBe('function');
     expect(typeof unsub2).toBe('function');
@@ -171,33 +173,38 @@ describe('OODABridge — Event System', () => {
     // Events are emitted during runAnalysisCycle, but we can test
     // the structure by checking the type definition
     const events: BridgeEvent[] = [];
-    bridge.onEvent(e => events.push(e));
+    bridge.onEvent((e) => events.push(e));
 
     // Trigger a blocked cycle to generate events
-    bridge.runAnalysisCycle({
-      ...SAMPLE_REQUEST,
-      affectedFiles: ['.env'],
-    }).then(() => {
-      // Blocked cycles don't emit events, but the handler was registered
-      expect(events.length).toBe(0); // Blocked before any phase starts
-    });
+    bridge
+      .runAnalysisCycle({
+        ...SAMPLE_REQUEST,
+        affectedFiles: ['.env'],
+      })
+      .then(() => {
+        // Blocked cycles don't emit events, but the handler was registered
+        expect(events.length).toBe(0); // Blocked before any phase starts
+      });
   });
 });
 
 describe('AgentLLMAdapter — Provider Compatibility', () => {
   test('should import AgentLLMAdapter from bridge', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { AgentLLMAdapter } = require('../bridge');
     expect(AgentLLMAdapter).toBeDefined();
     expect(typeof AgentLLMAdapter).toBe('function');
   });
 
   test('should import OODABridge from bridge', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { OODABridge } = require('../bridge');
     expect(OODABridge).toBeDefined();
     expect(typeof OODABridge).toBe('function');
   });
 
   test('should import all bridge exports', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const bridge = require('../bridge');
     expect(bridge.OODABridge).toBeDefined();
     expect(bridge.getOODABridge).toBeDefined();

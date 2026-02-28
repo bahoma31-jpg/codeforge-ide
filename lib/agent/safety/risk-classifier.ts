@@ -111,8 +111,8 @@ export function classifyRisk(
   }
 
   // Check for destructive patterns in tool name
-  const isDestructive = DESTRUCTIVE_PATTERNS.some(
-    (p) => toolCall.name.toLowerCase().includes(p)
+  const isDestructive = DESTRUCTIVE_PATTERNS.some((p) =>
+    toolCall.name.toLowerCase().includes(p)
   );
 
   if (isDestructive && baseRisk === 'auto') {
@@ -176,7 +176,8 @@ function extractFilePath(args: Record<string, unknown>): string {
  */
 export function isSensitiveFile(filePath: string): boolean {
   return ALL_SENSITIVE_PATTERNS.some(
-    (sf) => filePath.endsWith(sf) || filePath.includes(sf) || filePath.startsWith(sf)
+    (sf) =>
+      filePath.endsWith(sf) || filePath.includes(sf) || filePath.startsWith(sf)
   );
 }
 
@@ -211,9 +212,13 @@ export function getRiskDescription(riskLevel: RiskLevel): string {
  */
 export function getRiskEmoji(riskLevel: RiskLevel): string {
   switch (riskLevel) {
-    case 'auto': return '🟢';
-    case 'notify': return '🟡';
-    case 'confirm': return '🔴';
-    default: return '⚪';
+    case 'auto':
+      return '🟢';
+    case 'notify':
+      return '🟡';
+    case 'confirm':
+      return '🔴';
+    default:
+      return '⚪';
   }
 }

@@ -186,7 +186,10 @@ export function getDefaultModel(providerId: ProviderId): AgentModel {
  * NOTE: We keep validation lenient because providers change key formats.
  * The real validation happens when the API call is made.
  */
-export function validateApiKeyFormat(providerId: ProviderId, apiKey: string): boolean {
+export function validateApiKeyFormat(
+  providerId: ProviderId,
+  apiKey: string
+): boolean {
   if (!apiKey || apiKey.trim().length === 0) return false;
 
   const key = apiKey.trim();

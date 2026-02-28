@@ -68,7 +68,8 @@ const phase1Tools: ToolDefinition[] = [
         },
         maxDepth: {
           type: 'number',
-          description: 'Maximum depth to trace (default: 5). Higher values are slower.',
+          description:
+            'Maximum depth to trace (default: 5). Higher values are slower.',
         },
       },
       required: ['filePath'],
@@ -87,7 +88,8 @@ const phase1Tools: ToolDefinition[] = [
       properties: {
         includeGraph: {
           type: 'boolean',
-          description: 'Whether to include the full dependency graph (default: true). Set false for a lighter overview.',
+          description:
+            'Whether to include the full dependency graph (default: true). Set false for a lighter overview.',
         },
       },
       required: [],
@@ -99,7 +101,7 @@ const phase1Tools: ToolDefinition[] = [
 
 // ─── Phase 2 Tool Definitions (with risk levels) ──────────────
 
-const phase2Tools: ToolDefinition[] = oodaToolDefinitions.map(tool => {
+const phase2Tools: ToolDefinition[] = oodaToolDefinitions.map((tool) => {
   // Assign risk levels based on tool behavior
   let riskLevel: 'auto' | 'notify' | 'confirm' = 'auto';
   if (tool.name === 'self_start_improvement') riskLevel = 'confirm';
@@ -140,6 +142,7 @@ async function loadProjectFiles(): Promise<Map<string, string>> {
 
 // ─── Helper: Create Tool Bridge ─────────────────────────────────
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function createToolBridge(service: AgentService): ToolBridge {
   return {
     readFile: async (filePath: string) => {
@@ -147,8 +150,10 @@ function createToolBridge(service: AgentService): ToolBridge {
       const file = await readFileByPath(filePath);
       return file.content || '';
     },
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     editFile: async (filePath, oldStr, newStr, commitMessage) => {
-      const { readFileByPath, updateFileContent } = await import('@/lib/db/file-operations');
+      const { readFileByPath, updateFileContent } =
+        await import('@/lib/db/file-operations');
       const file = await readFileByPath(filePath);
       const content = file.content || '';
       const newContent = content.replace(oldStr, newStr);
@@ -156,11 +161,13 @@ function createToolBridge(service: AgentService): ToolBridge {
       await updateFileContent(filePath, newContent);
       return true;
     },
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     writeFile: async (filePath, content, commitMessage) => {
       const { updateFileContent } = await import('@/lib/db/file-operations');
       await updateFileContent(filePath, content);
       return true;
     },
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     deleteFile: async (filePath, commitMessage) => {
       const { deleteNode } = await import('@/lib/db/file-operations');
       await deleteNode(filePath);
@@ -217,7 +224,8 @@ export function registerSelfImproveExecutors(service: AgentService): void {
         success: true,
         data: {
           ...analysis,
-          summary: `${analysis.componentName} is a ${analysis.type} with ${analysis.lineCount} lines ` +
+          summary:
+            `${analysis.componentName} is a ${analysis.type} with ${analysis.lineCount} lines ` +
             `(${analysis.estimatedComplexity} complexity). ` +
             `Imports from ${analysis.dependencies.length} local files, ` +
             `exported by ${analysis.exports.length} symbols.`,
@@ -252,10 +260,10 @@ export function registerSelfImproveExecutors(service: AgentService): void {
         `📁 Dependency trace for: ${filePath}`,
         ``,
         `⬆️ Upstream (${trace.upstream.length} files this file imports from):`,
-        ...trace.upstream.map(f => `   → ${f}`),
+        ...trace.upstream.map((f) => `   → ${f}`),
         ``,
         `⬇️ Downstream (${trace.downstream.length} files that import this file):`,
-        ...trace.downstream.map(f => `   ← ${f}`),
+        ...trace.downstream.map((f) => `   ← ${f}`),
       ];
 
       if (trace.circularDeps.length > 0) {
@@ -303,10 +311,10 @@ export function registerSelfImproveExecutors(service: AgentService): void {
         extSummary,
         ``,
         `🚀 Entry points: ${projectMap.entryPoints.length}`,
-        ...projectMap.entryPoints.map(e => `   ${e}`),
+        ...projectMap.entryPoints.map((e) => `   ${e}`),
         ``,
         `⚙️ Config files: ${projectMap.configFiles.length}`,
-        ...projectMap.configFiles.map(c => `   ${c}`),
+        ...projectMap.configFiles.map((c) => `   ${c}`),
         ``,
         `🧩 Component files: ${projectMap.componentFiles.length}`,
       ].join('\n');
@@ -325,7 +333,7 @@ export function registerSelfImproveExecutors(service: AgentService): void {
         const simplifiedGraph: Record<string, string[]> = {};
         for (const [path, node] of Object.entries(projectMap.dependencyGraph)) {
           simplifiedGraph[path] = node.imports.filter(
-            i => i.startsWith('.') || i.startsWith('@/')
+            (i) => i.startsWith('.') || i.startsWith('@/')
           );
         }
         result.dependencyGraph = simplifiedGraph;

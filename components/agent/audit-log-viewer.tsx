@@ -6,7 +6,11 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { getAuditLogger, type AuditLogEntryEnhanced, type AuditLogStats } from '@/lib/agent/audit-logger';
+import {
+  getAuditLogger,
+  type AuditLogEntryEnhanced,
+  type AuditLogStats,
+} from '@/lib/agent/audit-logger';
 
 // ─── Risk Level Badge ─────────────────────────────────────────
 
@@ -17,7 +21,9 @@ function RiskBadge({ level }: { level?: string }) {
     confirm: 'bg-red-500/20 text-red-400',
   };
   return (
-    <span className={`px-2 py-0.5 rounded text-xs font-mono ${colors[level || 'auto'] || colors.auto}`}>
+    <span
+      className={`px-2 py-0.5 rounded text-xs font-mono ${colors[level || 'auto'] || colors.auto}`}
+    >
       {level || 'auto'}
     </span>
   );
@@ -27,28 +33,47 @@ function RiskBadge({ level }: { level?: string }) {
 
 function StatusBadge({ entry }: { entry: AuditLogEntryEnhanced }) {
   if (!entry.approved) {
-    return <span className="px-2 py-0.5 rounded text-xs bg-red-500/20 text-red-400">مرفوض</span>;
+    return (
+      <span className="px-2 py-0.5 rounded text-xs bg-red-500/20 text-red-400">
+        مرفوض
+      </span>
+    );
   }
   if (entry.result?.success) {
-    return <span className="px-2 py-0.5 rounded text-xs bg-green-500/20 text-green-400">نجح ✓</span>;
+    return (
+      <span className="px-2 py-0.5 rounded text-xs bg-green-500/20 text-green-400">
+        نجح ✓
+      </span>
+    );
   }
   if (entry.result && !entry.result.success) {
-    return <span className="px-2 py-0.5 rounded text-xs bg-red-500/20 text-red-400">فشل ✗</span>;
+    return (
+      <span className="px-2 py-0.5 rounded text-xs bg-red-500/20 text-red-400">
+        فشل ✗
+      </span>
+    );
   }
-  return <span className="px-2 py-0.5 rounded text-xs bg-gray-500/20 text-gray-400">—</span>;
+  return (
+    <span className="px-2 py-0.5 rounded text-xs bg-gray-500/20 text-gray-400">
+      —
+    </span>
+  );
 }
 
 // ─── Stats Panel ──────────────────────────────────────────────
 
 function StatsPanel({ stats }: { stats: AuditLogStats }) {
-  const successRate = stats.totalOperations > 0
-    ? Math.round((stats.successCount / stats.totalOperations) * 100)
-    : 0;
+  const successRate =
+    stats.totalOperations > 0
+      ? Math.round((stats.successCount / stats.totalOperations) * 100)
+      : 0;
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
       <div className="bg-[#1e1e2e] rounded-lg p-3 border border-[#313244]">
-        <div className="text-2xl font-bold text-white">{stats.totalOperations}</div>
+        <div className="text-2xl font-bold text-white">
+          {stats.totalOperations}
+        </div>
         <div className="text-xs text-gray-400">إجمالي العمليات</div>
       </div>
       <div className="bg-[#1e1e2e] rounded-lg p-3 border border-[#313244]">
@@ -56,11 +81,15 @@ function StatsPanel({ stats }: { stats: AuditLogStats }) {
         <div className="text-xs text-gray-400">نسبة النجاح</div>
       </div>
       <div className="bg-[#1e1e2e] rounded-lg p-3 border border-[#313244]">
-        <div className="text-2xl font-bold text-yellow-400">{stats.rejectedCount}</div>
+        <div className="text-2xl font-bold text-yellow-400">
+          {stats.rejectedCount}
+        </div>
         <div className="text-xs text-gray-400">مرفوضة</div>
       </div>
       <div className="bg-[#1e1e2e] rounded-lg p-3 border border-[#313244]">
-        <div className="text-2xl font-bold text-blue-400">{stats.averageDuration}ms</div>
+        <div className="text-2xl font-bold text-blue-400">
+          {stats.averageDuration}ms
+        </div>
         <div className="text-xs text-gray-400">متوسط المدة</div>
       </div>
     </div>
@@ -108,7 +137,13 @@ export function AuditLogViewer() {
 
   const formatTime = (ts: number) => {
     const d = new Date(ts);
-    return d.toLocaleString('ar-DZ', { hour: '2-digit', minute: '2-digit', second: '2-digit', day: '2-digit', month: '2-digit' });
+    return d.toLocaleString('ar-DZ', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+    });
   };
 
   return (
@@ -138,7 +173,9 @@ export function AuditLogViewer() {
             📥 CSV
           </button>
           <button
-            onClick={() => { if (confirm('هل أنت متأكد من حذف كل السجلات؟')) logger.clear(); }}
+            onClick={() => {
+              if (confirm('هل أنت متأكد من حذف كل السجلات؟')) logger.clear();
+            }}
             className="px-3 py-1 text-xs rounded bg-red-600/30 text-red-400 hover:bg-red-600/50 transition-colors"
           >
             🗑️ مسح
@@ -165,7 +202,9 @@ export function AuditLogViewer() {
         >
           <option value="">كل الأدوات</option>
           {toolNames.map((name) => (
-            <option key={name} value={name}>{name}</option>
+            <option key={name} value={name}>
+              {name}
+            </option>
           ))}
         </select>
         <select
@@ -206,7 +245,9 @@ export function AuditLogViewer() {
             <div
               key={entry.id}
               className="bg-[#1e1e2e] border border-[#313244] rounded-lg overflow-hidden hover:border-[#45475a] transition-colors cursor-pointer"
-              onClick={() => setExpandedId(expandedId === entry.id ? null : entry.id)}
+              onClick={() =>
+                setExpandedId(expandedId === entry.id ? null : entry.id)
+              }
             >
               {/* Row Summary */}
               <div className="flex items-center gap-3 px-3 py-2">
@@ -232,10 +273,22 @@ export function AuditLogViewer() {
               {expandedId === entry.id && (
                 <div className="border-t border-[#313244] px-3 py-2 bg-[#181825] text-xs">
                   <div className="grid grid-cols-2 gap-2 mb-2">
-                    <div><span className="text-gray-500">ID:</span> <span className="font-mono">{entry.id.slice(0, 8)}</span></div>
-                    <div><span className="text-gray-500">Session:</span> <span className="font-mono">{entry.sessionId}</span></div>
-                    <div><span className="text-gray-500">Category:</span> {entry.category}</div>
-                    <div><span className="text-gray-500">Approved by:</span> {entry.approvedBy}</div>
+                    <div>
+                      <span className="text-gray-500">ID:</span>{' '}
+                      <span className="font-mono">{entry.id.slice(0, 8)}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Session:</span>{' '}
+                      <span className="font-mono">{entry.sessionId}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Category:</span>{' '}
+                      {entry.category}
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Approved by:</span>{' '}
+                      {entry.approvedBy}
+                    </div>
                   </div>
                   <div className="mb-2">
                     <span className="text-gray-500">Arguments:</span>
@@ -246,7 +299,9 @@ export function AuditLogViewer() {
                   {entry.result && (
                     <div>
                       <span className="text-gray-500">Result:</span>
-                      <pre className={`mt-1 p-2 bg-[#11111b] rounded overflow-x-auto ${entry.result.success ? 'text-green-300' : 'text-red-300'}`}>
+                      <pre
+                        className={`mt-1 p-2 bg-[#11111b] rounded overflow-x-auto ${entry.result.success ? 'text-green-300' : 'text-red-300'}`}
+                      >
                         {JSON.stringify(entry.result, null, 2)}
                       </pre>
                     </div>

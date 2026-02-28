@@ -18,14 +18,14 @@ export type TokenType =
 export interface MarkdownToken {
   type: TokenType;
   content: string;
-  level?: number;       // heading level 1-6
-  language?: string;    // code block language
-  items?: ListItem[];   // list items
+  level?: number; // heading level 1-6
+  language?: string; // code block language
+  items?: ListItem[]; // list items
 }
 
 export interface ListItem {
   content: string;
-  checked?: boolean;    // for task lists
+  checked?: boolean; // for task lists
 }
 
 /**
@@ -52,7 +52,11 @@ export function parseMarkdown(text: string): MarkdownToken[] {
         i++;
       }
       i++; // skip closing ```
-      tokens.push({ type: 'code_block', content: codeLines.join('\n'), language: lang });
+      tokens.push({
+        type: 'code_block',
+        content: codeLines.join('\n'),
+        language: lang,
+      });
       continue;
     }
 
@@ -161,7 +165,15 @@ export function parseMarkdown(text: string): MarkdownToken[] {
  * Parse inline markdown elements within text.
  * Returns segments with type info for rendering.
  */
-export type InlineType = 'text' | 'bold' | 'italic' | 'bold_italic' | 'strikethrough' | 'code' | 'link' | 'image';
+export type InlineType =
+  | 'text'
+  | 'bold'
+  | 'italic'
+  | 'bold_italic'
+  | 'strikethrough'
+  | 'code'
+  | 'link'
+  | 'image';
 
 export interface InlineSegment {
   type: InlineType;
@@ -175,7 +187,8 @@ export function parseInline(text: string): InlineSegment[] {
 
   const segments: InlineSegment[] = [];
   // Pattern order matters: bold_italic before bold/italic
-  const regex = /(!\[([^\]]*)\]\(([^)]+)\))|(\[([^\]]*)\]\(([^)]+)\))|(\*\*\*(.+?)\*\*\*)|(\*\*(.+?)\*\*)|(__(.+?)__)|(\*(.+?)\*)|(~~(.+?)~~)|(`([^`]+)`)/g;
+  const regex =
+    /(!\[([^\]]*)\]\(([^)]+)\))|(\[([^\]]*)\]\(([^)]+)\))|(\*\*\*(.+?)\*\*\*)|(\*\*(.+?)\*\*)|(__(.+?)__)|(\*(.+?)\*)|(~~(.+?)~~)|(`([^`]+)`)/g;
 
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -183,7 +196,10 @@ export function parseInline(text: string): InlineSegment[] {
   while ((match = regex.exec(text)) !== null) {
     // Text before match
     if (match.index > lastIndex) {
-      segments.push({ type: 'text', content: text.slice(lastIndex, match.index) });
+      segments.push({
+        type: 'text',
+        content: text.slice(lastIndex, match.index),
+      });
     }
 
     if (match[1]) {
@@ -230,14 +246,16 @@ export function parseInline(text: string): InlineSegment[] {
 export function cleanAIContent(content: string): string {
   if (!content) return '';
 
-  return content
-    // Remove [Calling tool: xxx] lines
-    .replace(/^\[Calling tool:.*\]$/gm, '')
-    // Remove "Tool xxx result: {...}" lines
-    .replace(/^Tool \w+ result:.*$/gm, '')
-    // Remove lines that are pure JSON objects (tool results leaked into response)
-    .replace(/^\{"success":(true|false).*\}$/gm, '')
-    // Clean up multiple blank lines
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+  return (
+    content
+      // Remove [Calling tool: xxx] lines
+      .replace(/^\[Calling tool:.*\]$/gm, '')
+      // Remove "Tool xxx result: {...}" lines
+      .replace(/^Tool \w+ result:.*$/gm, '')
+      // Remove lines that are pure JSON objects (tool results leaked into response)
+      .replace(/^\{"success":(true|false).*\}$/gm, '')
+      // Clean up multiple blank lines
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+  );
 }

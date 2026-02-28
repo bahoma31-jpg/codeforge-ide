@@ -162,10 +162,7 @@ describe('OODAController', () => {
     toolBridge = createMockToolBridge();
     collectedEvents = [];
 
-    controller = new OODAController(
-      toolBridge as any,
-      fileLoader
-    );
+    controller = new OODAController(toolBridge as unknown, fileLoader);
 
     // Subscribe to events
     controller.on((event: OODAEvent) => {
@@ -187,9 +184,9 @@ describe('OODAController', () => {
       controller.startTask('Fix bug in TestComponent');
 
       // Wait for async execution
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
-      const phases = collectedEvents.map(e => e.phase);
+      const phases = collectedEvents.map((e) => e.phase);
       expect(phases).toContain('observe');
       expect(phases).toContain('orient');
       expect(phases).toContain('decide');
@@ -199,7 +196,7 @@ describe('OODAController', () => {
 
     it('should call analyzeComponent during observe phase', async () => {
       controller.startTask('Fix bug in test/file.ts');
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       expect(mockFindRelatedFiles).toHaveBeenCalled();
       expect(mockAnalyzeComponent).toHaveBeenCalled();
@@ -207,28 +204,28 @@ describe('OODAController', () => {
 
     it('should call traceDependencies during orient phase', async () => {
       controller.startTask('Fix bug in test/file.ts');
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       expect(mockTraceDependencies).toHaveBeenCalled();
     });
 
     it('should execute fix plan during act phase', async () => {
       controller.startTask('Fix bug in test/file.ts');
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       expect(mockExecutePlan).toHaveBeenCalled();
     });
 
     it('should verify changes during verify phase', async () => {
       controller.startTask('Fix bug in test/file.ts');
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       expect(mockVerify).toHaveBeenCalled();
     });
 
     it('should record success in learning memory on completion', async () => {
       controller.startTask('Fix bug in test/file.ts');
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       expect(mockRecordSuccess).toHaveBeenCalled();
     });
@@ -270,7 +267,10 @@ describe('OODAController', () => {
       controller.cancelTask(taskId);
 
       const cancelEvent = collectedEvents.find(
-        e => e.type === 'cancelled' || e.message.includes('cancel') || e.message.includes('إلغاء')
+        (e) =>
+          e.type === 'cancelled' ||
+          e.message.includes('cancel') ||
+          e.message.includes('إلغاء')
       );
       expect(cancelEvent).toBeDefined();
     });
@@ -286,7 +286,13 @@ describe('OODAController', () => {
           passed: false,
           score: 0.5,
           checks: [],
-          failedChecks: [{ name: 'import_validity', passed: false, message: 'Broken import' }],
+          failedChecks: [
+            {
+              name: 'import_validity',
+              passed: false,
+              message: 'Broken import',
+            },
+          ],
         })
         .mockReturnValue({
           passed: true,
@@ -296,7 +302,7 @@ describe('OODAController', () => {
         });
 
       controller.startTask('Fix with retry');
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 200));
 
       // Should have called verify at least 2 times
       expect(mockVerify.mock.calls.length).toBeGreaterThanOrEqual(2);
@@ -308,11 +314,13 @@ describe('OODAController', () => {
         passed: false,
         score: 0.2,
         checks: [],
-        failedChecks: [{ name: 'syntax_sanity', passed: false, message: 'Syntax error' }],
+        failedChecks: [
+          { name: 'syntax_sanity', passed: false, message: 'Syntax error' },
+        ],
       });
 
       controller.startTask('Failing task');
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       expect(mockRecordFailure).toHaveBeenCalled();
     });
@@ -325,8 +333,8 @@ describe('OODAController', () => {
       const events1: OODAEvent[] = [];
       const events2: OODAEvent[] = [];
 
-      controller.on(e => events1.push(e));
-      controller.on(e => events2.push(e));
+      controller.on((e) => events1.push(e));
+      controller.on((e) => events2.push(e));
 
       controller.startTask('Multi-listener test');
 
@@ -337,7 +345,7 @@ describe('OODAController', () => {
 
     it('should support unsubscribing from events', () => {
       const extraEvents: OODAEvent[] = [];
-      const unsubscribe = controller.on(e => extraEvents.push(e));
+      const unsubscribe = controller.on((e) => extraEvents.push(e));
 
       controller.startTask('Unsub test');
       const countBefore = extraEvents.length;

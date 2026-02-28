@@ -46,10 +46,7 @@ export {
 // ─── Phase 2: OODA Loop Engine ─────────────────────────────────
 
 // OODA Controller
-export {
-  OODAController,
-  getOODAController,
-} from './ooda-controller';
+export { OODAController, getOODAController } from './ooda-controller';
 export type {
   OODAPhase,
   OODAEvent,
@@ -57,30 +54,17 @@ export type {
 } from './ooda-controller';
 
 // Fix Executor
-export {
-  FixExecutor,
-} from './fix-executor';
-export type {
-  ToolBridge,
-  ExecutionOptions,
-} from './fix-executor';
+export { FixExecutor } from './fix-executor';
+export type { ToolBridge, ExecutionOptions } from './fix-executor';
 
 // Verification Engine
-export {
-  VerificationEngine,
-} from './verification-engine';
+export { VerificationEngine } from './verification-engine';
 
 // Learning Memory
-export {
-  LearningMemory,
-  getLearningMemory,
-} from './learning-memory';
+export { LearningMemory, getLearningMemory } from './learning-memory';
 
 // OODA Tools (Phase 2 — exposed via self-improve category)
-export {
-  oodaToolDefinitions,
-  createOODAToolExecutors,
-} from './ooda-tools';
+export { oodaToolDefinitions, createOODAToolExecutors } from './ooda-tools';
 
 // ─── Phase 3: Active OODA Tools ────────────────────────────────
 
@@ -92,6 +76,4 @@ export {
 } from './ooda-tool-definitions';
 
 // UI ↔ Engine Connector
-export {
-  SelfImproveConnector,
-} from './self-improve-connector';
+export { SelfImproveConnector } from './self-improve-connector';

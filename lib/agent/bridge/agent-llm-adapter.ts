@@ -59,7 +59,7 @@ export class AgentLLMAdapter {
       model?: string;
     }
   ): Promise<ProviderResponse> {
-    const formattedTools: FormattedTool[] = tools.map(t => ({
+    const formattedTools: FormattedTool[] = tools.map((t) => ({
       type: 'function' as const,
       function: {
         name: t.name,
@@ -71,7 +71,7 @@ export class AgentLLMAdapter {
     // Build request body (Groq uses OpenAI-compatible format)
     const body = {
       model: options?.model || this.groq.getModel(),
-      messages: messages.map(m => ({
+      messages: messages.map((m) => ({
         role: m.role,
         content: m.content,
       })),
@@ -81,17 +81,22 @@ export class AgentLLMAdapter {
       max_tokens: options?.maxTokens ?? 8192,
     };
 
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.getApiKey()}`,
-      },
-      body: JSON.stringify(body),
-    });
+    const response = await fetch(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.getApiKey()}`,
+        },
+        body: JSON.stringify(body),
+      }
+    );
 
     if (!response.ok) {
-      const err = await response.json().catch(() => ({ error: { message: `HTTP ${response.status}` } }));
+      const err = await response
+        .json()
+        .catch(() => ({ error: { message: `HTTP ${response.status}` } }));
       throw new Error(err.error?.message || `Groq error: ${response.status}`);
     }
 
@@ -118,7 +123,7 @@ export class AgentLLMAdapter {
       model?: string;
     }
   ): AsyncGenerator<string, void, unknown> {
-    const chatMessages = messages.map(m => ({
+    const chatMessages = messages.map((m) => ({
       role: m.role as 'system' | 'user' | 'assistant',
       content: m.content,
     }));
@@ -138,7 +143,7 @@ export class AgentLLMAdapter {
       function?: { name: string; arguments: string };
     }>
   ): ToolCall[] {
-    return rawToolCalls.map(tc => {
+    return rawToolCalls.map((tc) => {
       let parsedArgs: Record<string, unknown> = {};
       try {
         parsedArgs = JSON.parse(tc.function?.arguments || '{}');

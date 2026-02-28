@@ -15,7 +15,12 @@
 
 import React, { useState } from 'react';
 import { useAgentStore } from '@/lib/stores/agent-store';
-import { getAllProviders, getProvider, validateApiKeyFormat } from '@/lib/agent/providers';
+import {
+  getAllProviders,
+  getProvider,
+  validateApiKeyFormat,
+} from '@/lib/agent/providers';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { ProviderId } from '@/lib/agent/types';
 import { ModelSelector } from './model-selector';
 import {
@@ -56,12 +61,21 @@ export function AgentSettings({
   isOODAReady = false,
   oodaModel,
 }: AgentSettingsProps) {
-  const { config, setProvider, setApiKey, setModel, setGitHubToken, updateConfig } = useAgentStore();
+  const {
+    config,
+    setProvider,
+    setApiKey,
+    setModel,
+    setGitHubToken,
+    updateConfig,
+  } = useAgentStore();
   const [showApiKey, setShowApiKey] = useState(false);
   const [showGithubToken, setShowGithubToken] = useState(false);
   const [showGroqKey, setShowGroqKey] = useState(false);
   const [tempApiKey, setTempApiKey] = useState(config.apiKey);
-  const [tempGithubToken, setTempGithubToken] = useState(config.githubToken || '');
+  const [tempGithubToken, setTempGithubToken] = useState(
+    config.githubToken || ''
+  );
   const [tempGroqKey, setTempGroqKey] = useState(externalGroqKey || '');
   const [activeTab, setActiveTab] = useState<'provider' | 'ooda'>('provider');
 
@@ -71,7 +85,8 @@ export function AgentSettings({
   const currentProvider = getProvider(config.provider);
   const isKeyValid = validateApiKeyFormat(config.provider, tempApiKey);
   const isGithubTokenValid = tempGithubToken.length > 20;
-  const isGroqKeyValid = tempGroqKey.startsWith('gsk_') && tempGroqKey.length > 20;
+  const isGroqKeyValid =
+    tempGroqKey.startsWith('gsk_') && tempGroqKey.length > 20;
   const isGroqProvider = config.provider === 'groq';
 
   const handleSaveApiKey = () => {
@@ -97,7 +112,9 @@ export function AgentSettings({
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#313244]">
           <div className="flex items-center gap-2">
             <Settings size={18} className="text-[#89b4fa]" />
-            <h2 className="text-sm font-semibold text-[#cdd6f4]">إعدادات الوكيل الذكي</h2>
+            <h2 className="text-sm font-semibold text-[#cdd6f4]">
+              إعدادات الوكيل الذكي
+            </h2>
           </div>
           <button
             onClick={onClose}
@@ -138,7 +155,6 @@ export function AgentSettings({
 
         {/* Content */}
         <div className="px-5 py-4 space-y-5 overflow-y-auto max-h-[calc(90vh-160px)]">
-
           {/* ═══ TAB 1: Provider & Model ═══ */}
           {activeTab === 'provider' && (
             <>
@@ -162,8 +178,12 @@ export function AgentSettings({
                           : 'border-[#313244] bg-[#181825] hover:border-[#45475a]'
                       }`}
                     >
-                      <div className="text-sm font-medium text-[#cdd6f4]">{p.name}</div>
-                      <div className="text-[10px] text-[#6c7086] mt-0.5">{p.description}</div>
+                      <div className="text-sm font-medium text-[#cdd6f4]">
+                        {p.name}
+                      </div>
+                      <div className="text-[10px] text-[#6c7086] mt-0.5">
+                        {p.description}
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -210,9 +230,17 @@ export function AgentSettings({
                   </button>
                 </div>
                 {tempApiKey && (
-                  <div className={`flex items-center gap-1 mt-1.5 text-[10px] ${isKeyValid ? 'text-[#a6e3a1]' : 'text-[#f38ba8]'}`}>
-                    {isKeyValid ? <CheckCircle2 size={10} /> : <XCircle size={10} />}
-                    {isKeyValid ? 'صيغة المفتاح صحيحة' : 'صيغة المفتاح غير صحيحة'}
+                  <div
+                    className={`flex items-center gap-1 mt-1.5 text-[10px] ${isKeyValid ? 'text-[#a6e3a1]' : 'text-[#f38ba8]'}`}
+                  >
+                    {isKeyValid ? (
+                      <CheckCircle2 size={10} />
+                    ) : (
+                      <XCircle size={10} />
+                    )}
+                    {isKeyValid
+                      ? 'صيغة المفتاح صحيحة'
+                      : 'صيغة المفتاح غير صحيحة'}
                   </div>
                 )}
               </div>
@@ -246,7 +274,11 @@ export function AgentSettings({
                       onClick={() => setShowGithubToken(!showGithubToken)}
                       className="absolute left-2 top-1/2 -translate-y-1/2 text-[#6c7086] hover:text-[#cdd6f4]"
                     >
-                      {showGithubToken ? <EyeOff size={14} /> : <Eye size={14} />}
+                      {showGithubToken ? (
+                        <EyeOff size={14} />
+                      ) : (
+                        <Eye size={14} />
+                      )}
                     </button>
                   </div>
                   <button
@@ -258,14 +290,23 @@ export function AgentSettings({
                   </button>
                 </div>
                 {tempGithubToken && (
-                  <div className={`flex items-center gap-1 mt-1.5 text-[10px] ${isGithubTokenValid ? 'text-[#a6e3a1]' : 'text-[#f38ba8]'}`}>
-                    {isGithubTokenValid ? <CheckCircle2 size={10} /> : <XCircle size={10} />}
-                    {isGithubTokenValid ? 'توكن GitHub صالح' : 'التوكن قصير جداً'}
+                  <div
+                    className={`flex items-center gap-1 mt-1.5 text-[10px] ${isGithubTokenValid ? 'text-[#a6e3a1]' : 'text-[#f38ba8]'}`}
+                  >
+                    {isGithubTokenValid ? (
+                      <CheckCircle2 size={10} />
+                    ) : (
+                      <XCircle size={10} />
+                    )}
+                    {isGithubTokenValid
+                      ? 'توكن GitHub صالح'
+                      : 'التوكن قصير جداً'}
                   </div>
                 )}
                 <p className="text-[9px] text-[#45475a] mt-1.5">
-                  يستخدم لإنشاء مستودعات، رفع ملفات، إنشاء فروع و Pull Requests على GitHub.
-                  الصلاحيات المطلوبة: <span className="text-[#89b4fa] font-mono">repo</span>
+                  يستخدم لإنشاء مستودعات، رفع ملفات، إنشاء فروع و Pull Requests
+                  على GitHub. الصلاحيات المطلوبة:{' '}
+                  <span className="text-[#89b4fa] font-mono">repo</span>
                 </p>
               </div>
 
@@ -297,7 +338,8 @@ export function AgentSettings({
                   >
                     {currentProvider.models.map((m) => (
                       <option key={m.id} value={m.id}>
-                        {m.name} ({(m.contextWindow / 1000).toFixed(0)}K context)
+                        {m.name} ({(m.contextWindow / 1000).toFixed(0)}K
+                        context)
                       </option>
                     ))}
                   </select>
@@ -311,7 +353,9 @@ export function AgentSettings({
                     <Thermometer size={12} className="text-[#fab387]" />
                     درجة الإبداع (Temperature)
                   </span>
-                  <span className="font-mono text-[#89b4fa]">{config.temperature}</span>
+                  <span className="font-mono text-[#89b4fa]">
+                    {config.temperature}
+                  </span>
                 </label>
                 <input
                   type="range"
@@ -319,7 +363,9 @@ export function AgentSettings({
                   max="1"
                   step="0.1"
                   value={config.temperature}
-                  onChange={(e) => updateConfig({ temperature: parseFloat(e.target.value) })}
+                  onChange={(e) =>
+                    updateConfig({ temperature: parseFloat(e.target.value) })
+                  }
                   className="w-full accent-[#89b4fa]"
                 />
                 <div className="flex justify-between text-[9px] text-[#45475a] mt-1">
@@ -364,15 +410,19 @@ export function AgentSettings({
           {activeTab === 'ooda' && (
             <>
               {/* OODA Status Card */}
-              <div className={`p-4 rounded-xl border ${
-                isOODAReady
-                  ? 'border-[#a6e3a1]/30 bg-[#a6e3a1]/5'
-                  : 'border-[#f38ba8]/30 bg-[#f38ba8]/5'
-              }`}>
+              <div
+                className={`p-4 rounded-xl border ${
+                  isOODAReady
+                    ? 'border-[#a6e3a1]/30 bg-[#a6e3a1]/5'
+                    : 'border-[#f38ba8]/30 bg-[#f38ba8]/5'
+                }`}
+              >
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                    isOODAReady ? 'bg-[#a6e3a1]/20' : 'bg-[#f38ba8]/20'
-                  }`}>
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                      isOODAReady ? 'bg-[#a6e3a1]/20' : 'bg-[#f38ba8]/20'
+                    }`}
+                  >
                     {isOODAReady ? (
                       <RefreshCw size={20} className="text-[#a6e3a1]" />
                     ) : (
@@ -386,8 +436,7 @@ export function AgentSettings({
                     <div className="text-[10px] text-[#6c7086]">
                       {isOODAReady
                         ? `النموذج: ${oodaModel || 'llama-3.3-70b-versatile'}`
-                        : 'أضف مفتاح Groq API لتفعيل التحسين الذاتي'
-                      }
+                        : 'أضف مفتاح Groq API لتفعيل التحسين الذاتي'}
                     </div>
                   </div>
                 </div>
@@ -434,9 +483,17 @@ export function AgentSettings({
                   </button>
                 </div>
                 {tempGroqKey && (
-                  <div className={`flex items-center gap-1 mt-1.5 text-[10px] ${isGroqKeyValid ? 'text-[#a6e3a1]' : 'text-[#f38ba8]'}`}>
-                    {isGroqKeyValid ? <CheckCircle2 size={10} /> : <XCircle size={10} />}
-                    {isGroqKeyValid ? 'صيغة المفتاح صحيحة' : 'المفتاح يجب أن يبدأ بـ gsk_'}
+                  <div
+                    className={`flex items-center gap-1 mt-1.5 text-[10px] ${isGroqKeyValid ? 'text-[#a6e3a1]' : 'text-[#f38ba8]'}`}
+                  >
+                    {isGroqKeyValid ? (
+                      <CheckCircle2 size={10} />
+                    ) : (
+                      <XCircle size={10} />
+                    )}
+                    {isGroqKeyValid
+                      ? 'صيغة المفتاح صحيحة'
+                      : 'المفتاح يجب أن يبدأ بـ gsk_'}
                   </div>
                 )}
               </div>
@@ -450,6 +507,7 @@ export function AgentSettings({
                   </label>
                   <ModelSelector
                     selectedModel={oodaModel || 'llama-3.3-70b-versatile'}
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
                     onModelChange={(modelId) => {
                       // This will be handled by the parent component
                       // through the OODABridge configuration
@@ -461,19 +519,45 @@ export function AgentSettings({
 
               {/* How it works */}
               <div className="p-3 rounded-xl bg-[#181825] border border-[#313244]">
-                <div className="text-[10px] font-medium text-[#6c7086] mb-2">كيف يعمل التحسين الذاتي؟</div>
+                <div className="text-[10px] font-medium text-[#6c7086] mb-2">
+                  كيف يعمل التحسين الذاتي؟
+                </div>
                 <div className="space-y-1.5">
                   {[
-                    { icon: '👁️', label: 'رصد', desc: 'يكتشف المشكلة تلقائياً من وصفك' },
-                    { icon: '🧭', label: 'تحليل', desc: 'يحلل السبب الجذري باستخدام الذكاء الاصطناعي' },
-                    { icon: '📋', label: 'قرار', desc: 'يكتب خطة إصلاح مع كود جاهز' },
-                    { icon: '⚡', label: 'تنفيذ', desc: 'يطبق الإصلاحات مع نسخ احتياطية' },
-                    { icon: '✅', label: 'تحقق', desc: 'يفحص 6 فحوصات آلية للتأكد' },
+                    {
+                      icon: '👁️',
+                      label: 'رصد',
+                      desc: 'يكتشف المشكلة تلقائياً من وصفك',
+                    },
+                    {
+                      icon: '🧭',
+                      label: 'تحليل',
+                      desc: 'يحلل السبب الجذري باستخدام الذكاء الاصطناعي',
+                    },
+                    {
+                      icon: '📋',
+                      label: 'قرار',
+                      desc: 'يكتب خطة إصلاح مع كود جاهز',
+                    },
+                    {
+                      icon: '⚡',
+                      label: 'تنفيذ',
+                      desc: 'يطبق الإصلاحات مع نسخ احتياطية',
+                    },
+                    {
+                      icon: '✅',
+                      label: 'تحقق',
+                      desc: 'يفحص 6 فحوصات آلية للتأكد',
+                    },
                   ].map((step) => (
                     <div key={step.label} className="flex items-center gap-2">
                       <span className="text-xs">{step.icon}</span>
-                      <span className="text-[10px] text-[#cdd6f4] font-medium w-10">{step.label}</span>
-                      <span className="text-[10px] text-[#6c7086]">{step.desc}</span>
+                      <span className="text-[10px] text-[#cdd6f4] font-medium w-10">
+                        {step.label}
+                      </span>
+                      <span className="text-[10px] text-[#6c7086]">
+                        {step.desc}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -484,7 +568,8 @@ export function AgentSettings({
                 <div className="flex items-center gap-2 p-2 rounded-lg bg-[#89b4fa]/10 border border-[#89b4fa]/20">
                   <Zap size={12} className="text-[#89b4fa]" />
                   <span className="text-[10px] text-[#89b4fa]">
-                    تلميح: المزود الأساسي هو Groq — يمكن مشاركة نفس المفتاح مع محرك OODA
+                    تلميح: المزود الأساسي هو Groq — يمكن مشاركة نفس المفتاح مع
+                    محرك OODA
                   </span>
                 </div>
               )}

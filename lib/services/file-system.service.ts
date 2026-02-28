@@ -4,6 +4,7 @@
  * with graceful fallback for unsupported browsers.
  */
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { FileNode } from '@/lib/db/schema';
 import {
   createFile as dbCreateFile,
@@ -22,7 +23,10 @@ export function isFileSystemAccessSupported(): boolean {
  * Open a native directory picker and import all files into IndexedDB.
  * Falls back to <input type="file"> with webkitdirectory for unsupported browsers.
  */
-export async function openFolder(): Promise<{ imported: number; rootName: string }> {
+export async function openFolder(): Promise<{
+  imported: number;
+  rootName: string;
+}> {
   if (isFileSystemAccessSupported()) {
     return openFolderNative();
   }
@@ -30,11 +34,16 @@ export async function openFolder(): Promise<{ imported: number; rootName: string
 }
 
 /** Native File System Access API implementation */
-async function openFolderNative(): Promise<{ imported: number; rootName: string }> {
+async function openFolderNative(): Promise<{
+  imported: number;
+  rootName: string;
+}> {
   // @ts-expect-error — showDirectoryPicker is not in all TS libs yet
-  const dirHandle: FileSystemDirectoryHandle = await window.showDirectoryPicker({
-    mode: 'read',
-  });
+  const dirHandle: FileSystemDirectoryHandle = await window.showDirectoryPicker(
+    {
+      mode: 'read',
+    }
+  );
 
   // Clear existing files before import
   await clearAllFiles();
@@ -45,7 +54,10 @@ async function openFolderNative(): Promise<{ imported: number; rootName: string 
   const root = await dbCreateFolder(dirHandle.name, null);
 
   // Recursively import directory
-  async function importDir(handle: FileSystemDirectoryHandle, parentId: string) {
+  async function importDir(
+    handle: FileSystemDirectoryHandle,
+    parentId: string
+  ) {
     for await (const entry of handle.values()) {
       if (entry.kind === 'file') {
         const fileHandle = entry as FileSystemFileHandle;
@@ -88,7 +100,9 @@ function openFolderFallback(): Promise<{ imported: number; rootName: string }> {
       await clearAllFiles();
 
       // Extract root folder name from first file's path
-      const firstPath = (files[0] as any).webkitRelativePath || files[0].name;
+      const firstPath =
+        (files[0] as File & { webkitRelativePath?: string })
+          .webkitRelativePath || files[0].name;
       const rootName = firstPath.split('/')[0] || 'imported-project';
       const root = await dbCreateFolder(rootName, null);
 
@@ -100,7 +114,9 @@ function openFolderFallback(): Promise<{ imported: number; rootName: string }> {
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const relativePath = (file as any).webkitRelativePath || file.name;
+        const relativePath =
+          (file as File & { webkitRelativePath?: string }).webkitRelativePath ||
+          file.name;
         const parts = relativePath.split('/');
 
         // Ensure parent folders exist
@@ -137,11 +153,15 @@ function openFolderFallback(): Promise<{ imported: number; rootName: string }> {
 export async function exportProject(): Promise<void> {
   const nodes = await getAllNodes();
 
-  const data = JSON.stringify({
-    version: 1,
-    exportedAt: new Date().toISOString(),
-    files: nodes,
-  }, null, 2);
+  const data = JSON.stringify(
+    {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      files: nodes,
+    },
+    null,
+    2
+  );
 
   const blob = new Blob([data], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -202,28 +222,42 @@ export async function importProject(): Promise<{ imported: number }> {
 function detectLanguage(filename: string): string {
   const ext = filename.split('.').pop()?.toLowerCase() || '';
   const map: Record<string, string> = {
-    ts: 'typescript', tsx: 'typescript',
-    js: 'javascript', jsx: 'javascript',
+    ts: 'typescript',
+    tsx: 'typescript',
+    js: 'javascript',
+    jsx: 'javascript',
     py: 'python',
     rs: 'rust',
     go: 'go',
     java: 'java',
-    c: 'c', h: 'c',
-    cpp: 'cpp', hpp: 'cpp', cc: 'cpp',
+    c: 'c',
+    h: 'c',
+    cpp: 'cpp',
+    hpp: 'cpp',
+    cc: 'cpp',
     cs: 'csharp',
     rb: 'ruby',
     php: 'php',
     swift: 'swift',
     kt: 'kotlin',
     dart: 'dart',
-    html: 'html', htm: 'html',
-    css: 'css', scss: 'scss', sass: 'scss', less: 'less',
+    html: 'html',
+    htm: 'html',
+    css: 'css',
+    scss: 'scss',
+    sass: 'scss',
+    less: 'less',
     json: 'json',
-    xml: 'xml', svg: 'xml',
-    yaml: 'yaml', yml: 'yaml',
-    md: 'markdown', mdx: 'markdown',
+    xml: 'xml',
+    svg: 'xml',
+    yaml: 'yaml',
+    yml: 'yaml',
+    md: 'markdown',
+    mdx: 'markdown',
     sql: 'sql',
-    sh: 'shell', bash: 'shell', zsh: 'shell',
+    sh: 'shell',
+    bash: 'shell',
+    zsh: 'shell',
     dockerfile: 'dockerfile',
     toml: 'toml',
     ini: 'ini',

@@ -21,11 +21,13 @@ function formatMessages(messages: AgentMessage[]) {
     if (msg.role === 'tool' && msg.toolCalls?.length) {
       formatted.push({
         role: 'user',
-        content: [{
-          type: 'tool_result',
-          tool_use_id: msg.toolCalls[0].id,
-          content: msg.content,
-        }],
+        content: [
+          {
+            type: 'tool_result',
+            tool_use_id: msg.toolCalls[0].id,
+            content: msg.content,
+          },
+        ],
       });
     } else if (msg.role === 'assistant' && msg.toolCalls?.length) {
       const content: Array<Record<string, unknown>> = [];

@@ -4,6 +4,7 @@
  * Uses fetch-based API calls (no server dependency).
  */
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { FileNode } from '@/lib/db/schema';
 import {
   createFile as dbCreateFile,
@@ -276,19 +277,41 @@ export async function listBranches(
 function detectLang(filename: string): string {
   const ext = filename.split('.').pop()?.toLowerCase() || '';
   const map: Record<string, string> = {
-    ts: 'typescript', tsx: 'typescript',
-    js: 'javascript', jsx: 'javascript',
-    py: 'python', rs: 'rust', go: 'go', java: 'java',
-    c: 'c', cpp: 'cpp', cs: 'csharp', rb: 'ruby', php: 'php',
-    swift: 'swift', kt: 'kotlin', dart: 'dart',
-    html: 'html', htm: 'html',
-    css: 'css', scss: 'scss', less: 'less',
-    json: 'json', xml: 'xml', svg: 'xml',
-    yaml: 'yaml', yml: 'yaml',
-    md: 'markdown', mdx: 'markdown',
-    sql: 'sql', sh: 'shell', bash: 'shell',
-    dockerfile: 'dockerfile', toml: 'toml',
-    txt: 'plaintext', gitignore: 'plaintext',
+    ts: 'typescript',
+    tsx: 'typescript',
+    js: 'javascript',
+    jsx: 'javascript',
+    py: 'python',
+    rs: 'rust',
+    go: 'go',
+    java: 'java',
+    c: 'c',
+    cpp: 'cpp',
+    cs: 'csharp',
+    rb: 'ruby',
+    php: 'php',
+    swift: 'swift',
+    kt: 'kotlin',
+    dart: 'dart',
+    html: 'html',
+    htm: 'html',
+    css: 'css',
+    scss: 'scss',
+    less: 'less',
+    json: 'json',
+    xml: 'xml',
+    svg: 'xml',
+    yaml: 'yaml',
+    yml: 'yaml',
+    md: 'markdown',
+    mdx: 'markdown',
+    sql: 'sql',
+    sh: 'shell',
+    bash: 'shell',
+    dockerfile: 'dockerfile',
+    toml: 'toml',
+    txt: 'plaintext',
+    gitignore: 'plaintext',
   };
   return map[ext] || 'plaintext';
 }

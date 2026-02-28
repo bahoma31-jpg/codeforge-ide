@@ -6,6 +6,7 @@
  */
 
 import { create } from 'zustand';
+import { logger } from '@/lib/monitoring/error-logger';
 import { v4 as uuidv4 } from 'uuid';
 import type {
   AgentConfig,
@@ -149,7 +150,11 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         });
       }
     } catch (error) {
-      console.error('[AgentStore] Failed to load config:', error);
+      logger.error(
+        'فشل تحميل إعدادات الوكيل',
+        error instanceof Error ? error : undefined,
+        { source: 'AgentStore.loadSavedConfig' }
+      );
     }
   },
 
@@ -229,7 +234,8 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         auditLog: service.getAuditLog(),
       }));
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'حدث خطأ غير متوقع';
+      const message =
+        error instanceof Error ? error.message : 'حدث خطأ غير متوقع';
       set({ error: message, currentToolCall: null });
     } finally {
       set({ isProcessing: false });
@@ -282,7 +288,13 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   togglePanel: () => set((s) => ({ isPanelOpen: !s.isPanelOpen })),
 
   // ─── Message Actions ───────────────────────────────────────
-  clearMessages: () => set({ messages: [], pendingApprovals: [], notifications: [], auditLog: [] }),
+  clearMessages: () =>
+    set({
+      messages: [],
+      pendingApprovals: [],
+      notifications: [],
+      auditLog: [],
+    }),
   clearError: () => set({ error: null }),
 
   // ─── Config Actions (persist to localStorage) ────────────────

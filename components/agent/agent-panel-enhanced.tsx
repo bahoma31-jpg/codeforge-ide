@@ -14,9 +14,12 @@
  * - Token usage display for OODA cycles
  */
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import React, { useState, useCallback } from 'react';
 import type { OODAMode, OODAAgentEvent } from '@/lib/agent/agent-service-ooda';
 import {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   Brain,
   MessageSquare,
   RefreshCw,
@@ -49,12 +52,15 @@ interface OODAPhaseIndicatorProps {
 
 // ─── Phase Icons & Labels ────────────────────────────────────────
 
-const PHASE_CONFIG: Record<string, {
-  icon: React.ReactNode;
-  label: string;
-  labelAr: string;
-  color: string;
-}> = {
+const PHASE_CONFIG: Record<
+  string,
+  {
+    icon: React.ReactNode;
+    label: string;
+    labelAr: string;
+    color: string;
+  }
+> = {
   OBSERVE: {
     icon: <Eye size={12} />,
     label: 'Observe',
@@ -99,12 +105,15 @@ const PHASE_CONFIG: Record<string, {
   },
 };
 
-const MODE_CONFIG: Record<OODAMode, {
-  icon: React.ReactNode;
-  label: string;
-  color: string;
-  bg: string;
-}> = {
+const MODE_CONFIG: Record<
+  OODAMode,
+  {
+    icon: React.ReactNode;
+    label: string;
+    color: string;
+    bg: string;
+  }
+> = {
   chat: {
     icon: <MessageSquare size={12} />,
     label: 'محادثة',
@@ -181,6 +190,7 @@ export function OODAStatusBar({
   onToggleAutoDetect,
   currentPhase,
   tokenUsage,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   lastEvent,
 }: OODAStatusBarProps) {
   const modeConfig = MODE_CONFIG[mode];
@@ -192,7 +202,10 @@ export function OODAStatusBar({
         {/* Mode badge */}
         <div
           className="flex items-center gap-1 px-2 py-0.5 rounded-full"
-          style={{ backgroundColor: `${modeConfig.bg}15`, color: modeConfig.color }}
+          style={{
+            backgroundColor: `${modeConfig.bg}15`,
+            color: modeConfig.color,
+          }}
         >
           {modeConfig.icon}
           <span className="font-medium">{modeConfig.label}</span>
@@ -230,7 +243,9 @@ export function OODAStatusBar({
         <button
           onClick={() => onToggleAutoDetect(!autoDetect)}
           className="flex items-center gap-1 text-[#6c7086] hover:text-[#cdd6f4] transition-colors"
-          title={autoDetect ? 'الاكتشاف التلقائي مفعّل' : 'الاكتشاف التلقائي معطّل'}
+          title={
+            autoDetect ? 'الاكتشاف التلقائي مفعّل' : 'الاكتشاف التلقائي معطّل'
+          }
         >
           {autoDetect ? (
             <ToggleRight size={14} className="text-[#a6e3a1]" />

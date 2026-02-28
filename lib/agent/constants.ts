@@ -21,7 +21,12 @@ export const DEFAULT_MAX_TOKENS = 4096;
 export const TOOL_EXECUTION_TIMEOUT = 30000;
 
 /** Supported providers */
-export const SUPPORTED_PROVIDERS = ['openai', 'google', 'groq', 'anthropic'] as const;
+export const SUPPORTED_PROVIDERS = [
+  'openai',
+  'google',
+  'groq',
+  'anthropic',
+] as const;
 
 /** Provider display names */
 export const PROVIDER_NAMES: Record<string, string> = {
@@ -40,7 +45,10 @@ export const DEFAULT_MODELS: Record<string, string> = {
 };
 
 /** Available models per provider */
-export const AVAILABLE_MODELS: Record<string, Array<{ id: string; name: string; free?: boolean }>> = {
+export const AVAILABLE_MODELS: Record<
+  string,
+  Array<{ id: string; name: string; free?: boolean }>
+> = {
   openai: [
     { id: 'gpt-4o', name: 'GPT-4o' },
     { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },

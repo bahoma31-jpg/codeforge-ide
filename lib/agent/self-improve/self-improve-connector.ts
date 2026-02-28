@@ -10,7 +10,12 @@
  * - Handles cleanup on unmount
  */
 
-import type { OODAController, OODACycle, OODAPhase, OODAEvent } from './ooda-controller';
+import type {
+  OODAController,
+  OODACycle,
+  OODAPhase,
+  OODAEvent,
+} from './ooda-controller';
 import type { LearningMemory, LearnedPattern } from './learning-memory';
 
 // ═══════════════════════════════════════════════════════════════
@@ -86,7 +91,10 @@ export type StateUpdateCallback = (state: ConnectorState) => void;
 // Constants — Arabic labels and mappings
 // ═══════════════════════════════════════════════════════════════
 
-const PHASE_CONFIG: Record<OODAPhase, { label: string; labelAr: string; icon: string }> = {
+const PHASE_CONFIG: Record<
+  OODAPhase,
+  { label: string; labelAr: string; icon: string }
+> = {
   observe: { label: 'Observe', labelAr: 'رصد', icon: '👁️' },
   orient: { label: 'Orient', labelAr: 'تحليل', icon: '🧭' },
   decide: { label: 'Decide', labelAr: 'قرار', icon: '📋' },
@@ -94,7 +102,13 @@ const PHASE_CONFIG: Record<OODAPhase, { label: string; labelAr: string; icon: st
   verify: { label: 'Verify', labelAr: 'تحقق', icon: '✅' },
 };
 
-const PHASE_ORDER: OODAPhase[] = ['observe', 'orient', 'decide', 'act', 'verify'];
+const PHASE_ORDER: OODAPhase[] = [
+  'observe',
+  'orient',
+  'decide',
+  'act',
+  'verify',
+];
 
 const CATEGORY_LABELS: Record<string, string> = {
   ui_bug: 'خلل واجهة',
@@ -130,18 +144,19 @@ export class SelfImproveConnector {
   // ─── Event Listeners ─────────────────────────────────────────
 
   private setupEventListeners(): void {
-    const events: Array<{ name: string; handler: (event: OODAEvent) => void }> = [
-      { name: 'cycle:started', handler: (e) => this.onCycleStarted(e) },
-      { name: 'phase:changed', handler: (e) => this.onPhaseChanged(e) },
-      { name: 'fix:applied', handler: (e) => this.onFixApplied(e) },
-      { name: 'fix:failed', handler: (e) => this.onFixFailed(e) },
-      { name: 'verify:passed', handler: (e) => this.onVerifyPassed(e) },
-      { name: 'verify:failed', handler: (e) => this.onVerifyFailed(e) },
-      { name: 'cycle:completed', handler: (e) => this.onCycleCompleted(e) },
-      { name: 'cycle:failed', handler: (e) => this.onCycleFailed(e) },
-      { name: 'cycle:cancelled', handler: (e) => this.onCycleCancelled(e) },
-      { name: 'pattern:learned', handler: (e) => this.onPatternLearned(e) },
-    ];
+    const events: Array<{ name: string; handler: (event: OODAEvent) => void }> =
+      [
+        { name: 'cycle:started', handler: (e) => this.onCycleStarted(e) },
+        { name: 'phase:changed', handler: (e) => this.onPhaseChanged(e) },
+        { name: 'fix:applied', handler: (e) => this.onFixApplied(e) },
+        { name: 'fix:failed', handler: (e) => this.onFixFailed(e) },
+        { name: 'verify:passed', handler: (e) => this.onVerifyPassed(e) },
+        { name: 'verify:failed', handler: (e) => this.onVerifyFailed(e) },
+        { name: 'cycle:completed', handler: (e) => this.onCycleCompleted(e) },
+        { name: 'cycle:failed', handler: (e) => this.onCycleFailed(e) },
+        { name: 'cycle:cancelled', handler: (e) => this.onCycleCancelled(e) },
+        { name: 'pattern:learned', handler: (e) => this.onPatternLearned(e) },
+      ];
 
     for (const { name, handler } of events) {
       this.boundHandlers.set(name, handler);
@@ -154,12 +169,21 @@ export class SelfImproveConnector {
   private onCycleStarted(event: OODAEvent): void {
     const cycle = event.data as OODACycle;
     this.activeTask = this.buildTaskCard(cycle);
-    this.addTimelineEvent('phase', '🚀', 'Improvement cycle started', 'بدأت دورة التحسين', cycle.issue);
+    this.addTimelineEvent(
+      'phase',
+      '🚀',
+      'Improvement cycle started',
+      'بدأت دورة التحسين',
+      cycle.issue
+    );
     this.notifyListeners();
   }
 
   private onPhaseChanged(event: OODAEvent): void {
-    const { phase, cycleId } = event.data as { phase: OODAPhase; cycleId: string };
+    const { phase, cycleId } = event.data as {
+      phase: OODAPhase;
+      cycleId: string;
+    };
     if (this.activeTask?.cycleId === cycleId) {
       this.updateTaskPhases(phase);
       const config = PHASE_CONFIG[phase];
@@ -167,7 +191,7 @@ export class SelfImproveConnector {
         'phase',
         config.icon,
         `Phase: ${config.label}`,
-        `المرحلة: ${config.labelAr}`,
+        `المرحلة: ${config.labelAr}`
       );
       this.notifyListeners();
     }
@@ -186,24 +210,28 @@ export class SelfImproveConnector {
       'success',
       '🔧',
       `Fix applied: ${shortPath} (${type})`,
-      `تم الإصلاح: ${shortPath} (${type === 'edit' ? 'تعديل' : 'إعادة كتابة'})`,
+      `تم الإصلاح: ${shortPath} (${type === 'edit' ? 'تعديل' : 'إعادة كتابة'})`
     );
     this.notifyListeners();
   }
 
   private onFixFailed(event: OODAEvent): void {
-    const { filePath, error } = event.data as { filePath: string; error: string };
+    const { filePath, error } = event.data as {
+      filePath: string;
+      error: string;
+    };
     const shortPath = filePath.split('/').slice(-2).join('/');
     this.addTimelineEvent(
       'error',
       '❌',
       `Fix failed: ${shortPath}`,
       `فشل الإصلاح: ${shortPath}`,
-      error,
+      error
     );
     this.notifyListeners();
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private onVerifyPassed(event: OODAEvent): void {
     this.addTimelineEvent('success', '✅', 'Verification passed', 'نجح التحقق');
     this.notifyListeners();
@@ -211,35 +239,61 @@ export class SelfImproveConnector {
 
   private onVerifyFailed(event: OODAEvent): void {
     const { reason } = event.data as { reason: string };
-    this.addTimelineEvent('warning', '⚠️', 'Verification failed', 'فشل التحقق', reason);
+    this.addTimelineEvent(
+      'warning',
+      '⚠️',
+      'Verification failed',
+      'فشل التحقق',
+      reason
+    );
     this.notifyListeners();
   }
 
   private onCycleCompleted(event: OODAEvent): void {
     const { cycleId } = event.data as { cycleId: string };
     this.completedCycleIds.add(cycleId);
-    this.addTimelineEvent('success', '🎉', 'Cycle completed successfully', 'اكتملت الدورة بنجاح');
+    this.addTimelineEvent(
+      'success',
+      '🎉',
+      'Cycle completed successfully',
+      'اكتملت الدورة بنجاح'
+    );
     this.activeTask = null;
     this.notifyListeners();
   }
 
   private onCycleFailed(event: OODAEvent): void {
-    const { cycleId, reason } = event.data as { cycleId: string; reason: string };
+    const { cycleId, reason } = event.data as {
+      cycleId: string;
+      reason: string;
+    };
     this.completedCycleIds.add(cycleId);
     this.addTimelineEvent('error', '💥', 'Cycle failed', 'فشلت الدورة', reason);
     this.activeTask = null;
     this.notifyListeners();
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private onCycleCancelled(event: OODAEvent): void {
-    this.addTimelineEvent('warning', '🛑', 'Cycle cancelled', 'تم إلغاء الدورة');
+    this.addTimelineEvent(
+      'warning',
+      '🛑',
+      'Cycle cancelled',
+      'تم إلغاء الدورة'
+    );
     this.activeTask = null;
     this.notifyListeners();
   }
 
   private onPatternLearned(event: OODAEvent): void {
     const { description } = event.data as { description: string };
-    this.addTimelineEvent('info', '🧠', 'Pattern learned', 'تم حفظ نمط جديد', description);
+    this.addTimelineEvent(
+      'info',
+      '🧠',
+      'Pattern learned',
+      'تم حفظ نمط جديد',
+      description
+    );
     this.notifyListeners();
   }
 
@@ -320,7 +374,7 @@ export class SelfImproveConnector {
     icon: string,
     message: string,
     messageAr: string,
-    details?: string,
+    details?: string
   ): void {
     this.eventCounter++;
     const event: UITimelineEvent = {
@@ -357,7 +411,10 @@ export class SelfImproveConnector {
     // Build top modified files from timeline
     const fileModCounts = new Map<string, number>();
     for (const event of this.timeline) {
-      if (event.type === 'success' && event.message.startsWith('Fix applied:')) {
+      if (
+        event.type === 'success' &&
+        event.message.startsWith('Fix applied:')
+      ) {
         const match = event.message.match(/Fix applied: (.+?) \(/);
         if (match) {
           const path = match[1];
@@ -371,7 +428,8 @@ export class SelfImproveConnector {
       .slice(0, 10);
 
     return {
-      totalCycles: status.totalCompleted + status.totalFailed + status.activeCount,
+      totalCycles:
+        status.totalCompleted + status.totalFailed + status.activeCount,
       successfulCycles: status.totalCompleted,
       failedCycles: status.totalFailed,
       activeCycles: status.activeCount,
@@ -419,7 +477,12 @@ export class SelfImproveConnector {
   ): Promise<string> {
     const cycleId = await this.controller.startCycle({
       issue,
-      category: category as 'ui_bug' | 'logic_error' | 'performance' | 'style' | 'accessibility',
+      category: category as
+        | 'ui_bug'
+        | 'logic_error'
+        | 'performance'
+        | 'style'
+        | 'accessibility',
       affectedFiles,
     });
     return cycleId;

@@ -12,6 +12,7 @@
  * - Downstream impact detection
  */
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ─── Mock Setup ───────────────────────────────────────────────
@@ -50,7 +51,7 @@ describe('VerificationEngine', () => {
         protectedPaths: [],
       });
 
-      const fileCheck = result.checks.find(c => c.name === 'file_existence');
+      const fileCheck = result.checks.find((c) => c.name === 'file_existence');
       expect(fileCheck?.passed).toBe(true);
     });
 
@@ -66,7 +67,7 @@ describe('VerificationEngine', () => {
         protectedPaths: [],
       });
 
-      const fileCheck = result.checks.find(c => c.name === 'file_existence');
+      const fileCheck = result.checks.find((c) => c.name === 'file_existence');
       expect(fileCheck?.passed).toBe(false);
     });
   });
@@ -76,7 +77,8 @@ describe('VerificationEngine', () => {
   describe('Import Validity Check', () => {
     it('should pass when all local imports resolve', () => {
       const allFiles = createFileMap({
-        'src/app.ts': 'import { util } from "./utils";\nexport const app = util;',
+        'src/app.ts':
+          'import { util } from "./utils";\nexport const app = util;',
         'src/utils.ts': 'export const util = 1;',
       });
 
@@ -87,13 +89,16 @@ describe('VerificationEngine', () => {
         protectedPaths: [],
       });
 
-      const importCheck = result.checks.find(c => c.name === 'import_validity');
+      const importCheck = result.checks.find(
+        (c) => c.name === 'import_validity'
+      );
       expect(importCheck?.passed).toBe(true);
     });
 
     it('should fail when a local import does not resolve', () => {
       const allFiles = createFileMap({
-        'src/app.ts': 'import { util } from "./nonexistent";\nexport const app = util;',
+        'src/app.ts':
+          'import { util } from "./nonexistent";\nexport const app = util;',
       });
 
       const result = engine.verify({
@@ -103,13 +108,16 @@ describe('VerificationEngine', () => {
         protectedPaths: [],
       });
 
-      const importCheck = result.checks.find(c => c.name === 'import_validity');
+      const importCheck = result.checks.find(
+        (c) => c.name === 'import_validity'
+      );
       expect(importCheck?.passed).toBe(false);
     });
 
     it('should ignore npm package imports', () => {
       const allFiles = createFileMap({
-        'src/app.ts': 'import React from "react";\nimport { v4 } from "uuid";\nexport const app = true;',
+        'src/app.ts':
+          'import React from "react";\nimport { v4 } from "uuid";\nexport const app = true;',
       });
 
       const result = engine.verify({
@@ -119,7 +127,9 @@ describe('VerificationEngine', () => {
         protectedPaths: [],
       });
 
-      const importCheck = result.checks.find(c => c.name === 'import_validity');
+      const importCheck = result.checks.find(
+        (c) => c.name === 'import_validity'
+      );
       expect(importCheck?.passed).toBe(true);
     });
   });
@@ -139,7 +149,9 @@ describe('VerificationEngine', () => {
         protectedPaths: ['lib/agent/safety'],
       });
 
-      const protectedCheck = result.checks.find(c => c.name === 'protected_paths');
+      const protectedCheck = result.checks.find(
+        (c) => c.name === 'protected_paths'
+      );
       expect(protectedCheck?.passed).toBe(true);
     });
 
@@ -155,7 +167,9 @@ describe('VerificationEngine', () => {
         protectedPaths: ['lib/agent/safety'],
       });
 
-      const protectedCheck = result.checks.find(c => c.name === 'protected_paths');
+      const protectedCheck = result.checks.find(
+        (c) => c.name === 'protected_paths'
+      );
       expect(protectedCheck?.passed).toBe(false);
     });
   });
@@ -176,7 +190,9 @@ describe('VerificationEngine', () => {
         protectedPaths: [],
       });
 
-      const scopeCheck = result.checks.find(c => c.name === 'scope_integrity');
+      const scopeCheck = result.checks.find(
+        (c) => c.name === 'scope_integrity'
+      );
       expect(scopeCheck?.passed).toBe(true);
     });
 
@@ -193,7 +209,9 @@ describe('VerificationEngine', () => {
         protectedPaths: [],
       });
 
-      const scopeCheck = result.checks.find(c => c.name === 'scope_integrity');
+      const scopeCheck = result.checks.find(
+        (c) => c.name === 'scope_integrity'
+      );
       expect(scopeCheck?.passed).toBe(false);
     });
   });
@@ -203,7 +221,8 @@ describe('VerificationEngine', () => {
   describe('Syntax Sanity Check', () => {
     it('should pass with balanced brackets', () => {
       const allFiles = createFileMap({
-        'src/app.ts': 'function test() {\n  if (true) {\n    return [1, 2, 3];\n  }\n}',
+        'src/app.ts':
+          'function test() {\n  if (true) {\n    return [1, 2, 3];\n  }\n}',
       });
 
       const result = engine.verify({
@@ -213,13 +232,14 @@ describe('VerificationEngine', () => {
         protectedPaths: [],
       });
 
-      const syntaxCheck = result.checks.find(c => c.name === 'syntax_sanity');
+      const syntaxCheck = result.checks.find((c) => c.name === 'syntax_sanity');
       expect(syntaxCheck?.passed).toBe(true);
     });
 
     it('should fail with unbalanced brackets', () => {
       const allFiles = createFileMap({
-        'src/app.ts': 'function test() {\n  if (true) {\n    return [1, 2, 3;\n  }\n}',
+        'src/app.ts':
+          'function test() {\n  if (true) {\n    return [1, 2, 3;\n  }\n}',
       });
 
       const result = engine.verify({
@@ -229,13 +249,14 @@ describe('VerificationEngine', () => {
         protectedPaths: [],
       });
 
-      const syntaxCheck = result.checks.find(c => c.name === 'syntax_sanity');
+      const syntaxCheck = result.checks.find((c) => c.name === 'syntax_sanity');
       expect(syntaxCheck?.passed).toBe(false);
     });
 
     it('should ignore brackets inside strings', () => {
       const allFiles = createFileMap({
-        'src/app.ts': 'const str = "this has {unbalanced brackets";\nfunction test() { return str; }',
+        'src/app.ts':
+          'const str = "this has {unbalanced brackets";\nfunction test() { return str; }',
       });
 
       const result = engine.verify({
@@ -245,7 +266,7 @@ describe('VerificationEngine', () => {
         protectedPaths: [],
       });
 
-      const syntaxCheck = result.checks.find(c => c.name === 'syntax_sanity');
+      const syntaxCheck = result.checks.find((c) => c.name === 'syntax_sanity');
       expect(syntaxCheck?.passed).toBe(true);
     });
   });

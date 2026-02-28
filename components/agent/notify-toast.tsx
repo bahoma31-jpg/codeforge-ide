@@ -9,14 +9,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAgentStore } from '@/lib/stores/agent-store';
-import {
-  Info,
-  X,
-  FileCode,
-  GitBranch,
-  Github,
-  Wrench,
-} from 'lucide-react';
+import { Info, X, FileCode, GitBranch, Github, Wrench } from 'lucide-react';
 
 interface Notification {
   id: string;
@@ -33,9 +26,12 @@ interface NotifyToastProps {
 const AUTO_DISMISS_MS = 4000;
 
 function getToolIcon(toolName: string) {
-  if (toolName.startsWith('github_')) return <Github size={12} className="text-[#cba6f7]" />;
-  if (toolName.startsWith('git_')) return <GitBranch size={12} className="text-[#fab387]" />;
-  if (toolName.startsWith('fs_')) return <FileCode size={12} className="text-[#89b4fa]" />;
+  if (toolName.startsWith('github_'))
+    return <Github size={12} className="text-[#cba6f7]" />;
+  if (toolName.startsWith('git_'))
+    return <GitBranch size={12} className="text-[#fab387]" />;
+  if (toolName.startsWith('fs_'))
+    return <FileCode size={12} className="text-[#89b4fa]" />;
   return <Wrench size={12} className="text-[#6c7086]" />;
 }
 
@@ -64,7 +60,9 @@ function SingleToast({ notification }: NotifyToastProps) {
   return (
     <div
       className={`relative overflow-hidden rounded-lg border border-[#f9e2af]/30 bg-[#1e1e2e]/95 backdrop-blur-sm shadow-lg transition-all duration-300 ${
-        isExiting ? 'opacity-0 translate-x-4 scale-95' : 'opacity-100 translate-x-0 scale-100'
+        isExiting
+          ? 'opacity-0 translate-x-4 scale-95'
+          : 'opacity-100 translate-x-0 scale-100'
       }`}
     >
       {/* Content */}

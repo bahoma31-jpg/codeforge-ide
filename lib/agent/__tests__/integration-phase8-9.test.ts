@@ -13,9 +13,11 @@
 import {
   OODAAgentService,
   createOODAAgentService,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   type OODAMode,
   type OODAAgentEvent,
 } from '../agent-service-ooda';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { OODABridge, type OODABridgeConfig } from '../bridge';
 import type { AgentConfig, ToolDefinition } from '../types';
 
@@ -108,7 +110,7 @@ describe('OODAAgentService — Self-Improve Detection', () => {
     // Internal detection is tested through mode changes
     service.initOODA(TEST_OODA_CONFIG);
     const events: OODAAgentEvent[] = [];
-    service.onOODAEvent(e => events.push(e));
+    service.onOODAEvent((e) => events.push(e));
 
     // The detection logic is internal, but we can verify the keywords exist
     expect(service.isOODAReady()).toBe(true);
@@ -166,12 +168,12 @@ describe('OODAAgentService — Mode Management', () => {
 
   test('should emit mode change events', () => {
     const events: OODAAgentEvent[] = [];
-    service.onOODAEvent(e => events.push(e));
+    service.onOODAEvent((e) => events.push(e));
 
     service.setMode('self-improve');
     service.setMode('chat');
 
-    const modeEvents = events.filter(e => e.type === 'mode_change');
+    const modeEvents = events.filter((e) => e.type === 'mode_change');
     expect(modeEvents.length).toBe(2);
     expect(modeEvents[0].mode).toBe('self-improve');
     expect(modeEvents[1].mode).toBe('chat');
@@ -191,14 +193,14 @@ describe('OODAAgentService — Event System', () => {
 
   test('should register event handlers', () => {
     const events: OODAAgentEvent[] = [];
-    const unsubscribe = service.onOODAEvent(e => events.push(e));
+    const unsubscribe = service.onOODAEvent((e) => events.push(e));
     expect(typeof unsubscribe).toBe('function');
     unsubscribe();
   });
 
   test('should unregister event handlers', () => {
     const events: OODAAgentEvent[] = [];
-    const unsubscribe = service.onOODAEvent(e => events.push(e));
+    const unsubscribe = service.onOODAEvent((e) => events.push(e));
 
     service.setMode('self-improve');
     expect(events.length).toBe(1);
@@ -212,7 +214,7 @@ describe('OODAAgentService — Event System', () => {
 
   test('should include timestamps in events', () => {
     const events: OODAAgentEvent[] = [];
-    service.onOODAEvent(e => events.push(e));
+    service.onOODAEvent((e) => events.push(e));
 
     service.setMode('self-improve');
 
@@ -222,7 +224,7 @@ describe('OODAAgentService — Event System', () => {
 
   test('should not emit for same mode', () => {
     const events: OODAAgentEvent[] = [];
-    service.onOODAEvent(e => events.push(e));
+    service.onOODAEvent((e) => events.push(e));
 
     service.setMode('chat'); // Already in chat mode
     expect(events.length).toBe(0);
@@ -230,19 +232,21 @@ describe('OODAAgentService — Event System', () => {
 });
 
 describe('Phase 9 — UI Component Exports', () => {
-  test('should export OODAStatusBar', () => {
-    const panel = require('../../components/agent/agent-panel-enhanced');
+  test('should export OODAStatusBar', async () => {
+    const panel =
+      await import('../../../components/agent/agent-panel-enhanced');
     expect(panel.OODAStatusBar).toBeDefined();
     expect(typeof panel.OODAStatusBar).toBe('function');
   });
 
-  test('should export OODAPhaseIndicator', () => {
-    const panel = require('../../components/agent/agent-panel-enhanced');
+  test('should export OODAPhaseIndicator', async () => {
+    const panel =
+      await import('../../../components/agent/agent-panel-enhanced');
     expect(panel.OODAPhaseIndicator).toBeDefined();
   });
 
-  test('should export agent-service-ooda', () => {
-    const service = require('../agent-service-ooda');
+  test('should export agent-service-ooda', async () => {
+    const service = await import('../agent-service-ooda');
     expect(service.OODAAgentService).toBeDefined();
     expect(service.createOODAAgentService).toBeDefined();
   });

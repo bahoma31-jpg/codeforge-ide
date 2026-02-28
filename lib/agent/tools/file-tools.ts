@@ -12,6 +12,7 @@
  *          fs_move_file.
  */
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { ToolDefinition, ToolCallResult } from '../types';
 import type { AgentService } from '../agent-service';
 import {
@@ -23,6 +24,7 @@ import {
 } from '@/lib/db/file-operations';
 import type { FileNode } from '@/lib/db/schema';
 import {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   refreshFileTree,
   refreshOpenFile,
   closeDeletedFileTab,
@@ -35,13 +37,15 @@ import {
 export const fileTools: ToolDefinition[] = [
   {
     name: 'fs_list_files',
-    description: 'List all files and folders in the local project workspace, or list children of a specific folder. Returns file tree with names, paths, types, and sizes.',
+    description:
+      'List all files and folders in the local project workspace, or list children of a specific folder. Returns file tree with names, paths, types, and sizes.',
     parameters: {
       type: 'object',
       properties: {
         parentId: {
           type: 'string',
-          description: 'ID of the parent folder. Omit or pass null to get root-level files.',
+          description:
+            'ID of the parent folder. Omit or pass null to get root-level files.',
         },
       },
       required: [],
@@ -51,7 +55,8 @@ export const fileTools: ToolDefinition[] = [
   },
   {
     name: 'fs_read_file',
-    description: 'Read the content of a local file by its ID or path. Returns the full file content, language, and metadata.',
+    description:
+      'Read the content of a local file by its ID or path. Returns the full file content, language, and metadata.',
     parameters: {
       type: 'object',
       properties: {
@@ -71,7 +76,8 @@ export const fileTools: ToolDefinition[] = [
   },
   {
     name: 'fs_search_files',
-    description: 'Search for files by name in the local project workspace. Returns matching files with their paths and types.',
+    description:
+      'Search for files by name in the local project workspace. Returns matching files with their paths and types.',
     parameters: {
       type: 'object',
       properties: {
@@ -87,13 +93,15 @@ export const fileTools: ToolDefinition[] = [
   },
   {
     name: 'fs_create_file',
-    description: 'Create a new file in the local workspace with the specified name, content, and language. The file appears immediately in the File Explorer.',
+    description:
+      'Create a new file in the local workspace with the specified name, content, and language. The file appears immediately in the File Explorer.',
     parameters: {
       type: 'object',
       properties: {
         name: {
           type: 'string',
-          description: 'File name with extension (e.g., "index.ts", "styles.css").',
+          description:
+            'File name with extension (e.g., "index.ts", "styles.css").',
         },
         parentId: {
           type: 'string',
@@ -106,7 +114,8 @@ export const fileTools: ToolDefinition[] = [
         },
         language: {
           type: 'string',
-          description: 'Programming language (e.g., "typescript", "javascript", "css").',
+          description:
+            'Programming language (e.g., "typescript", "javascript", "css").',
         },
       },
       required: ['name', 'content'],
@@ -116,7 +125,8 @@ export const fileTools: ToolDefinition[] = [
   },
   {
     name: 'fs_update_file',
-    description: 'Update the content of an existing local file. The editor tab refreshes automatically if the file is open.',
+    description:
+      'Update the content of an existing local file. The editor tab refreshes automatically if the file is open.',
     parameters: {
       type: 'object',
       properties: {
@@ -126,7 +136,8 @@ export const fileTools: ToolDefinition[] = [
         },
         filePath: {
           type: 'string',
-          description: 'The path of the file to update (alternative to fileId).',
+          description:
+            'The path of the file to update (alternative to fileId).',
         },
         newContent: {
           type: 'string',
@@ -140,7 +151,8 @@ export const fileTools: ToolDefinition[] = [
   },
   {
     name: 'fs_create_folder',
-    description: 'Create a new folder in the local project workspace. Appears immediately in the File Explorer.',
+    description:
+      'Create a new folder in the local project workspace. Appears immediately in the File Explorer.',
     parameters: {
       type: 'object',
       properties: {
@@ -161,7 +173,8 @@ export const fileTools: ToolDefinition[] = [
   },
   {
     name: 'fs_delete_file',
-    description: 'Delete a local file or folder (and all its children). Closes the editor tab if open. Requires user confirmation.',
+    description:
+      'Delete a local file or folder (and all its children). Closes the editor tab if open. Requires user confirmation.',
     parameters: {
       type: 'object',
       properties: {
@@ -177,7 +190,8 @@ export const fileTools: ToolDefinition[] = [
   },
   {
     name: 'fs_rename_file',
-    description: 'Rename a local file or folder. Updates the File Explorer immediately.',
+    description:
+      'Rename a local file or folder. Updates the File Explorer immediately.',
     parameters: {
       type: 'object',
       properties: {
@@ -197,7 +211,8 @@ export const fileTools: ToolDefinition[] = [
   },
   {
     name: 'fs_move_file',
-    description: 'Move a local file or folder to a different parent folder. Updates the File Explorer.',
+    description:
+      'Move a local file or folder to a different parent folder. Updates the File Explorer.',
     parameters: {
       type: 'object',
       properties: {
@@ -207,7 +222,8 @@ export const fileTools: ToolDefinition[] = [
         },
         newParentId: {
           type: 'string',
-          description: 'The UUID of the new parent folder. Null for root level.',
+          description:
+            'The UUID of the new parent folder. Null for root level.',
           nullable: true,
         },
       },
@@ -264,7 +280,10 @@ export function registerFileExecutors(service: AgentService): void {
       } else if (args.filePath) {
         file = await dbReadFileByPath(args.filePath as string);
       } else {
-        return { success: false, error: 'Either fileId or filePath is required' };
+        return {
+          success: false,
+          error: 'Either fileId or filePath is required',
+        };
       }
 
       return {
@@ -332,7 +351,10 @@ export function registerFileExecutors(service: AgentService): void {
         fileId = file.id;
       }
       if (!fileId) {
-        return { success: false, error: 'Either fileId or filePath is required' };
+        return {
+          success: false,
+          error: 'Either fileId or filePath is required',
+        };
       }
 
       // Read old content for diff
@@ -423,12 +445,14 @@ export function registerFileExecutors(service: AgentService): void {
   service.registerToolExecutor('fs_rename_file', async (args) => {
     try {
       const { useFilesStore } = await import('@/lib/stores/files-store');
-      const renamed = await useFilesStore.getState().renameNode(
-        args.nodeId as string,
-        args.newName as string
-      );
+      const renamed = await useFilesStore
+        .getState()
+        .renameNode(args.nodeId as string, args.newName as string);
 
-      await sendNotification(`🤖 تمت إعادة التسمية إلى: ${renamed.name}`, 'info');
+      await sendNotification(
+        `🤖 تمت إعادة التسمية إلى: ${renamed.name}`,
+        'info'
+      );
 
       return { success: true, data: formatNode(renamed) };
     } catch (error) {
@@ -440,10 +464,9 @@ export function registerFileExecutors(service: AgentService): void {
   service.registerToolExecutor('fs_move_file', async (args) => {
     try {
       const { useFilesStore } = await import('@/lib/stores/files-store');
-      const moved = await useFilesStore.getState().moveNode(
-        args.nodeId as string,
-        (args.newParentId as string) || null
-      );
+      const moved = await useFilesStore
+        .getState()
+        .moveNode(args.nodeId as string, (args.newParentId as string) || null);
 
       await sendNotification(`🤖 تم نقل: ${moved.name}`, 'info');
 

@@ -60,7 +60,9 @@ export interface UseOODABridgeReturn extends OODABridgeState {
 
 // ─── Hook ────────────────────────────────────────────────────────
 
-export function useOODABridge(initialConfig?: OODABridgeConfig): UseOODABridgeReturn {
+export function useOODABridge(
+  initialConfig?: OODABridgeConfig
+): UseOODABridgeReturn {
   const bridgeRef = useRef<OODABridge | null>(null);
   const [state, setState] = useState<OODABridgeState>({
     isReady: false,
@@ -90,7 +92,7 @@ export function useOODABridge(initialConfig?: OODABridgeConfig): UseOODABridgeRe
 
     // Subscribe to events
     const unsubscribe = bridge.onEvent((event: BridgeEvent) => {
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         events: [...prev.events.slice(-49), event], // Keep last 50
         stats: bridge.getStats(),
@@ -98,7 +100,7 @@ export function useOODABridge(initialConfig?: OODABridgeConfig): UseOODABridgeRe
     });
 
     // Initial state
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       isReady: bridge.isReady(),
       model: bridge.getModel(),
@@ -108,6 +110,7 @@ export function useOODABridge(initialConfig?: OODABridgeConfig): UseOODABridgeRe
     return () => {
       unsubscribe();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Configure bridge
@@ -119,7 +122,7 @@ export function useOODABridge(initialConfig?: OODABridgeConfig): UseOODABridgeRe
     }
 
     const bridge = bridgeRef.current;
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       isReady: bridge.isReady(),
       model: bridge.getModel(),
@@ -128,39 +131,45 @@ export function useOODABridge(initialConfig?: OODABridgeConfig): UseOODABridgeRe
   }, []);
 
   // Run analysis cycle
-  const runCycle = useCallback(async (request: SelfImproveRequest): Promise<SelfImproveResult | null> => {
-    const bridge = bridgeRef.current;
-    if (!bridge || !bridge.isReady()) {
-      setState(prev => ({ ...prev, error: 'الجسر غير جاهز — يرجى إعداد مفتاح Groq API' }));
-      return null;
-    }
+  const runCycle = useCallback(
+    async (request: SelfImproveRequest): Promise<SelfImproveResult | null> => {
+      const bridge = bridgeRef.current;
+      if (!bridge || !bridge.isReady()) {
+        setState((prev) => ({
+          ...prev,
+          error: 'الجسر غير جاهز — يرجى إعداد مفتاح Groq API',
+        }));
+        return null;
+      }
 
-    setState(prev => ({ ...prev, isRunning: true, error: null }));
+      setState((prev) => ({ ...prev, isRunning: true, error: null }));
 
-    try {
-      const result = await bridge.runAnalysisCycle(request);
-      setState(prev => ({
-        ...prev,
-        isRunning: false,
-        lastResult: result,
-        stats: bridge.getStats(),
-        error: result.success ? null : result.error || null,
-      }));
-      return result;
-    } catch (error) {
-      const msg = (error as Error).message;
-      setState(prev => ({
-        ...prev,
-        isRunning: false,
-        error: msg,
-      }));
-      return null;
-    }
-  }, []);
+      try {
+        const result = await bridge.runAnalysisCycle(request);
+        setState((prev) => ({
+          ...prev,
+          isRunning: false,
+          lastResult: result,
+          stats: bridge.getStats(),
+          error: result.success ? null : result.error || null,
+        }));
+        return result;
+      } catch (error) {
+        const msg = (error as Error).message;
+        setState((prev) => ({
+          ...prev,
+          isRunning: false,
+          error: msg,
+        }));
+        return null;
+      }
+    },
+    []
+  );
 
   // Clear events
   const clearEvents = useCallback(() => {
-    setState(prev => ({ ...prev, events: [] }));
+    setState((prev) => ({ ...prev, events: [] }));
   }, []);
 
   return {

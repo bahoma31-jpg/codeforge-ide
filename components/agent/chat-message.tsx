@@ -62,9 +62,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
 
       {/* Content */}
       <div
-        className={`flex-1 max-w-[85%] ${
-          isUser ? 'text-right' : 'text-left'
-        }`}
+        className={`flex-1 max-w-[85%] ${isUser ? 'text-right' : 'text-left'}`}
       >
         <div
           className={`inline-block px-3 py-2 rounded-xl leading-relaxed ${
@@ -149,12 +147,30 @@ function ToolCallBadge({ toolCall }: { toolCall: ToolCall }) {
   const displayName = toolLabels[toolName] || toolName;
 
   const statusConfig = {
-    pending: { icon: <Clock size={12} className="text-[#f9e2af]" />, color: 'text-[#f9e2af]' },
-    approved: { icon: <CheckCircle2 size={12} className="text-[#a6e3a1]" />, color: 'text-[#a6e3a1]' },
-    rejected: { icon: <XCircle size={12} className="text-[#f38ba8]" />, color: 'text-[#f38ba8]' },
-    executing: { icon: <Loader2 size={12} className="animate-spin text-[#89b4fa]" />, color: 'text-[#89b4fa]' },
-    completed: { icon: <CheckCircle2 size={12} className="text-[#a6e3a1]" />, color: 'text-[#a6e3a1]' },
-    failed: { icon: <XCircle size={12} className="text-[#f38ba8]" />, color: 'text-[#f38ba8]' },
+    pending: {
+      icon: <Clock size={12} className="text-[#f9e2af]" />,
+      color: 'text-[#f9e2af]',
+    },
+    approved: {
+      icon: <CheckCircle2 size={12} className="text-[#a6e3a1]" />,
+      color: 'text-[#a6e3a1]',
+    },
+    rejected: {
+      icon: <XCircle size={12} className="text-[#f38ba8]" />,
+      color: 'text-[#f38ba8]',
+    },
+    executing: {
+      icon: <Loader2 size={12} className="animate-spin text-[#89b4fa]" />,
+      color: 'text-[#89b4fa]',
+    },
+    completed: {
+      icon: <CheckCircle2 size={12} className="text-[#a6e3a1]" />,
+      color: 'text-[#a6e3a1]',
+    },
+    failed: {
+      icon: <XCircle size={12} className="text-[#f38ba8]" />,
+      color: 'text-[#f38ba8]',
+    },
   };
 
   const status = statusConfig[toolCall.status] || statusConfig.pending;
@@ -234,9 +250,7 @@ function ToolResultMessage({ message }: { message: AgentMessage }) {
           success ? 'bg-[#a6e3a1]' : 'bg-[#f38ba8]'
         }`}
       />
-      <span className="text-[10px] text-[#45475a]">
-        {success ? '✓' : '✗'}
-      </span>
+      <span className="text-[10px] text-[#45475a]">{success ? '✓' : '✗'}</span>
     </div>
   );
 }

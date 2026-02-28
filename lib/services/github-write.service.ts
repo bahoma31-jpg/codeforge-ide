@@ -126,10 +126,7 @@ export async function getRef(
   ref: string,
   token: string
 ): Promise<GitRef> {
-  return ghFetch<GitRef>(
-    `/repos/${owner}/${repo}/git/ref/heads/${ref}`,
-    token
-  );
+  return ghFetch<GitRef>(`/repos/${owner}/${repo}/git/ref/heads/${ref}`, token);
 }
 
 /** Update a Git reference to point to a new commit. */
@@ -159,14 +156,10 @@ export async function createRef(
   sha: string,
   token: string
 ): Promise<GitRef> {
-  return ghFetch<GitRef>(
-    `/repos/${owner}/${repo}/git/refs`,
-    token,
-    {
-      method: 'POST',
-      body: JSON.stringify({ ref: `refs/heads/${ref}`, sha }),
-    }
-  );
+  return ghFetch<GitRef>(`/repos/${owner}/${repo}/git/refs`, token, {
+    method: 'POST',
+    body: JSON.stringify({ ref: `refs/heads/${ref}`, sha }),
+  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -195,26 +188,22 @@ export async function createCommit(
   parentShas: string[],
   token: string
 ): Promise<GitCommit> {
-  return ghFetch<GitCommit>(
-    `/repos/${owner}/${repo}/git/commits`,
-    token,
-    {
-      method: 'POST',
-      body: JSON.stringify({
-        message,
-        tree: treeSha,
-        parents: parentShas,
-        author: {
-          ...DEFAULT_COMMITTER,
-          date: new Date().toISOString(),
-        },
-        committer: {
-          ...DEFAULT_COMMITTER,
-          date: new Date().toISOString(),
-        },
-      }),
-    }
-  );
+  return ghFetch<GitCommit>(`/repos/${owner}/${repo}/git/commits`, token, {
+    method: 'POST',
+    body: JSON.stringify({
+      message,
+      tree: treeSha,
+      parents: parentShas,
+      author: {
+        ...DEFAULT_COMMITTER,
+        date: new Date().toISOString(),
+      },
+      committer: {
+        ...DEFAULT_COMMITTER,
+        date: new Date().toISOString(),
+      },
+    }),
+  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -229,17 +218,13 @@ export async function createTree(
   baseTreeSha: string,
   token: string
 ): Promise<GitTree> {
-  return ghFetch<GitTree>(
-    `/repos/${owner}/${repo}/git/trees`,
-    token,
-    {
-      method: 'POST',
-      body: JSON.stringify({
-        base_tree: baseTreeSha,
-        tree: treeItems,
-      }),
-    }
-  );
+  return ghFetch<GitTree>(`/repos/${owner}/${repo}/git/trees`, token, {
+    method: 'POST',
+    body: JSON.stringify({
+      base_tree: baseTreeSha,
+      tree: treeItems,
+    }),
+  });
 }
 
 /* ------------------------------------------------------------------ */

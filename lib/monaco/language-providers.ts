@@ -164,7 +164,10 @@ export function registerCustomSnippets(monaco: Monaco) {
           documentation: 'React Functional Component',
         },
       ];
-      return { suggestions: suggestions as import('monaco-editor').languages.CompletionItem[] };
+      return {
+        suggestions:
+          suggestions as import('monaco-editor').languages.CompletionItem[],
+      };
     },
   });
 }

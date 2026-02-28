@@ -25,6 +25,7 @@ import {
   GitPullRequest,
   GitMerge,
   Upload,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   Github,
   Eye,
   ListTree,
@@ -181,26 +182,51 @@ const TOOL_LABELS: Record<string, string> = {
 
 // ─── Risk Level Badge ─────────────────────────────────────────
 
-function getRiskBadge(toolName: string): { emoji: string; color: string } | null {
+function getRiskBadge(
+  toolName: string
+): { emoji: string; color: string } | null {
   // CONFIRM (red)
   const confirmTools = [
-    'fs_delete_file', 'git_push', 'git_create_pr',
-    'github_delete_file', 'github_push_files', 'github_merge_pull_request',
-    'github_delete_branch', 'github_create_repo', 'github_delete_repo',
+    'fs_delete_file',
+    'git_push',
+    'git_create_pr',
+    'github_delete_file',
+    'github_push_files',
+    'github_merge_pull_request',
+    'github_delete_branch',
+    'github_create_repo',
+    'github_delete_repo',
   ];
   if (confirmTools.includes(toolName)) {
-    return { emoji: '🔴', color: 'text-[#f38ba8] bg-[#f38ba8]/10 border-[#f38ba8]/30' };
+    return {
+      emoji: '🔴',
+      color: 'text-[#f38ba8] bg-[#f38ba8]/10 border-[#f38ba8]/30',
+    };
   }
 
   // NOTIFY (yellow)
   const notifyTools = [
-    'fs_create_file', 'fs_update_file', 'fs_create_folder', 'fs_rename_file', 'fs_move_file',
-    'git_stage', 'git_commit', 'git_create_branch',
-    'github_push_file', 'github_edit_file', 'github_create_branch',
-    'github_create_pull_request', 'github_create_issue', 'github_update_issue', 'github_add_comment',
+    'fs_create_file',
+    'fs_update_file',
+    'fs_create_folder',
+    'fs_rename_file',
+    'fs_move_file',
+    'git_stage',
+    'git_commit',
+    'git_create_branch',
+    'github_push_file',
+    'github_edit_file',
+    'github_create_branch',
+    'github_create_pull_request',
+    'github_create_issue',
+    'github_update_issue',
+    'github_add_comment',
   ];
   if (notifyTools.includes(toolName)) {
-    return { emoji: '🟡', color: 'text-[#f9e2af] bg-[#f9e2af]/10 border-[#f9e2af]/30' };
+    return {
+      emoji: '🟡',
+      color: 'text-[#f9e2af] bg-[#f9e2af]/10 border-[#f9e2af]/30',
+    };
   }
 
   // AUTO (green) — read-only, no badge needed in most cases
@@ -217,18 +243,25 @@ export function ToolCallStatus({ toolCall }: ToolCallStatusProps) {
 
   // Determine category color
   let categoryColor = 'text-[#89b4fa] border-[#89b4fa]/20 bg-[#89b4fa]/5';
-  if (toolName.startsWith('github_')) categoryColor = 'text-[#cba6f7] border-[#cba6f7]/20 bg-[#cba6f7]/5';
-  else if (toolName.startsWith('git_')) categoryColor = 'text-[#fab387] border-[#fab387]/20 bg-[#fab387]/5';
-  else if (toolName.startsWith('fs_')) categoryColor = 'text-[#89b4fa] border-[#89b4fa]/20 bg-[#89b4fa]/5';
+  if (toolName.startsWith('github_'))
+    categoryColor = 'text-[#cba6f7] border-[#cba6f7]/20 bg-[#cba6f7]/5';
+  else if (toolName.startsWith('git_'))
+    categoryColor = 'text-[#fab387] border-[#fab387]/20 bg-[#fab387]/5';
+  else if (toolName.startsWith('fs_'))
+    categoryColor = 'text-[#89b4fa] border-[#89b4fa]/20 bg-[#89b4fa]/5';
   else categoryColor = 'text-[#a6e3a1] border-[#a6e3a1]/20 bg-[#a6e3a1]/5';
 
   return (
-    <div className={`flex items-center gap-2 px-3 py-2 mx-2 rounded-lg border animate-pulse ${categoryColor}`}>
+    <div
+      className={`flex items-center gap-2 px-3 py-2 mx-2 rounded-lg border animate-pulse ${categoryColor}`}
+    >
       <Loader2 size={14} className="animate-spin" />
       <span>{icon}</span>
       <span className="text-xs flex-1">{label}</span>
       {riskBadge && (
-        <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-medium ${riskBadge.color}`}>
+        <span
+          className={`text-[9px] px-1.5 py-0.5 rounded-full border font-medium ${riskBadge.color}`}
+        >
           {riskBadge.emoji}
         </span>
       )}

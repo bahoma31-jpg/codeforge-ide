@@ -4,6 +4,7 @@
  * Part of Phase 1: Foundation.
  */
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { RiskLevel, ToolCallResult, FileDiff } from '../types';
 
 // ─── OODA Loop Types ──────────────────────────────────────────
@@ -146,7 +147,17 @@ export interface ProjectMap {
 export interface ComponentAnalysis {
   filePath: string;
   componentName: string;
-  type: 'react_component' | 'hook' | 'utility' | 'store' | 'service' | 'type_definition' | 'config' | 'style' | 'test' | 'unknown';
+  type:
+    | 'react_component'
+    | 'hook'
+    | 'utility'
+    | 'store'
+    | 'service'
+    | 'type_definition'
+    | 'config'
+    | 'style'
+    | 'test'
+    | 'unknown';
   imports: Array<{ source: string; symbols: string[] }>;
   exports: string[];
   dependencies: string[];
@@ -162,7 +173,7 @@ export interface ComponentAnalysis {
 export interface DependencyTrace {
   rootFile: string;
   depth: number;
-  upstream: string[];   // files that this file imports from
+  upstream: string[]; // files that this file imports from
   downstream: string[]; // files that import this file
   circularDeps: string[];
   traceTree: DependencyTreeNode;

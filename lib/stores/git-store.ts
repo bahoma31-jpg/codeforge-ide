@@ -8,18 +8,19 @@
  */
 
 import { create } from 'zustand';
+import { logger } from '@/lib/monitoring/error-logger';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { FileNode } from '@/lib/db/schema';
 import { getAllNodes } from '@/lib/db/file-operations';
 import { useAuthStore } from './auth-store';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { useFilesStore } from './files-store';
 import {
   pushChanges,
   type FileChange,
   type CommitResult,
 } from '@/lib/services/github-write.service';
-import {
-  cloneRepository,
-} from '@/lib/services/github.service';
+import { cloneRepository } from '@/lib/services/github.service';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -102,19 +103,31 @@ export const useGitStore = create<GitState>((set, get) => ({
    * Called right after cloning to establish the "baseline".
    */
   takeSnapshot: async () => {
-    const allNodes = await getAllNodes();
-    const snapshot = new Map<string, string>();
+    try {
+      const allNodes = await getAllNodes();
+      const snapshot = new Map<string, string>();
 
-    for (const node of allNodes) {
-      if (node.type === 'file' && node.content !== undefined) {
-        // Store path relative to root (remove leading /repoName/)
-        const parts = node.path.split('/');
-        const relativePath = parts.length > 2 ? parts.slice(2).join('/') : node.name;
-        snapshot.set(relativePath, node.content);
+      for (const node of allNodes) {
+        if (node.type === 'file' && node.content !== undefined) {
+          // Store path relative to root (remove leading /repoName/)
+          const parts = node.path.split('/');
+          const relativePath =
+            parts.length > 2 ? parts.slice(2).join('/') : node.name;
+          snapshot.set(relativePath, node.content);
+        }
       }
-    }
 
-    set({ snapshot, changes: [] });
+      set({ snapshot, changes: [] });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'فشل أخذ لقطة الملفات';
+      logger.error(
+        'فشل أخذ لقطة الملفات',
+        error instanceof Error ? error : undefined,
+        { source: 'GitStore.takeSnapshot' }
+      );
+      set({ error: message });
+    }
   },
 
   /**
@@ -130,7 +143,8 @@ export const useGitStore = create<GitState>((set, get) => ({
       if (node.type !== 'file') continue;
 
       const parts = node.path.split('/');
-      const relativePath = parts.length > 2 ? parts.slice(2).join('/') : node.name;
+      const relativePath =
+        parts.length > 2 ? parts.slice(2).join('/') : node.name;
       currentPaths.add(relativePath);
 
       const originalContent = snapshot.get(relativePath);
@@ -184,6 +198,12 @@ export const useGitStore = create<GitState>((set, get) => ({
   },
 
   stageFile: (path) => {
+    if (!path || typeof path !== 'string') {
+      logger.warn('المسار مطلوب لعملية stage', {
+        source: 'GitStore.stageFile',
+      });
+      return;
+    }
     set((state) => ({
       changes: state.changes.map((c) =>
         c.path === path ? { ...c, staged: true } : c
@@ -192,6 +212,12 @@ export const useGitStore = create<GitState>((set, get) => ({
   },
 
   unstageFile: (path) => {
+    if (!path || typeof path !== 'string') {
+      logger.warn('المسار مطلوب لعملية unstage', {
+        source: 'GitStore.unstageFile',
+      });
+      return;
+    }
     set((state) => ({
       changes: state.changes.map((c) =>
         c.path === path ? { ...c, staged: false } : c
@@ -237,7 +263,11 @@ export const useGitStore = create<GitState>((set, get) => ({
     if (staged.length === 0) throw new Error('لا توجد ملفات محددة للدفع.');
     if (!commitMessage.trim()) throw new Error('رسالة الـ commit مطلوبة.');
 
-    set({ isPushing: true, error: null, pushProgress: { msg: 'جاري البدء…', pct: 0 } });
+    set({
+      isPushing: true,
+      error: null,
+      pushProgress: { msg: 'جاري البدء…', pct: 0 },
+    });
 
     try {
       // Convert tracked changes to FileChange format
@@ -248,7 +278,10 @@ export const useGitStore = create<GitState>((set, get) => ({
         return {
           path: change.path,
           content: change.currentContent || '',
-          action: change.status === 'added' ? 'create' as const : 'update' as const,
+          action:
+            change.status === 'added'
+              ? ('create' as const)
+              : ('update' as const),
         };
       });
 
@@ -305,7 +338,11 @@ export const useGitStore = create<GitState>((set, get) => ({
     if (!repoContext) throw new Error('لا يوجد مستودع متصل.');
     if (!token) throw new Error('يجب تسجيل الدخول أولاً.');
 
-    set({ isPulling: true, error: null, pullProgress: { msg: 'جاري السحب…', pct: 0 } });
+    set({
+      isPulling: true,
+      error: null,
+      pullProgress: { msg: 'جاري السحب…', pct: 0 },
+    });
 
     try {
       await cloneRepository(

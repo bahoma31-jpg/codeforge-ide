@@ -3,4 +3,8 @@
  * React hooks for agent subsystems.
  */
 
-export { useOODABridge, type UseOODABridgeReturn, type OODABridgeState } from './use-ooda-bridge';
+export {
+  useOODABridge,
+  type UseOODABridgeReturn,
+  type OODABridgeState,
+} from './use-ooda-bridge';

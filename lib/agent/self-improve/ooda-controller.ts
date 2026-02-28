@@ -19,7 +19,9 @@ import type {
   FixStep,
   FileChange,
   ComponentAnalysis,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   DependencyTrace,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ProjectMap,
   VerificationResult,
 } from './types';
@@ -72,7 +74,7 @@ export class OODAController {
    * Get learning memory instance via dynamic import().
    * This is critical: vi.mock() intercepts import() but NOT require().
    */
-  private async getLearningMemoryInstance(): Promise<any> {
+  private async getLearningMemoryInstance(): Promise<unknown> {
     try {
       const lm = await import('./learning-memory');
       if (lm && lm.getLearningMemory) {
@@ -90,7 +92,7 @@ export class OODAController {
   onEvent(listener: OODAEventListener): () => void {
     this.eventListeners.push(listener);
     return () => {
-      this.eventListeners = this.eventListeners.filter(l => l !== listener);
+      this.eventListeners = this.eventListeners.filter((l) => l !== listener);
     };
   }
 
@@ -106,12 +108,22 @@ export class OODAController {
    * and runs the OODA cycle in the background.
    */
   startTask(description: string): string {
-    const safeDescription = description && description.trim() ? description.trim() : 'No description provided';
+    const safeDescription =
+      description && description.trim()
+        ? description.trim()
+        : 'No description provided';
 
     if (this.runningTaskId) {
       const task = this.createTask('user_report', safeDescription);
       this.activeTasks.set(task.id, task);
-      this.emit(task.id, 'observe', 'started', `Task queued: ${safeDescription}`, undefined, 'queued');
+      this.emit(
+        task.id,
+        'observe',
+        'started',
+        `Task queued: ${safeDescription}`,
+        undefined,
+        'queued'
+      );
       return task.id;
     }
 
@@ -119,7 +131,14 @@ export class OODAController {
     this.activeTasks.set(task.id, task);
     this.runningTaskId = task.id;
 
-    this.emit(task.id, 'observe', 'started', `Starting task: ${safeDescription}`, undefined, 'started');
+    this.emit(
+      task.id,
+      'observe',
+      'started',
+      `Starting task: ${safeDescription}`,
+      undefined,
+      'started'
+    );
 
     this.runOODACycle(task).catch(() => {
       // Error already handled inside runOODACycle
@@ -131,8 +150,15 @@ export class OODAController {
   /**
    * Get task status by ID.
    */
-  getTaskStatus(taskId: string): { id: string; description: string; status: TaskStatus; phase?: OODAPhase } | null {
-    const task = this.activeTasks.get(taskId) || this.completedTasks.find(t => t.id === taskId);
+  getTaskStatus(taskId: string): {
+    id: string;
+    description: string;
+    status: TaskStatus;
+    phase?: OODAPhase;
+  } | null {
+    const task =
+      this.activeTasks.get(taskId) ||
+      this.completedTasks.find((t) => t.id === taskId);
     if (!task) return null;
     return {
       id: task.id,
@@ -152,7 +178,9 @@ export class OODAController {
     }
   ): Promise<SelfImprovementTask> {
     if (this.activeTasks.size > 0) {
-      throw new Error('Another task is already running. Cancel it first or wait for completion.');
+      throw new Error(
+        'Another task is already running. Cancel it first or wait for completion.'
+      );
     }
 
     const task = this.createTask(trigger, description);
@@ -173,7 +201,12 @@ export class OODAController {
         if (!approved) {
           task.status = 'cancelled';
           task.updatedAt = Date.now();
-          this.emit(task.id, 'decide', 'failed', 'Task cancelled by user — approval denied');
+          this.emit(
+            task.id,
+            'decide',
+            'failed',
+            'Task cancelled by user — approval denied'
+          );
           this.finalizeTask(task);
           return task;
         }
@@ -185,7 +218,12 @@ export class OODAController {
       task.execution.status = 'failed';
       task.execution.errors.push((error as Error).message);
       task.updatedAt = Date.now();
-      this.emit(task.id, 'act', 'failed', `Task failed: ${(error as Error).message}`);
+      this.emit(
+        task.id,
+        'act',
+        'failed',
+        `Task failed: ${(error as Error).message}`
+      );
     }
 
     this.finalizeTask(task);
@@ -193,7 +231,10 @@ export class OODAController {
   }
 
   getTask(taskId: string): SelfImprovementTask | undefined {
-    return this.activeTasks.get(taskId) || this.completedTasks.find(t => t.id === taskId);
+    return (
+      this.activeTasks.get(taskId) ||
+      this.completedTasks.find((t) => t.id === taskId)
+    );
   }
 
   getTaskInfo(taskId: string): SelfImprovementTask | null {
@@ -214,7 +255,14 @@ export class OODAController {
 
     task.status = 'cancelled';
     task.updatedAt = Date.now();
-    this.emit(taskId, 'act', 'failed', 'Task cancelled by user', undefined, 'cancelled');
+    this.emit(
+      taskId,
+      'act',
+      'failed',
+      'Task cancelled by user',
+      undefined,
+      'cancelled'
+    );
     this.finalizeTask(task);
 
     if (this.runningTaskId === taskId) {
@@ -252,7 +300,9 @@ export class OODAController {
         memory.recordSuccess({
           description: task.description,
           category: task.category,
-          filesInvolved: task.execution.changes.map((c: FileChange) => c.filePath),
+          filesInvolved: task.execution.changes.map(
+            (c: FileChange) => c.filePath
+          ),
         });
       } else if (task.status === 'failed' && memory?.recordFailure) {
         memory.recordFailure({
@@ -266,7 +316,12 @@ export class OODAController {
       task.execution.status = 'failed';
       task.execution.errors.push((error as Error).message);
       task.updatedAt = Date.now();
-      this.emit(task.id, 'act', 'failed', `Task failed: ${(error as Error).message}`);
+      this.emit(
+        task.id,
+        'act',
+        'failed',
+        `Task failed: ${(error as Error).message}`
+      );
 
       // Record failure
       try {
@@ -306,13 +361,15 @@ export class OODAController {
     );
 
     // Normalize: accept both {path, score} and {filePath, relevanceScore}
-    const relatedFiles = (rawRelatedFiles || []).map((f: any) => ({
+    const relatedFiles = (rawRelatedFiles || []).map((f: unknown) => ({
       filePath: f.filePath || f.path || '',
       relevanceScore: f.relevanceScore ?? f.score ?? 0,
       reason: f.reason || 'unknown',
     }));
 
-    task.observation.detectedFiles = relatedFiles.map((f: any) => f.filePath);
+    task.observation.detectedFiles = relatedFiles.map(
+      (f: unknown) => f.filePath
+    );
 
     const topFiles = relatedFiles.slice(0, 5);
     const analyses: ComponentAnalysis[] = [];
@@ -324,21 +381,30 @@ export class OODAController {
         analyses.push(analysis);
         task.observation.evidence.push(
           `${file.filePath}: type=${analysis.type}, complexity=${analysis.estimatedComplexity}, ` +
-          `imports=${(analysis.imports || []).length}, exports=${(analysis.exports || []).length}, ` +
-          `lines=${analysis.lineCount} (relevance: ${file.relevanceScore}, reason: ${file.reason})`
+            `imports=${(analysis.imports || []).length}, exports=${(analysis.exports || []).length}, ` +
+            `lines=${analysis.lineCount} (relevance: ${file.relevanceScore}, reason: ${file.reason})`
         );
       }
     }
 
     if (analyses.length > 0) {
-      const types = [...new Set(analyses.map(a => a.type))];
-      const areas = [...new Set(analyses.map(a => (a.filePath || '').split('/').slice(0, -1).join('/')))];
+      const types = [...new Set(analyses.map((a) => a.type))];
+      const areas = [
+        ...new Set(
+          analyses.map((a) =>
+            (a.filePath || '').split('/').slice(0, -1).join('/')
+          )
+        ),
+      ];
       task.observation.affectedArea = `${types.join(', ')} in ${areas.join(', ')}`;
     } else {
       task.observation.affectedArea = 'unknown — no matching files found';
     }
 
-    this.emit(task.id, 'observe', 'completed',
+    this.emit(
+      task.id,
+      'observe',
+      'completed',
       `Found ${relatedFiles.length} related files, analyzed top ${topFiles.length}`,
       { fileCount: relatedFiles.length, analyses: analyses.length }
     );
@@ -357,26 +423,30 @@ export class OODAController {
     const engine = getSelfAnalysisEngine();
     const topFiles = task.observation.detectedFiles.slice(0, 5);
 
-    const allTraces: any[] = [];
+    const allTraces: unknown[] = [];
     const relatedComponents = new Set<string>();
 
     for (const filePath of topFiles) {
       const trace = engine.traceDependencies(filePath, allFiles, 3);
       allTraces.push(trace);
       const upstream = Array.isArray(trace.upstream) ? trace.upstream : [];
-      const downstream = Array.isArray(trace.downstream) ? trace.downstream : [];
+      const downstream = Array.isArray(trace.downstream)
+        ? trace.downstream
+        : [];
       upstream.forEach((f: string) => relatedComponents.add(f));
       downstream.forEach((f: string) => relatedComponents.add(f));
     }
 
     const scope = new Set<string>(topFiles);
     for (const trace of allTraces) {
-      const downstream = Array.isArray(trace.downstream) ? trace.downstream : [];
+      const downstream = Array.isArray(trace.downstream)
+        ? trace.downstream
+        : [];
       downstream.forEach((f: string) => scope.add(f));
     }
 
     const filteredScope = Array.from(scope).filter(
-      f => !SELF_IMPROVE_PROTECTED_PATHS.some(p => f.startsWith(p))
+      (f) => !SELF_IMPROVE_PROTECTED_PATHS.some((p) => f.startsWith(p))
     );
 
     const skills = new Set<string>();
@@ -384,17 +454,23 @@ export class OODAController {
       const content = allFiles.get(filePath);
       if (!content) continue;
 
-      if (filePath.endsWith('.tsx') || filePath.endsWith('.jsx')) skills.add('React');
-      if (filePath.endsWith('.ts') || filePath.endsWith('.tsx')) skills.add('TypeScript');
-      if (filePath.endsWith('.css') || filePath.endsWith('.scss')) skills.add('CSS');
-      if (content.includes('zustand') || content.includes('create(')) skills.add('Zustand');
-      if (content.includes('fetch(') || content.includes('axios')) skills.add('API Integration');
-      if (content.includes('useEffect') || content.includes('useState')) skills.add('React Hooks');
+      if (filePath.endsWith('.tsx') || filePath.endsWith('.jsx'))
+        skills.add('React');
+      if (filePath.endsWith('.ts') || filePath.endsWith('.tsx'))
+        skills.add('TypeScript');
+      if (filePath.endsWith('.css') || filePath.endsWith('.scss'))
+        skills.add('CSS');
+      if (content.includes('zustand') || content.includes('create('))
+        skills.add('Zustand');
+      if (content.includes('fetch(') || content.includes('axios'))
+        skills.add('API Integration');
+      if (content.includes('useEffect') || content.includes('useState'))
+        skills.add('React Hooks');
     }
 
-    const circularDeps = allTraces.flatMap(t => t.circularDeps || []);
+    const circularDeps = allTraces.flatMap((t) => t.circularDeps || []);
     const constraints = [
-      ...SELF_IMPROVE_PROTECTED_PATHS.map(p => `Protected: ${p}`),
+      ...SELF_IMPROVE_PROTECTED_PATHS.map((p) => `Protected: ${p}`),
       `Max files: ${SELF_IMPROVE_MAX_FILES}`,
       `Max iterations: ${SELF_IMPROVE_MAX_ITERATIONS}`,
     ];
@@ -420,7 +496,10 @@ export class OODAController {
 
     task.category = this.detectCategory(task);
 
-    this.emit(task.id, 'orient', 'completed',
+    this.emit(
+      task.id,
+      'orient',
+      'completed',
       `Root cause identified. Scope: ${filteredScope.length} files. Skills: ${Array.from(skills).join(', ')}`,
       { scope: filteredScope.length, skills: Array.from(skills) }
     );
@@ -430,6 +509,7 @@ export class OODAController {
 
   private async phaseDecide(
     task: SelfImprovementTask,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     allFiles: Map<string, string>
   ): Promise<void> {
     task.status = 'deciding';
@@ -460,7 +540,8 @@ export class OODAController {
 
     const primaryTargets = task.observation.detectedFiles.slice(0, 3);
     for (const filePath of primaryTargets) {
-      if (SELF_IMPROVE_PROTECTED_PATHS.some(p => filePath.startsWith(p))) continue;
+      if (SELF_IMPROVE_PROTECTED_PATHS.some((p) => filePath.startsWith(p)))
+        continue;
 
       plan.push({
         order: stepOrder++,
@@ -489,19 +570,23 @@ export class OODAController {
       primaryTargets.length >= 3;
 
     const rollbackPlan = primaryTargets
-      .map(f => `Revert ${f.split('/').pop()} to pre-edit state`)
+      .map((f) => `Revert ${f.split('/').pop()} to pre-edit state`)
       .join('; ');
 
     task.decision = {
       plan,
       riskLevel,
       rollbackPlan: rollbackPlan || 'No files modified — no rollback needed',
-      estimatedImpact: `${primaryTargets.length} files directly modified, ` +
+      estimatedImpact:
+        `${primaryTargets.length} files directly modified, ` +
         `${task.orientation.relatedComponents.length} related components`,
       requiresApproval,
     };
 
-    this.emit(task.id, 'decide', 'completed',
+    this.emit(
+      task.id,
+      'decide',
+      'completed',
       `Plan created: ${plan.length} steps, risk=${riskLevel}, approval=${requiresApproval}`,
       { steps: plan.length, riskLevel, requiresApproval }
     );
@@ -523,7 +608,10 @@ export class OODAController {
       task.status = 'acting';
       task.execution.status = 'in_progress';
       task.updatedAt = Date.now();
-      this.emit(task.id, 'act', 'started',
+      this.emit(
+        task.id,
+        'act',
+        'started',
         `Executing fix plan (iteration ${task.execution.iterations}/${maxIterations})...`
       );
 
@@ -543,8 +631,8 @@ export class OODAController {
         if (Array.isArray(rawResult)) {
           changes = rawResult;
         } else if (rawResult && typeof rawResult === 'object') {
-          const obj = rawResult as any;
-          const modifiedFiles: string[] = obj.filesModified || [];
+          const obj = rawResult as Record<string, unknown>;
+          const modifiedFiles: string[] = (obj.filesModified as string[]) || [];
           changes = modifiedFiles.map((fp: string) => ({
             filePath: fp,
             changeType: 'modify' as const,
@@ -559,7 +647,10 @@ export class OODAController {
         task.execution.changes.push(...changes);
 
         for (const change of changes) {
-          if (change.changeType === 'modify' || change.changeType === 'create') {
+          if (
+            change.changeType === 'modify' ||
+            change.changeType === 'create'
+          ) {
             if (change.newContent) {
               allFiles.set(change.filePath, change.newContent);
             }
@@ -568,12 +659,17 @@ export class OODAController {
           }
         }
 
-        this.emit(task.id, 'act', 'completed',
+        this.emit(
+          task.id,
+          'act',
+          'completed',
           `Applied ${changes.length} changes`,
           { changesCount: changes.length }
         );
       } catch (error) {
-        task.execution.errors.push(`Act phase error: ${(error as Error).message}`);
+        task.execution.errors.push(
+          `Act phase error: ${(error as Error).message}`
+        );
         this.emit(task.id, 'act', 'failed', (error as Error).message);
 
         if (task.execution.iterations >= maxIterations) {
@@ -596,28 +692,41 @@ export class OODAController {
         task.execution.changes
       );
 
-      const verification: VerificationResult = this.normalizeVerification(rawVerification);
+      const verification: VerificationResult =
+        this.normalizeVerification(rawVerification);
       task.execution.verificationResult = verification;
 
       if (verification.passed) {
         task.status = 'completed';
         task.execution.status = 'completed';
         task.updatedAt = Date.now();
-        this.emit(task.id, 'verify', 'completed', 'All checks passed! Task complete.', {
-          checks: verification.checks.length,
-          passed: verification.checks.filter(c => c.passed).length,
-        });
+        this.emit(
+          task.id,
+          'verify',
+          'completed',
+          'All checks passed! Task complete.',
+          {
+            checks: verification.checks.length,
+            passed: verification.checks.filter((c) => c.passed).length,
+          }
+        );
         return;
       }
 
       const reason = verification.reason || 'Verification checks failed';
-      this.emit(task.id, 'verify', 'failed',
+      this.emit(
+        task.id,
+        'verify',
+        'failed',
         `Verification failed: ${reason}. ` +
-        `Retry ${task.execution.iterations}/${maxIterations}`,
+          `Retry ${task.execution.iterations}/${maxIterations}`,
         { reason }
       );
 
-      if (!verification.retryNeeded || task.execution.iterations >= maxIterations) {
+      if (
+        !verification.retryNeeded ||
+        task.execution.iterations >= maxIterations
+      ) {
         task.status = 'failed';
         task.execution.status = 'failed';
         task.execution.errors.push(
@@ -636,9 +745,14 @@ export class OODAController {
 
   // ─── Verification Normalizer ──────────────────────────────
 
-  private normalizeVerification(raw: any): VerificationResult {
+  private normalizeVerification(raw: unknown): VerificationResult {
     if (!raw || typeof raw !== 'object') {
-      return { passed: false, checks: [], retryNeeded: true, reason: 'No verification result' };
+      return {
+        passed: false,
+        checks: [],
+        retryNeeded: true,
+        reason: 'No verification result',
+      };
     }
 
     const passed = !!raw.passed;
@@ -647,7 +761,7 @@ export class OODAController {
 
     if (Array.isArray(raw.failedChecks)) {
       for (const fc of raw.failedChecks) {
-        const existing = checks.find((c: any) => c.name === fc.name);
+        const existing = checks.find((c: unknown) => c.name === fc.name);
         if (!existing) {
           checks.push({
             name: fc.name,
@@ -658,7 +772,7 @@ export class OODAController {
       }
     }
 
-    checks = checks.map((c: any) => ({
+    checks = checks.map((c: unknown) => ({
       name: c.name || 'unknown',
       passed: c.passed ?? true,
       details: c.details || c.message || '',
@@ -666,21 +780,31 @@ export class OODAController {
 
     let reason = raw.reason;
     if (!reason && !passed) {
-      const failedNames = checks.filter((c: any) => !c.passed).map((c: any) => c.name);
-      reason = failedNames.length > 0
-        ? `Failed checks: ${failedNames.join(', ')}`
-        : 'Verification failed';
+      const failedNames = checks
+        .filter((c: unknown) => !c.passed)
+        .map((c: unknown) => c.name);
+      reason =
+        failedNames.length > 0
+          ? `Failed checks: ${failedNames.join(', ')}`
+          : 'Verification failed';
     }
 
-    const retryNeeded = raw.retryNeeded !== undefined ? raw.retryNeeded : !passed;
+    const retryNeeded =
+      raw.retryNeeded !== undefined ? raw.retryNeeded : !passed;
 
     return { passed, checks, retryNeeded, reason };
   }
 
   // ─── Helper Methods ───────────────────────────────────────
 
-  private createTask(trigger: TaskTrigger, description: string): SelfImprovementTask {
-    const safeDescription = description && description.trim() ? description.trim() : 'No description provided';
+  private createTask(
+    trigger: TaskTrigger,
+    description: string
+  ): SelfImprovementTask {
+    const safeDescription =
+      description && description.trim()
+        ? description.trim()
+        : 'No description provided';
     const now = Date.now();
     return {
       id: uuidv4(),
@@ -729,13 +853,19 @@ export class OODAController {
     const description = task.observation.userMessage.toLowerCase();
 
     if (
-      description.includes('style') || description.includes('css') ||
-      description.includes('color') || description.includes('size') ||
-      description.includes('position') || description.includes('layout') ||
-      description.includes('لون') || description.includes('حجم') ||
+      description.includes('style') ||
+      description.includes('css') ||
+      description.includes('color') ||
+      description.includes('size') ||
+      description.includes('position') ||
+      description.includes('layout') ||
+      description.includes('لون') ||
+      description.includes('حجم') ||
       description.includes('واجهة')
     ) {
-      const cssFiles = topFiles.filter(f => f.endsWith('.css') || f.endsWith('.scss'));
+      const cssFiles = topFiles.filter(
+        (f) => f.endsWith('.css') || f.endsWith('.scss')
+      );
       if (cssFiles.length > 0) {
         return `CSS/Style issue in ${cssFiles.join(', ')} — layout or visual properties may need adjustment`;
       }
@@ -743,24 +873,32 @@ export class OODAController {
     }
 
     if (
-      description.includes('render') || description.includes('display') ||
-      description.includes('show') || description.includes('appear') ||
-      description.includes('يظهر') || description.includes('عرض')
+      description.includes('render') ||
+      description.includes('display') ||
+      description.includes('show') ||
+      description.includes('appear') ||
+      description.includes('يظهر') ||
+      description.includes('عرض')
     ) {
       return `Component rendering issue — conditional logic or state management in ${topFiles[0] || 'unknown'} may need fixing`;
     }
 
     if (
-      description.includes('work') || description.includes('function') ||
-      description.includes('click') || description.includes('button') ||
-      description.includes('يعمل') || description.includes('زر')
+      description.includes('work') ||
+      description.includes('function') ||
+      description.includes('click') ||
+      description.includes('button') ||
+      description.includes('يعمل') ||
+      description.includes('زر')
     ) {
       return `Logic/functionality issue — event handler or state update in ${topFiles[0] || 'unknown'} may be broken`;
     }
 
     if (
-      description.includes('slow') || description.includes('perf') ||
-      description.includes('lag') || description.includes('بطيء')
+      description.includes('slow') ||
+      description.includes('perf') ||
+      description.includes('lag') ||
+      description.includes('بطيء')
     ) {
       return `Performance issue — potential unnecessary re-renders or heavy computation in ${topFiles[0] || 'unknown'}`;
     }
@@ -773,11 +911,37 @@ export class OODAController {
     const rootCause = task.orientation.rootCause.toLowerCase();
     const combined = `${desc} ${rootCause}`;
 
-    if (combined.includes('css') || combined.includes('style') || combined.includes('لون')) return 'style';
-    if (combined.includes('slow') || combined.includes('perf') || combined.includes('بطيء')) return 'performance';
-    if (combined.includes('access') || combined.includes('aria') || combined.includes('screen reader')) return 'accessibility';
-    if (combined.includes('feature') || combined.includes('add') || combined.includes('إضافة')) return 'feature_enhancement';
-    if (combined.includes('render') || combined.includes('display') || combined.includes('ui') || combined.includes('واجهة')) return 'ui_bug';
+    if (
+      combined.includes('css') ||
+      combined.includes('style') ||
+      combined.includes('لون')
+    )
+      return 'style';
+    if (
+      combined.includes('slow') ||
+      combined.includes('perf') ||
+      combined.includes('بطيء')
+    )
+      return 'performance';
+    if (
+      combined.includes('access') ||
+      combined.includes('aria') ||
+      combined.includes('screen reader')
+    )
+      return 'accessibility';
+    if (
+      combined.includes('feature') ||
+      combined.includes('add') ||
+      combined.includes('إضافة')
+    )
+      return 'feature_enhancement';
+    if (
+      combined.includes('render') ||
+      combined.includes('display') ||
+      combined.includes('ui') ||
+      combined.includes('واجهة')
+    )
+      return 'ui_bug';
     return 'logic_error';
   }
 
@@ -785,12 +949,15 @@ export class OODAController {
     task: SelfImprovementTask,
     plan: FixStep[]
   ): SelfImprovementTask['decision']['riskLevel'] {
-    const editSteps = plan.filter(s => s.action === 'edit' || s.action === 'create' || s.action === 'delete');
+    const editSteps = plan.filter(
+      (s) =>
+        s.action === 'edit' || s.action === 'create' || s.action === 'delete'
+    );
     const scope = task.orientation.scope;
 
     if (
       editSteps.length > 5 ||
-      scope.some(f => f.includes('agent-service') || f.includes('safety'))
+      scope.some((f) => f.includes('agent-service') || f.includes('safety'))
     ) {
       return 'critical';
     }
@@ -798,7 +965,7 @@ export class OODAController {
     if (
       editSteps.length > 3 ||
       task.orientation.skills.includes('Zustand') ||
-      scope.some(f => f.includes('store') || f.includes('provider'))
+      scope.some((f) => f.includes('store') || f.includes('provider'))
     ) {
       return 'high';
     }

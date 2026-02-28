@@ -75,22 +75,23 @@ export class VerificationEngine {
     // Check 5: Syntax sanity
     checks.push(this.checkSyntaxSanityFlat(input));
 
-    const failedChecks = checks.filter(c => !c.passed);
+    const failedChecks = checks.filter((c) => !c.passed);
     const passed = failedChecks.length === 0;
-    const score = checks.length > 0
-      ? checks.filter(c => c.passed).length / checks.length
-      : 0;
+    const score =
+      checks.length > 0
+        ? checks.filter((c) => c.passed).length / checks.length
+        : 0;
 
     return {
       passed,
       checks,
       score,
-      retryNeeded: failedChecks.some(c =>
-        c.name === 'import_validity' || c.name === 'syntax_sanity'
+      retryNeeded: failedChecks.some(
+        (c) => c.name === 'import_validity' || c.name === 'syntax_sanity'
       ),
       reason: passed
         ? undefined
-        : `Failed checks: ${failedChecks.map(c => c.name).join(', ')}`,
+        : `Failed checks: ${failedChecks.map((c) => c.name).join(', ')}`,
     };
   }
 
@@ -104,9 +105,10 @@ export class VerificationEngine {
     return {
       name: 'file_existence',
       passed: missing.length === 0,
-      details: missing.length === 0
-        ? `All ${input.modifiedFiles.length} modified files exist`
-        : `Missing files: ${missing.join(', ')}`,
+      details:
+        missing.length === 0
+          ? `All ${input.modifiedFiles.length} modified files exist`
+          : `Missing files: ${missing.join(', ')}`,
     };
   }
 
@@ -135,9 +137,10 @@ export class VerificationEngine {
     return {
       name: 'import_validity',
       passed: brokenImports.length === 0,
-      details: brokenImports.length === 0
-        ? 'All local imports resolve correctly'
-        : `Broken imports: ${brokenImports.map(b => `${b.file} \u2192 ${b.import}`).join('; ')}`,
+      details:
+        brokenImports.length === 0
+          ? 'All local imports resolve correctly'
+          : `Broken imports: ${brokenImports.map((b) => `${b.file} \u2192 ${b.import}`).join('; ')}`,
     };
   }
 
@@ -153,9 +156,10 @@ export class VerificationEngine {
     return {
       name: 'protected_paths',
       passed: violations.length === 0,
-      details: violations.length === 0
-        ? 'No protected paths were modified'
-        : `VIOLATION: Modified protected paths: ${violations.join('; ')}`,
+      details:
+        violations.length === 0
+          ? 'No protected paths were modified'
+          : `VIOLATION: Modified protected paths: ${violations.join('; ')}`,
     };
   }
 
@@ -170,9 +174,10 @@ export class VerificationEngine {
     return {
       name: 'scope_integrity',
       passed: outOfScope.length === 0,
-      details: outOfScope.length === 0
-        ? `All changes within declared scope (${scope.size} files)`
-        : `Out-of-scope modifications: ${outOfScope.join('; ')}`,
+      details:
+        outOfScope.length === 0
+          ? `All changes within declared scope (${scope.size} files)`
+          : `Out-of-scope modifications: ${outOfScope.join('; ')}`,
     };
   }
 
@@ -188,9 +193,10 @@ export class VerificationEngine {
     return {
       name: 'syntax_sanity',
       passed: syntaxErrors.length === 0,
-      details: syntaxErrors.length === 0
-        ? 'All files pass basic syntax check'
-        : `Syntax issues: ${syntaxErrors.join('; ')}`,
+      details:
+        syntaxErrors.length === 0
+          ? 'All files pass basic syntax check'
+          : `Syntax issues: ${syntaxErrors.join('; ')}`,
     };
   }
 
@@ -204,9 +210,18 @@ export class VerificationEngine {
     let safeChanges: FileChange[];
     if (Array.isArray(changes)) {
       safeChanges = changes;
-    } else if (changes && typeof changes === 'object' && 'items' in changes && Array.isArray((changes as any).items)) {
-      safeChanges = (changes as any).items;
-    } else if (changes && typeof changes === 'object' && !Array.isArray(changes)) {
+    } else if (
+      changes &&
+      typeof changes === 'object' &&
+      'items' in changes &&
+      Array.isArray((changes as unknown).items)
+    ) {
+      safeChanges = (changes as unknown).items;
+    } else if (
+      changes &&
+      typeof changes === 'object' &&
+      !Array.isArray(changes)
+    ) {
       safeChanges = [changes as unknown as FileChange];
     } else {
       safeChanges = [];
@@ -222,16 +237,18 @@ export class VerificationEngine {
     checks.push(this.checkSyntaxSanity(safeChanges, allFiles));
     checks.push(this.checkDownstreamImpact(safeChanges, allFiles));
 
-    const failedChecks = checks.filter(c => !c.passed);
+    const failedChecks = checks.filter((c) => !c.passed);
     const passed = failedChecks.length === 0;
-    const retryNeeded = failedChecks.some(c =>
-      c.name === 'import_validity' ||
-      c.name === 'syntax_sanity' ||
-      c.name === 'export_consistency'
+    const retryNeeded = failedChecks.some(
+      (c) =>
+        c.name === 'import_validity' ||
+        c.name === 'syntax_sanity' ||
+        c.name === 'export_consistency'
     );
-    const score = checks.length > 0
-      ? checks.filter(c => c.passed).length / checks.length
-      : 0;
+    const score =
+      checks.length > 0
+        ? checks.filter((c) => c.passed).length / checks.length
+        : 0;
 
     return {
       passed,
@@ -240,7 +257,7 @@ export class VerificationEngine {
       retryNeeded,
       reason: passed
         ? undefined
-        : `Failed checks: ${failedChecks.map(c => c.name).join(', ')}`,
+        : `Failed checks: ${failedChecks.map((c) => c.name).join(', ')}`,
     };
   }
 
@@ -260,9 +277,10 @@ export class VerificationEngine {
     return {
       name: 'file_existence',
       passed: missing.length === 0,
-      details: missing.length === 0
-        ? `All ${changes.length} modified files exist`
-        : `Missing files: ${missing.join(', ')}`,
+      details:
+        missing.length === 0
+          ? `All ${changes.length} modified files exist`
+          : `Missing files: ${missing.join(', ')}`,
     };
   }
 
@@ -281,8 +299,13 @@ export class VerificationEngine {
       const analysis = engine.analyzeComponent(change.filePath, content);
 
       for (const imp of analysis.imports) {
-        if (!imp.source.startsWith('.') && !imp.source.startsWith('@/')) continue;
-        const resolved = this.resolveImport(change.filePath, imp.source, allFiles);
+        if (!imp.source.startsWith('.') && !imp.source.startsWith('@/'))
+          continue;
+        const resolved = this.resolveImport(
+          change.filePath,
+          imp.source,
+          allFiles
+        );
         if (!resolved) {
           brokenImports.push({ file: change.filePath, import: imp.source });
         }
@@ -292,9 +315,10 @@ export class VerificationEngine {
     return {
       name: 'import_validity',
       passed: brokenImports.length === 0,
-      details: brokenImports.length === 0
-        ? 'All local imports resolve correctly'
-        : `Broken imports: ${brokenImports.map(b => `${b.file} \u2192 ${b.import}`).join('; ')}`,
+      details:
+        brokenImports.length === 0
+          ? 'All local imports resolve correctly'
+          : `Broken imports: ${brokenImports.map((b) => `${b.file} \u2192 ${b.import}`).join('; ')}`,
     };
   }
 
@@ -315,15 +339,21 @@ export class VerificationEngine {
 
       for (const exp of analysis.exports) {
         const definitionPatterns = [
-          new RegExp(`(?:function|class|const|let|var|interface|type|enum)\\s+${exp}\\b`),
+          new RegExp(
+            `(?:function|class|const|let|var|interface|type|enum)\\s+${exp}\\b`
+          ),
           new RegExp(`export\\s+default\\s+${exp}\\b`),
         ];
 
-        const isDefined = definitionPatterns.some(p => p.test(content));
+        const isDefined = definitionPatterns.some((p) => p.test(content));
         if (!isDefined) {
-          const isReExport = content.includes(`export { ${exp}`) || content.includes(`export {${exp}`);
+          const isReExport =
+            content.includes(`export { ${exp}`) ||
+            content.includes(`export {${exp}`);
           if (!isReExport) {
-            issues.push(`${change.filePath}: exported '${exp}' may not be defined`);
+            issues.push(
+              `${change.filePath}: exported '${exp}' may not be defined`
+            );
           }
         }
       }
@@ -332,9 +362,10 @@ export class VerificationEngine {
     return {
       name: 'export_consistency',
       passed: issues.length === 0,
-      details: issues.length === 0
-        ? 'All exports are properly defined'
-        : `Export issues: ${issues.join('; ')}`,
+      details:
+        issues.length === 0
+          ? 'All exports are properly defined'
+          : `Export issues: ${issues.join('; ')}`,
     };
   }
 
@@ -343,8 +374,8 @@ export class VerificationEngine {
     task: SelfImprovementTask
   ): VerificationCheck {
     const protectedPaths = (task.orientation?.constraints || [])
-      .filter(c => c.startsWith('Protected:'))
-      .map(c => c.replace('Protected: ', ''));
+      .filter((c) => c.startsWith('Protected:'))
+      .map((c) => c.replace('Protected: ', ''));
 
     const violations: string[] = [];
     for (const change of changes) {
@@ -360,9 +391,10 @@ export class VerificationEngine {
     return {
       name: 'protected_paths',
       passed: violations.length === 0,
-      details: violations.length === 0
-        ? 'No protected paths were modified'
-        : `VIOLATION: Modified protected paths: ${violations.join('; ')}`,
+      details:
+        violations.length === 0
+          ? 'No protected paths were modified'
+          : `VIOLATION: Modified protected paths: ${violations.join('; ')}`,
     };
   }
 
@@ -386,9 +418,10 @@ export class VerificationEngine {
     return {
       name: 'scope_integrity',
       passed: outOfScope.length === 0,
-      details: outOfScope.length === 0
-        ? `All changes within declared scope (${scope.size} files)`
-        : `Out-of-scope modifications: ${outOfScope.join('; ')}`,
+      details:
+        outOfScope.length === 0
+          ? `All changes within declared scope (${scope.size} files)`
+          : `Out-of-scope modifications: ${outOfScope.join('; ')}`,
     };
   }
 
@@ -410,9 +443,10 @@ export class VerificationEngine {
     return {
       name: 'syntax_sanity',
       passed: syntaxErrors.length === 0,
-      details: syntaxErrors.length === 0
-        ? 'All files pass basic syntax check'
-        : `Syntax issues: ${syntaxErrors.join('; ')}`,
+      details:
+        syntaxErrors.length === 0
+          ? 'All files pass basic syntax check'
+          : `Syntax issues: ${syntaxErrors.join('; ')}`,
     };
   }
 
@@ -422,9 +456,14 @@ export class VerificationEngine {
   ): VerificationCheck {
     const engine = getSelfAnalysisEngine();
     const issues: string[] = [];
-    const modifiedFiles = new Set(changes.filter(c => c.changeType !== 'delete').map(c => c.filePath));
-    const deletedFiles = new Set(changes.filter(c => c.changeType === 'delete').map(c => c.filePath));
+    const modifiedFiles = new Set(
+      changes.filter((c) => c.changeType !== 'delete').map((c) => c.filePath)
+    );
+    const deletedFiles = new Set(
+      changes.filter((c) => c.changeType === 'delete').map((c) => c.filePath)
+    );
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     for (const deletedFile of deletedFiles) {
       for (const [filePath, content] of allFiles.entries()) {
         if (deletedFiles.has(filePath)) continue;
@@ -467,9 +506,10 @@ export class VerificationEngine {
     return {
       name: 'downstream_impact',
       passed: issues.length === 0,
-      details: issues.length === 0
-        ? 'No downstream files are broken'
-        : `Downstream issues: ${issues.join('; ')}`,
+      details:
+        issues.length === 0
+          ? 'No downstream files are broken'
+          : `Downstream issues: ${issues.join('; ')}`,
     };
   }
 
@@ -505,8 +545,15 @@ export class VerificationEngine {
         }
         continue;
       }
-      if (c === '/' && next === '/') { inLineComment = true; continue; }
-      if (c === '/' && next === '*') { inComment = true; i++; continue; }
+      if (c === '/' && next === '/') {
+        inLineComment = true;
+        continue;
+      }
+      if (c === '/' && next === '*') {
+        inComment = true;
+        i++;
+        continue;
+      }
 
       if (inString) {
         if (c === stringChar && prev !== '\\') inString = false;
@@ -523,7 +570,9 @@ export class VerificationEngine {
       } else if (closers.has(c)) {
         const last = stack.pop();
         if (!last) {
-          issues.push(`${filePath}:${lineNum} \u2014 unexpected '${c}' with no matching opener`);
+          issues.push(
+            `${filePath}:${lineNum} \u2014 unexpected '${c}' with no matching opener`
+          );
         } else if (pairs[last.char] !== c) {
           issues.push(
             `${filePath}:${lineNum} \u2014 mismatched '${c}', expected '${pairs[last.char]}' (opened at line ${last.line})`
@@ -566,7 +615,16 @@ export class VerificationEngine {
       resolvedBase = baseParts.join('/');
     }
 
-    const extensions = ['', '.ts', '.tsx', '.js', '.jsx', '/index.ts', '/index.tsx', '/index.js'];
+    const extensions = [
+      '',
+      '.ts',
+      '.tsx',
+      '.js',
+      '.jsx',
+      '/index.ts',
+      '/index.tsx',
+      '/index.js',
+    ];
     for (const ext of extensions) {
       const candidate = resolvedBase + ext;
       if (allFiles.has(candidate)) return candidate;

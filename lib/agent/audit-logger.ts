@@ -9,7 +9,12 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import type { AuditLogEntry, ToolCallResult, RiskLevel, ApprovalSource } from './types';
+import type {
+  AuditLogEntry,
+  ToolCallResult,
+  RiskLevel,
+  ApprovalSource,
+} from './types';
 
 const STORAGE_KEY = 'codeforge-audit-log';
 const MAX_ENTRIES = 500;
@@ -118,7 +123,11 @@ export class AuditLogger {
     riskLevel?: RiskLevel,
     category?: string
   ): {
-    finish: (result: ToolCallResult, approved?: boolean, approvedBy?: ApprovalSource) => AuditLogEntryEnhanced;
+    finish: (
+      result: ToolCallResult,
+      approved?: boolean,
+      approvedBy?: ApprovalSource
+    ) => AuditLogEntryEnhanced;
     reject: () => AuditLogEntryEnhanced;
   } {
     const startTime = Date.now();
@@ -226,7 +235,10 @@ export class AuditLogger {
       byRiskLevel: {},
       averageDuration: 0,
       oldestEntry: this.entries.length > 0 ? this.entries[0].timestamp : null,
-      newestEntry: this.entries.length > 0 ? this.entries[this.entries.length - 1].timestamp : null,
+      newestEntry:
+        this.entries.length > 0
+          ? this.entries[this.entries.length - 1].timestamp
+          : null,
     };
 
     let totalDuration = 0;
@@ -260,7 +272,8 @@ export class AuditLogger {
       }
     }
 
-    stats.averageDuration = durationCount > 0 ? Math.round(totalDuration / durationCount) : 0;
+    stats.averageDuration =
+      durationCount > 0 ? Math.round(totalDuration / durationCount) : 0;
 
     return stats;
   }
@@ -271,19 +284,35 @@ export class AuditLogger {
    * Export audit log as JSON
    */
   exportJSON(): string {
-    return JSON.stringify({
-      exportedAt: new Date().toISOString(),
-      totalEntries: this.entries.length,
-      stats: this.getStats(),
-      entries: this.entries,
-    }, null, 2);
+    return JSON.stringify(
+      {
+        exportedAt: new Date().toISOString(),
+        totalEntries: this.entries.length,
+        stats: this.getStats(),
+        entries: this.entries,
+      },
+      null,
+      2
+    );
   }
 
   /**
    * Export audit log as CSV
    */
   exportCSV(): string {
-    const headers = ['ID', 'Timestamp', 'Tool', 'Category', 'Risk Level', 'Approved', 'Approved By', 'Success', 'Duration (ms)', 'Summary', 'Error'];
+    const headers = [
+      'ID',
+      'Timestamp',
+      'Tool',
+      'Category',
+      'Risk Level',
+      'Approved',
+      'Approved By',
+      'Success',
+      'Duration (ms)',
+      'Summary',
+      'Error',
+    ];
     const rows = this.entries.map((e) => [
       e.id,
       new Date(e.timestamp).toISOString(),
@@ -373,8 +402,12 @@ export class AuditLogger {
     const sanitized = { ...args };
     // Truncate very long content fields
     for (const key of Object.keys(sanitized)) {
-      if (typeof sanitized[key] === 'string' && (sanitized[key] as string).length > 500) {
-        sanitized[key] = (sanitized[key] as string).slice(0, 500) + '... [truncated]';
+      if (
+        typeof sanitized[key] === 'string' &&
+        (sanitized[key] as string).length > 500
+      ) {
+        sanitized[key] =
+          (sanitized[key] as string).slice(0, 500) + '... [truncated]';
       }
     }
     return sanitized;
@@ -384,64 +417,120 @@ export class AuditLogger {
     if (toolName.startsWith('github_')) return 'github';
     if (toolName.startsWith('git_')) return 'git';
     if (toolName.startsWith('fs_')) return 'filesystem';
-    if (['read_file', 'write_file', 'create_file', 'delete_file', 'list_dir', 'search_files', 'move_file', 'copy_file', 'file_info'].includes(toolName)) return 'filesystem';
+    if (
+      [
+        'read_file',
+        'write_file',
+        'create_file',
+        'delete_file',
+        'list_dir',
+        'search_files',
+        'move_file',
+        'copy_file',
+        'file_info',
+      ].includes(toolName)
+    )
+      return 'filesystem';
     return 'utility';
   }
 
-  private generateSummary(toolName: string, args: Record<string, unknown>, result?: ToolCallResult): string {
+  private generateSummary(
+    toolName: string,
+    args: Record<string, unknown>,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    result?: ToolCallResult
+  ): string {
     const summaryMap: Record<string, () => string> = {
       // GitHub tools
-      github_create_repo: () => `\u0625\u0646\u0634\u0627\u0621 \u0645\u0633\u062a\u0648\u062f\u0639: ${args.name}`,
-      github_delete_repo: () => `\u062d\u0630\u0641 \u0645\u0633\u062a\u0648\u062f\u0639: ${args.owner}/${args.repo}`,
-      github_push_file: () => `\u062f\u0641\u0639 \u0645\u0644\u0641: ${args.path} \u2192 ${args.owner}/${args.repo}`,
-      github_push_files: () => `\u062f\u0641\u0639 ${(args.files as unknown[])?.length || '?'} \u0645\u0644\u0641\u0627\u062a \u2192 ${args.owner}/${args.repo}`,
-      github_read_file: () => `\u0642\u0631\u0627\u0621\u0629 \u0645\u0644\u0641: ${args.path} \u0645\u0646 ${args.owner}/${args.repo}`,
-      github_edit_file: () => `\u062a\u0639\u062f\u064a\u0644 \u0645\u0644\u0641: ${args.path} \u0641\u064a ${args.owner}/${args.repo}`,
-      github_delete_file: () => `\u062d\u0630\u0641 \u0645\u0644\u0641: ${args.path} \u0645\u0646 ${args.owner}/${args.repo}`,
-      github_list_files: () => `\u0639\u0631\u0636 \u0645\u0644\u0641\u0627\u062a: ${args.path || '/'} \u0641\u064a ${args.owner}/${args.repo}`,
-      github_create_branch: () => `\u0625\u0646\u0634\u0627\u0621 \u0641\u0631\u0639: ${args.branch} \u0645\u0646 ${args.fromBranch || 'main'}`,
-      github_delete_branch: () => `\u062d\u0630\u0641 \u0641\u0631\u0639: ${args.branch}`,
-      github_create_pull_request: () => `\u0625\u0646\u0634\u0627\u0621 PR: ${args.title}`,
-      github_merge_pull_request: () => `\u062f\u0645\u062c PR #${args.pullNumber} (${args.mergeMethod || 'merge'})`,
-      github_create_issue: () => `\u0625\u0646\u0634\u0627\u0621 Issue: ${args.title}`,
-      github_update_issue: () => `\u062a\u062d\u062f\u064a\u062b Issue #${args.issueNumber}`,
-      github_list_issues: () => `\u0639\u0631\u0636 Issues: ${args.owner}/${args.repo}`,
-      github_add_comment: () => `\u062a\u0639\u0644\u064a\u0642 \u0639\u0644\u0649 #${args.issueNumber}`,
-      github_search_code: () => `\u0628\u062d\u062b \u0641\u064a \u0627\u0644\u0643\u0648\u062f: ${args.query}`,
+      github_create_repo: () =>
+        `\u0625\u0646\u0634\u0627\u0621 \u0645\u0633\u062a\u0648\u062f\u0639: ${args.name}`,
+      github_delete_repo: () =>
+        `\u062d\u0630\u0641 \u0645\u0633\u062a\u0648\u062f\u0639: ${args.owner}/${args.repo}`,
+      github_push_file: () =>
+        `\u062f\u0641\u0639 \u0645\u0644\u0641: ${args.path} \u2192 ${args.owner}/${args.repo}`,
+      github_push_files: () =>
+        `\u062f\u0641\u0639 ${(args.files as unknown[])?.length || '?'} \u0645\u0644\u0641\u0627\u062a \u2192 ${args.owner}/${args.repo}`,
+      github_read_file: () =>
+        `\u0642\u0631\u0627\u0621\u0629 \u0645\u0644\u0641: ${args.path} \u0645\u0646 ${args.owner}/${args.repo}`,
+      github_edit_file: () =>
+        `\u062a\u0639\u062f\u064a\u0644 \u0645\u0644\u0641: ${args.path} \u0641\u064a ${args.owner}/${args.repo}`,
+      github_delete_file: () =>
+        `\u062d\u0630\u0641 \u0645\u0644\u0641: ${args.path} \u0645\u0646 ${args.owner}/${args.repo}`,
+      github_list_files: () =>
+        `\u0639\u0631\u0636 \u0645\u0644\u0641\u0627\u062a: ${args.path || '/'} \u0641\u064a ${args.owner}/${args.repo}`,
+      github_create_branch: () =>
+        `\u0625\u0646\u0634\u0627\u0621 \u0641\u0631\u0639: ${args.branch} \u0645\u0646 ${args.fromBranch || 'main'}`,
+      github_delete_branch: () =>
+        `\u062d\u0630\u0641 \u0641\u0631\u0639: ${args.branch}`,
+      github_create_pull_request: () =>
+        `\u0625\u0646\u0634\u0627\u0621 PR: ${args.title}`,
+      github_merge_pull_request: () =>
+        `\u062f\u0645\u062c PR #${args.pullNumber} (${args.mergeMethod || 'merge'})`,
+      github_create_issue: () =>
+        `\u0625\u0646\u0634\u0627\u0621 Issue: ${args.title}`,
+      github_update_issue: () =>
+        `\u062a\u062d\u062f\u064a\u062b Issue #${args.issueNumber}`,
+      github_list_issues: () =>
+        `\u0639\u0631\u0636 Issues: ${args.owner}/${args.repo}`,
+      github_add_comment: () =>
+        `\u062a\u0639\u0644\u064a\u0642 \u0639\u0644\u0649 #${args.issueNumber}`,
+      github_search_code: () =>
+        `\u0628\u062d\u062b \u0641\u064a \u0627\u0644\u0643\u0648\u062f: ${args.query}`,
       github_search_repos: () => `\u0628\u062d\u062b: ${args.query}`,
-      github_get_user_info: () => `\u0627\u0633\u062a\u0639\u0644\u0627\u0645 \u0639\u0646 \u0645\u0639\u0644\u0648\u0645\u0627\u062a \u0627\u0644\u0645\u0633\u062a\u062e\u062f\u0645`,
-      github_get_repo_info: () => `\u0645\u0639\u0644\u0648\u0645\u0627\u062a: ${args.owner}/${args.repo}`,
-      github_get_commit_history: () => `\u0633\u062c\u0644 \u0627\u0644\u062d\u0641\u0638: ${args.owner}/${args.repo}`,
-      github_get_pull_request: () => `\u062a\u0641\u0627\u0635\u064a\u0644 PR #${args.pullNumber}`,
-      github_list_repos: () => `\u0639\u0631\u0636 \u0627\u0644\u0645\u0633\u062a\u0648\u062f\u0639\u0627\u062a`,
-      github_list_branches: () => `\u0639\u0631\u0636 \u0627\u0644\u0641\u0631\u0648\u0639: ${args.owner}/${args.repo}`,
-      github_list_pull_requests: () => `\u0639\u0631\u0636 PRs: ${args.owner}/${args.repo}`,
+      github_get_user_info: () =>
+        `\u0627\u0633\u062a\u0639\u0644\u0627\u0645 \u0639\u0646 \u0645\u0639\u0644\u0648\u0645\u0627\u062a \u0627\u0644\u0645\u0633\u062a\u062e\u062f\u0645`,
+      github_get_repo_info: () =>
+        `\u0645\u0639\u0644\u0648\u0645\u0627\u062a: ${args.owner}/${args.repo}`,
+      github_get_commit_history: () =>
+        `\u0633\u062c\u0644 \u0627\u0644\u062d\u0641\u0638: ${args.owner}/${args.repo}`,
+      github_get_pull_request: () =>
+        `\u062a\u0641\u0627\u0635\u064a\u0644 PR #${args.pullNumber}`,
+      github_list_repos: () =>
+        `\u0639\u0631\u0636 \u0627\u0644\u0645\u0633\u062a\u0648\u062f\u0639\u0627\u062a`,
+      github_list_branches: () =>
+        `\u0639\u0631\u0636 \u0627\u0644\u0641\u0631\u0648\u0639: ${args.owner}/${args.repo}`,
+      github_list_pull_requests: () =>
+        `\u0639\u0631\u0636 PRs: ${args.owner}/${args.repo}`,
 
       // FS tools
-      fs_list_files: () => `\u0639\u0631\u0636 \u0645\u0644\u0641\u0627\u062a \u0645\u062d\u0644\u064a\u0629`,
-      fs_read_file: () => `\u0642\u0631\u0627\u0621\u0629 \u0645\u062d\u0644\u064a: ${args.filePath || args.fileId}`,
-      fs_search_files: () => `\u0628\u062d\u062b \u0645\u062d\u0644\u064a: ${args.query}`,
-      fs_create_file: () => `\u0625\u0646\u0634\u0627\u0621 \u0645\u062d\u0644\u064a: ${args.name}`,
-      fs_update_file: () => `\u062a\u062d\u062f\u064a\u062b \u0645\u062d\u0644\u064a: ${args.filePath || args.fileId}`,
-      fs_create_folder: () => `\u0625\u0646\u0634\u0627\u0621 \u0645\u062c\u0644\u062f: ${args.name}`,
-      fs_delete_file: () => `\u062d\u0630\u0641 \u0645\u062d\u0644\u064a: ${args.nodeId}`,
-      fs_rename_file: () => `\u0625\u0639\u0627\u062f\u0629 \u062a\u0633\u0645\u064a\u0629: ${args.newName}`,
+      fs_list_files: () =>
+        `\u0639\u0631\u0636 \u0645\u0644\u0641\u0627\u062a \u0645\u062d\u0644\u064a\u0629`,
+      fs_read_file: () =>
+        `\u0642\u0631\u0627\u0621\u0629 \u0645\u062d\u0644\u064a: ${args.filePath || args.fileId}`,
+      fs_search_files: () =>
+        `\u0628\u062d\u062b \u0645\u062d\u0644\u064a: ${args.query}`,
+      fs_create_file: () =>
+        `\u0625\u0646\u0634\u0627\u0621 \u0645\u062d\u0644\u064a: ${args.name}`,
+      fs_update_file: () =>
+        `\u062a\u062d\u062f\u064a\u062b \u0645\u062d\u0644\u064a: ${args.filePath || args.fileId}`,
+      fs_create_folder: () =>
+        `\u0625\u0646\u0634\u0627\u0621 \u0645\u062c\u0644\u062f: ${args.name}`,
+      fs_delete_file: () =>
+        `\u062d\u0630\u0641 \u0645\u062d\u0644\u064a: ${args.nodeId}`,
+      fs_rename_file: () =>
+        `\u0625\u0639\u0627\u062f\u0629 \u062a\u0633\u0645\u064a\u0629: ${args.newName}`,
       fs_move_file: () => `\u0646\u0642\u0644: ${args.nodeId}`,
 
       // Git tools
       git_status: () => `\u0641\u062d\u0635 \u062d\u0627\u0644\u0629 Git`,
-      git_diff: () => `\u0639\u0631\u0636 \u0627\u0644\u062a\u063a\u064a\u064a\u0631\u0627\u062a`,
+      git_diff: () =>
+        `\u0639\u0631\u0636 \u0627\u0644\u062a\u063a\u064a\u064a\u0631\u0627\u062a`,
       git_log: () => `\u0633\u062c\u0644 Git`,
-      git_stage: () => `\u062a\u062c\u0647\u064a\u0632: ${JSON.stringify(args.paths)}`,
+      git_stage: () =>
+        `\u062a\u062c\u0647\u064a\u0632: ${JSON.stringify(args.paths)}`,
       git_commit: () => `\u062d\u0641\u0638: ${args.message}`,
       git_push: () => `\u062f\u0641\u0639 \u0644\u0640 remote`,
-      git_create_branch: () => `\u0625\u0646\u0634\u0627\u0621 \u0641\u0631\u0639 \u0645\u062d\u0644\u064a: ${args.name}`,
-      git_create_pr: () => `\u0625\u0646\u0634\u0627\u0621 PR \u0645\u0646 \u0645\u062d\u0644\u064a: ${args.title}`,
+      git_create_branch: () =>
+        `\u0625\u0646\u0634\u0627\u0621 \u0641\u0631\u0639 \u0645\u062d\u0644\u064a: ${args.name}`,
+      git_create_pr: () =>
+        `\u0625\u0646\u0634\u0627\u0621 PR \u0645\u0646 \u0645\u062d\u0644\u064a: ${args.title}`,
 
       // Utility
-      get_project_context: () => `\u062a\u062d\u0644\u064a\u0644 \u0627\u0644\u0645\u0634\u0631\u0648\u0639`,
+      get_project_context: () =>
+        `\u062a\u062d\u0644\u064a\u0644 \u0627\u0644\u0645\u0634\u0631\u0648\u0639`,
       explain_code: () => `\u0634\u0631\u062d \u0643\u0648\u062f`,
-      suggest_fix: () => `\u0627\u0642\u062a\u0631\u0627\u062d \u0625\u0635\u0644\u0627\u062d: ${args.error}`,
+      suggest_fix: () =>
+        `\u0627\u0642\u062a\u0631\u0627\u062d \u0625\u0635\u0644\u0627\u062d: ${args.error}`,
 
       // Legacy fallbacks
       read_file: () => `\u0642\u0631\u0627\u0621\u0629: ${args.path}`,
@@ -451,7 +540,11 @@ export class AuditLogger {
 
     const generator = summaryMap[toolName];
     if (generator) {
-      try { return generator(); } catch { /* fall through */ }
+      try {
+        return generator();
+      } catch {
+        /* fall through */
+      }
     }
 
     return `${toolName}(${Object.keys(args).join(', ')})`;
@@ -476,7 +569,9 @@ export class AuditLogger {
       this.entries = this.entries.slice(-Math.floor(MAX_ENTRIES / 2));
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(this.entries));
-      } catch { /* give up */ }
+      } catch {
+        /* give up */
+      }
     }
   }
 

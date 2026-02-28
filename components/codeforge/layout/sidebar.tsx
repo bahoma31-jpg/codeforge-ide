@@ -38,11 +38,16 @@ interface SidebarProps {
   width?: number;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export default function Sidebar({ width }: SidebarProps) {
   const { sidebarVisible, activityBarView } = useUIStore();
 
   // Local files store (IndexedDB)
-  const { rootNodes, isLoading: localLoading, initialize: initFiles } = useFilesStore();
+  const {
+    rootNodes,
+    isLoading: localLoading,
+    initialize: initFiles,
+  } = useFilesStore();
   const { openFile } = useEditorStore();
 
   // GitHub repo tree from editor store
@@ -183,7 +188,13 @@ export default function Sidebar({ width }: SidebarProps) {
           </div>
           <div className="flex items-center gap-0.5">
             <button
-              onClick={() => loadRepoTree(currentRepo!.owner, currentRepo!.repo, currentRepo!.branch)}
+              onClick={() =>
+                loadRepoTree(
+                  currentRepo!.owner,
+                  currentRepo!.repo,
+                  currentRepo!.branch
+                )
+              }
               className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
               title="تحديث"
             >
@@ -221,7 +232,10 @@ export default function Sidebar({ width }: SidebarProps) {
   };
 
   // ─── Render a single repo node ───
-  const renderRepoNode = (node: RepoFileNode, depth: number): React.ReactNode => {
+  const renderRepoNode = (
+    node: RepoFileNode,
+    depth: number
+  ): React.ReactNode => {
     const isDir = node.type === 'dir';
     const isExpanded = expandedRepo.has(node.path);
     const isLoadingDir = loadingDirs.has(node.path);

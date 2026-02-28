@@ -22,7 +22,16 @@ import {
   type GroqModel,
   type ModelType,
 } from '@/lib/agent/llm';
-import { ChevronDown, Search, Zap, Brain, Mic, Volume2, Star, Check } from 'lucide-react';
+import {
+  ChevronDown,
+  Search,
+  Zap,
+  Brain,
+  Mic,
+  Volume2,
+  Star,
+  Check,
+} from 'lucide-react';
 import './model-selector.css';
 
 // ─── Props ───────────────────────────────────────────────────
@@ -44,7 +53,10 @@ const TYPE_ICONS: Record<ModelType, React.ReactNode> = {
   tts: <Volume2 size={14} className="ms-type-icon--tts" />,
 };
 
-const SPEED_LABELS: Record<string, { en: string; ar: string; className: string }> = {
+const SPEED_LABELS: Record<
+  string,
+  { en: string; ar: string; className: string }
+> = {
   instant: { en: 'Instant', ar: 'فوري', className: 'ms-badge--instant' },
   fast: { en: 'Fast', ar: 'سريع', className: 'ms-badge--fast' },
   medium: { en: 'Medium', ar: 'متوسط', className: 'ms-badge--medium' },
@@ -75,30 +87,31 @@ export function ModelSelector({
     if (!search.trim()) return MODEL_GROUPS;
 
     const q = search.toLowerCase();
-    return MODEL_GROUPS
-      .map(group => ({
-        ...group,
-        models: group.models.filter(
-          m =>
-            m.id.toLowerCase().includes(q) ||
-            m.name.toLowerCase().includes(q) ||
-            m.nameAr.includes(q) ||
-            m.descriptionAr.includes(q)
-        ),
-      }))
-      .filter(g => g.models.length > 0);
+    return MODEL_GROUPS.map((group) => ({
+      ...group,
+      models: group.models.filter(
+        (m) =>
+          m.id.toLowerCase().includes(q) ||
+          m.name.toLowerCase().includes(q) ||
+          m.nameAr.includes(q) ||
+          m.descriptionAr.includes(q)
+      ),
+    })).filter((g) => g.models.length > 0);
   }, [search]);
 
   // Flat list for keyboard nav
   const flatModels = useMemo(
-    () => filteredGroups.flatMap(g => g.models),
+    () => filteredGroups.flatMap((g) => g.models),
     [filteredGroups]
   );
 
   // Close on click outside
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
         setIsOpen(false);
       }
     }
@@ -126,11 +139,11 @@ export function ModelSelector({
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setHighlightIndex(prev => Math.min(prev + 1, flatModels.length - 1));
+        setHighlightIndex((prev) => Math.min(prev + 1, flatModels.length - 1));
         break;
       case 'ArrowUp':
         e.preventDefault();
-        setHighlightIndex(prev => Math.max(prev - 1, 0));
+        setHighlightIndex((prev) => Math.max(prev - 1, 0));
         break;
       case 'Enter':
         e.preventDefault();
@@ -183,8 +196,12 @@ export function ModelSelector({
                 <Star size={12} className="ms-trigger__star" />
               )}
               {!compact && (
-                <span className={`ms-badge ${SPEED_LABELS[selectedModel.speed].className}`}>
-                  {isAr ? SPEED_LABELS[selectedModel.speed].ar : SPEED_LABELS[selectedModel.speed].en}
+                <span
+                  className={`ms-badge ${SPEED_LABELS[selectedModel.speed].className}`}
+                >
+                  {isAr
+                    ? SPEED_LABELS[selectedModel.speed].ar
+                    : SPEED_LABELS[selectedModel.speed].en}
                 </span>
               )}
             </>
@@ -235,7 +252,9 @@ export function ModelSelector({
                     <span className="ms-group__label">
                       {isAr ? group.labelAr : group.label}
                     </span>
-                    <span className="ms-group__count">{group.models.length}</span>
+                    <span className="ms-group__count">
+                      {group.models.length}
+                    </span>
                   </div>
 
                   {/* Group Models */}
@@ -250,9 +269,7 @@ export function ModelSelector({
                         type="button"
                         className={`ms-model ${
                           isSelected ? 'ms-model--selected' : ''
-                        } ${
-                          isHighlighted ? 'ms-model--highlighted' : ''
-                        }`}
+                        } ${isHighlighted ? 'ms-model--highlighted' : ''}`}
                         onClick={() => handleSelect(model)}
                         role="option"
                         aria-selected={isSelected}
@@ -263,7 +280,11 @@ export function ModelSelector({
                               {isAr ? model.nameAr : model.name}
                             </span>
                             {model.recommended && (
-                              <Star size={11} className="ms-model__star" fill="currentColor" />
+                              <Star
+                                size={11}
+                                className="ms-model__star"
+                                fill="currentColor"
+                              />
                             )}
                             {isSelected && (
                               <Check size={14} className="ms-model__check" />
@@ -274,8 +295,12 @@ export function ModelSelector({
                           </div>
                         </div>
                         <div className="ms-model__badges">
-                          <span className={`ms-badge ${SPEED_LABELS[model.speed].className}`}>
-                            {isAr ? SPEED_LABELS[model.speed].ar : SPEED_LABELS[model.speed].en}
+                          <span
+                            className={`ms-badge ${SPEED_LABELS[model.speed].className}`}
+                          >
+                            {isAr
+                              ? SPEED_LABELS[model.speed].ar
+                              : SPEED_LABELS[model.speed].en}
                           </span>
                           {model.contextWindow > 0 && (
                             <span className="ms-badge ms-badge--context">

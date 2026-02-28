@@ -7,6 +7,7 @@
  */
 
 import React, { useState, useRef, useCallback } from 'react';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Send, Loader2, Paperclip, Sparkles } from 'lucide-react';
 
 interface ChatInputProps {
@@ -16,13 +17,20 @@ interface ChatInputProps {
 }
 
 const QUICK_ACTIONS = [
-  { label: 'اشرح الكود', prompt: 'اشرح لي الكود الموجود في الملف المفتوح حالياً' },
+  {
+    label: 'اشرح الكود',
+    prompt: 'اشرح لي الكود الموجود في الملف المفتوح حالياً',
+  },
   { label: 'أصلح الخطأ', prompt: 'هناك خطأ في الكود، ساعدني في إصلاحه' },
   { label: 'بنية المشروع', prompt: 'اعرض لي بنية ملفات المشروع الحالي' },
   { label: 'أنشئ ملف', prompt: 'أنشئ ملف جديد باسم ' },
 ];
 
-export function ChatInput({ onSend, isProcessing, isConfigured }: ChatInputProps) {
+export function ChatInput({
+  onSend,
+  isProcessing,
+  isConfigured,
+}: ChatInputProps) {
   const [input, setInput] = useState('');
   const [showQuickActions, setShowQuickActions] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -53,23 +61,23 @@ export function ChatInput({ onSend, isProcessing, isConfigured }: ChatInputProps
     [handleSend]
   );
 
-  const handleInput = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value);
+  const handleInput = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setInput(e.target.value);
 
-    // Auto-resize
-    const textarea = e.target;
-    textarea.style.height = 'auto';
-    textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
-  }, []);
-
-  const handleQuickAction = useCallback(
-    (prompt: string) => {
-      setInput(prompt);
-      setShowQuickActions(false);
-      textareaRef.current?.focus();
+      // Auto-resize
+      const textarea = e.target;
+      textarea.style.height = 'auto';
+      textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
     },
     []
   );
+
+  const handleQuickAction = useCallback((prompt: string) => {
+    setInput(prompt);
+    setShowQuickActions(false);
+    textareaRef.current?.focus();
+  }, []);
 
   return (
     <div className="border-t border-[#313244] bg-[#181825]">

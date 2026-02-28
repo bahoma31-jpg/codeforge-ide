@@ -8,13 +8,9 @@
  */
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import {
-  Terminal,
-  Play,
-  Trash2,
-  ChevronDown,
-  Info,
-} from 'lucide-react';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { Terminal, Play, Trash2, ChevronDown, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CommandEntry {
@@ -112,7 +108,8 @@ export function TerminalSidePanel() {
         e.preventDefault();
         const cmds = history.filter((h) => h.input);
         if (cmds.length === 0) return;
-        const newIdx = historyIndex < cmds.length - 1 ? historyIndex + 1 : historyIndex;
+        const newIdx =
+          historyIndex < cmds.length - 1 ? historyIndex + 1 : historyIndex;
         setHistoryIndex(newIdx);
         setInput(cmds[cmds.length - 1 - newIdx]?.input || '');
       } else if (e.key === 'ArrowDown') {
@@ -151,7 +148,10 @@ export function TerminalSidePanel() {
         {history.length === 0 && (
           <div className="text-[#6c7086] mb-2">
             <p>مرحباً بك في CodeForge Terminal 🚀</p>
-            <p className="mt-1">اكتب <span className="text-[#a6e3a1]">help</span> لعرض الأوامر المتوفرة</p>
+            <p className="mt-1">
+              اكتب <span className="text-[#a6e3a1]">help</span> لعرض الأوامر
+              المتوفرة
+            </p>
           </div>
         )}
 

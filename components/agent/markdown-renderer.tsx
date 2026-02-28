@@ -13,7 +13,14 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { Copy, Check, FileCode2, ExternalLink, FolderGit2, Loader2 } from 'lucide-react';
+import {
+  Copy,
+  Check,
+  FileCode2,
+  ExternalLink,
+  FolderGit2,
+  Loader2,
+} from 'lucide-react';
 import {
   parseMarkdown,
   parseInline,
@@ -21,7 +28,11 @@ import {
   type MarkdownToken,
   type InlineSegment,
 } from '@/lib/utils/markdown-parser';
-import { parseFilePathsFromText, type TextSegment } from '@/lib/utils/file-path-detect';
+import {
+  parseFilePathsFromText,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  type TextSegment,
+} from '@/lib/utils/file-path-detect';
 import { useEditorStore } from '@/lib/stores/editor-store';
 import { useAuthStore } from '@/lib/stores/auth-store';
 
@@ -179,7 +190,11 @@ function OrderedListBlock({ items }: { items: { content: string }[] }) {
   );
 }
 
-function TaskListBlock({ items }: { items: { content: string; checked?: boolean }[] }) {
+function TaskListBlock({
+  items,
+}: {
+  items: { content: string; checked?: boolean }[];
+}) {
   return (
     <ul className="space-y-0.5 my-1">
       {items.map((item, i) => (
@@ -191,7 +206,9 @@ function TaskListBlock({ items }: { items: { content: string; checked?: boolean 
               <span className="text-[#6c7086]">☐</span>
             )}
           </span>
-          <span className={`flex-1 ${item.checked ? 'line-through text-[#6c7086]' : ''}`}>
+          <span
+            className={`flex-1 ${item.checked ? 'line-through text-[#6c7086]' : ''}`}
+          >
             <InlineContent text={item.content} />
           </span>
         </li>
@@ -227,13 +244,21 @@ function InlineContent({ text }: { text: string }) {
 function InlineSegmentRenderer({ segment }: { segment: InlineSegment }) {
   switch (segment.type) {
     case 'bold':
-      return <strong className="font-semibold text-[#cdd6f4]">{segment.content}</strong>;
+      return (
+        <strong className="font-semibold text-[#cdd6f4]">
+          {segment.content}
+        </strong>
+      );
 
     case 'italic':
       return <em className="italic text-[#bac2de]">{segment.content}</em>;
 
     case 'bold_italic':
-      return <strong className="font-semibold italic text-[#cdd6f4]">{segment.content}</strong>;
+      return (
+        <strong className="font-semibold italic text-[#cdd6f4]">
+          {segment.content}
+        </strong>
+      );
 
     case 'strikethrough':
       return <del className="text-[#6c7086]">{segment.content}</del>;
@@ -289,7 +314,14 @@ function SmartInlineCode({ code }: { code: string }) {
     // Distinguish from file paths: repos don't have file extensions typically
     const hasExtension = /\.[a-zA-Z0-9]{1,10}$/.test(repo);
     if (!hasExtension && !code.startsWith('./') && !code.startsWith('../')) {
-      return <RepoNameLink owner={owner} repo={repo} displayText={code} isInlineCode />;
+      return (
+        <RepoNameLink
+          owner={owner}
+          repo={repo}
+          displayText={code}
+          isInlineCode
+        />
+      );
     }
   }
 
@@ -314,10 +346,63 @@ function SmartInlineCode({ code }: { code: string }) {
   // Pattern 3: standalone repo name (no slash, no extension, no spaces)
   // Only if it looks like a simple identifier that could be a repo name
   // We check context from the store to see if this matches a known repo
-  if (/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(code) && !code.includes(' ') && code.length > 1 && code.length < 100) {
+  if (
+    /^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(code) &&
+    !code.includes(' ') &&
+    code.length > 1 &&
+    code.length < 100
+  ) {
     const hasExtension = /\.[a-zA-Z0-9]{1,10}$/.test(code);
     // Exclude common code tokens like 'true', 'false', 'null', 'undefined', etc.
-    const codeKeywords = ['true', 'false', 'null', 'undefined', 'none', 'nil', 'void', 'return', 'const', 'let', 'var', 'function', 'class', 'import', 'export', 'async', 'await', 'if', 'else', 'for', 'while', 'break', 'continue', 'switch', 'case', 'default', 'try', 'catch', 'finally', 'throw', 'new', 'this', 'self', 'super', 'main', 'string', 'number', 'boolean', 'object', 'array', 'int', 'float', 'double', 'char', 'auto', 'notify', 'confirm'];
+    const codeKeywords = [
+      'true',
+      'false',
+      'null',
+      'undefined',
+      'none',
+      'nil',
+      'void',
+      'return',
+      'const',
+      'let',
+      'var',
+      'function',
+      'class',
+      'import',
+      'export',
+      'async',
+      'await',
+      'if',
+      'else',
+      'for',
+      'while',
+      'break',
+      'continue',
+      'switch',
+      'case',
+      'default',
+      'try',
+      'catch',
+      'finally',
+      'throw',
+      'new',
+      'this',
+      'self',
+      'super',
+      'main',
+      'string',
+      'number',
+      'boolean',
+      'object',
+      'array',
+      'int',
+      'float',
+      'double',
+      'char',
+      'auto',
+      'notify',
+      'confirm',
+    ];
     if (!hasExtension && !codeKeywords.includes(code.toLowerCase())) {
       return <MaybeRepoLink name={code} />;
     }
@@ -403,9 +488,10 @@ function RepoNameLink({
       disabled={loading}
       title={`فتح مستودع ${owner ? owner + '/' : ''}${repo} في شجرة الملفات`}
       className={`inline-flex items-center gap-1 rounded transition-all cursor-pointer
-        ${isInlineCode
-          ? 'px-1.5 py-0.5 bg-[#181825] text-[11px] font-mono border border-[#313244]/50 hover:border-[#cba6f7]/40 hover:bg-[#cba6f7]/10 hover:text-[#cba6f7]'
-          : 'text-[#cba6f7] hover:underline text-sm'
+        ${
+          isInlineCode
+            ? 'px-1.5 py-0.5 bg-[#181825] text-[11px] font-mono border border-[#313244]/50 hover:border-[#cba6f7]/40 hover:bg-[#cba6f7]/10 hover:text-[#cba6f7]'
+            : 'text-[#cba6f7] hover:underline text-sm'
         }
         ${loading ? 'opacity-50' : ''}
       `}
@@ -483,9 +569,10 @@ function FilePathLink({
       disabled={loading}
       title={`فتح ${filePath}`}
       className={`inline-flex items-center gap-0.5 rounded transition-all cursor-pointer
-        ${isInlineCode
-          ? 'px-1.5 py-0.5 bg-[#181825] text-[11px] font-mono border border-[#313244]/50 hover:border-[#89b4fa]/40 hover:bg-[#89b4fa]/10 hover:text-[#89b4fa]'
-          : 'text-[#89b4fa] hover:underline text-sm'
+        ${
+          isInlineCode
+            ? 'px-1.5 py-0.5 bg-[#181825] text-[11px] font-mono border border-[#313244]/50 hover:border-[#89b4fa]/40 hover:bg-[#89b4fa]/10 hover:text-[#89b4fa]'
+            : 'text-[#89b4fa] hover:underline text-sm'
         }
         ${loading ? 'opacity-50' : ''}
       `}

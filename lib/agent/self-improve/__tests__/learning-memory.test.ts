@@ -11,6 +11,7 @@
  * - localStorage persistence
  */
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ─── Mock localStorage ────────────────────────────────────────
@@ -19,9 +20,15 @@ const mockStorage: Record<string, string> = {};
 
 const localStorageMock = {
   getItem: vi.fn((key: string) => mockStorage[key] || null),
-  setItem: vi.fn((key: string, value: string) => { mockStorage[key] = value; }),
-  removeItem: vi.fn((key: string) => { delete mockStorage[key]; }),
-  clear: vi.fn(() => { Object.keys(mockStorage).forEach(k => delete mockStorage[k]); }),
+  setItem: vi.fn((key: string, value: string) => {
+    mockStorage[key] = value;
+  }),
+  removeItem: vi.fn((key: string) => {
+    delete mockStorage[key];
+  }),
+  clear: vi.fn(() => {
+    Object.keys(mockStorage).forEach((k) => delete mockStorage[k]);
+  }),
   length: 0,
   key: vi.fn(() => null),
 };
@@ -142,7 +149,7 @@ describe('LearningMemory', () => {
     it('should return empty array for unrelated keywords', () => {
       const results = memory.findSimilar(['database', 'migration', 'sql']);
       // Either empty or very low similarity
-      expect(results.every(r => r.successRate !== undefined)).toBe(true);
+      expect(results.every((r) => r.successRate !== undefined)).toBe(true);
     });
 
     it('should limit results count', () => {
@@ -188,7 +195,7 @@ describe('LearningMemory', () => {
         description: 'Fix 2',
         filesModified: ['a.ts'],
         fixSteps: ['step'],
-        issueKeywords: ['bug'],
+        issueKeywords: ['bug2'],
       });
 
       memory.recordSuccess({

@@ -91,7 +91,12 @@ export class LearningMemory {
   findSimilar(
     input: string[] | string | undefined | null,
     maxResults: number = 5
-  ): Array<{ pattern?: FixPattern; similarity?: number; description: string; successRate: number }> {
+  ): Array<{
+    pattern?: FixPattern;
+    similarity?: number;
+    description: string;
+    successRate: number;
+  }> {
     if (Array.isArray(input)) {
       return this.findSimilarByKeywords(input, maxResults);
     }
@@ -100,7 +105,7 @@ export class LearningMemory {
 
   findByCategory(category: IssueCategory): FixPattern[] {
     return this.patterns
-      .filter(p => p.category === category)
+      .filter((p) => p.category === category)
       .sort((a, b) => b.successRate - a.successRate);
   }
 
@@ -112,7 +117,8 @@ export class LearningMemory {
       for (const file of pattern.filesInvolved) {
         fileModCounts[file] = (fileModCounts[file] || 0) + pattern.timesUsed;
       }
-      categoryCounts[pattern.category] = (categoryCounts[pattern.category] || 0) + 1;
+      categoryCounts[pattern.category] =
+        (categoryCounts[pattern.category] || 0) + 1;
     }
 
     const totalTasks = this.patterns.reduce((sum, p) => sum + p.timesUsed, 0);
@@ -133,7 +139,9 @@ export class LearningMemory {
         count,
       }));
 
-    const successfulPatterns = this.patterns.filter(p => p.successRate > 0.5).length;
+    const successfulPatterns = this.patterns.filter(
+      (p) => p.successRate > 0.5
+    ).length;
 
     return {
       totalTasks,
@@ -169,7 +177,8 @@ export class LearningMemory {
       existing.lastUsed = Date.now();
       existing.successRate = Math.min(
         1.0,
-        (existing.successRate * (existing.timesUsed - 1) + 1) / existing.timesUsed
+        (existing.successRate * (existing.timesUsed - 1) + 1) /
+          existing.timesUsed
       );
       this.save();
       return existing;
@@ -188,8 +197,8 @@ export class LearningMemory {
     };
 
     // Store keywords in the problemSignature for similarity search
-    (pattern as any)._keywords = input.issueKeywords;
-    (pattern as any)._description = input.description;
+    (pattern as unknown)._keywords = input.issueKeywords;
+    (pattern as unknown)._description = input.description;
 
     this.patterns.push(pattern);
 
@@ -223,34 +232,47 @@ export class LearningMemory {
   private findSimilarByKeywords(
     keywords: string[],
     maxResults: number
-  ): Array<{ pattern: FixPattern; similarity: number; description: string; successRate: number }> {
-    const inputSet = new Set(keywords.map(k => k.toLowerCase()));
-    const results: Array<{ pattern: FixPattern; similarity: number; description: string; successRate: number }> = [];
+  ): Array<{
+    pattern: FixPattern;
+    similarity: number;
+    description: string;
+    successRate: number;
+  }> {
+    const inputSet = new Set(keywords.map((k) => k.toLowerCase()));
+    const results: Array<{
+      pattern: FixPattern;
+      similarity: number;
+      description: string;
+      successRate: number;
+    }> = [];
 
     for (const pattern of this.patterns) {
       // Get keywords from pattern
       const patternKeywords = new Set<string>();
 
       // From stored _keywords
-      const storedKw = (pattern as any)._keywords as string[] | undefined;
+      const storedKw = (pattern as unknown)._keywords as string[] | undefined;
       if (storedKw) {
-        storedKw.forEach(k => patternKeywords.add(k.toLowerCase()));
+        storedKw.forEach((k) => patternKeywords.add(k.toLowerCase()));
       }
 
       // From problemSignature
       const sigWords = this.extractKeywords(pattern.problemSignature);
-      sigWords.forEach(k => patternKeywords.add(k));
+      sigWords.forEach((k) => patternKeywords.add(k));
 
       // From category
       patternKeywords.add(pattern.category.toLowerCase());
 
       // Calculate Jaccard similarity
-      const intersection = [...inputSet].filter(k => patternKeywords.has(k));
+      const intersection = [...inputSet].filter((k) => patternKeywords.has(k));
       const union = new Set([...inputSet, ...patternKeywords]);
       const similarity = union.size > 0 ? intersection.length / union.size : 0;
 
       if (similarity > 0) {
-        const desc = (pattern as any)._description || pattern.solution || pattern.problemSignature;
+        const desc =
+          (pattern as unknown)._description ||
+          pattern.solution ||
+          pattern.problemSignature;
         results.push({
           pattern,
           similarity,
@@ -270,20 +292,35 @@ export class LearningMemory {
   private findSimilarByDescription(
     description: string | undefined | null,
     maxResults: number
-  ): Array<{ pattern: FixPattern; similarity: number; description: string; successRate: number }> {
+  ): Array<{
+    pattern: FixPattern;
+    similarity: number;
+    description: string;
+    successRate: number;
+  }> {
     const descKeywords = this.extractKeywords(description);
-    const results: Array<{ pattern: FixPattern; similarity: number; description: string; successRate: number }> = [];
+    const results: Array<{
+      pattern: FixPattern;
+      similarity: number;
+      description: string;
+      successRate: number;
+    }> = [];
 
     for (const pattern of this.patterns) {
       const patternKeywords = this.extractKeywords(pattern.problemSignature);
 
-      const intersection = descKeywords.filter(k => patternKeywords.includes(k));
+      const intersection = descKeywords.filter((k) =>
+        patternKeywords.includes(k)
+      );
       const union = new Set([...descKeywords, ...patternKeywords]);
       const similarity = union.size > 0 ? intersection.length / union.size : 0;
       const score = similarity * 0.7 + pattern.successRate * 0.3;
 
       if (score > 0.15) {
-        const desc = (pattern as any)._description || pattern.solution || pattern.problemSignature;
+        const desc =
+          (pattern as unknown)._description ||
+          pattern.solution ||
+          pattern.problemSignature;
         results.push({
           pattern,
           similarity: score,
@@ -312,7 +349,8 @@ export class LearningMemory {
       existing.lastUsed = Date.now();
       existing.successRate = Math.min(
         1.0,
-        (existing.successRate * (existing.timesUsed - 1) + 1) / existing.timesUsed
+        (existing.successRate * (existing.timesUsed - 1) + 1) /
+          existing.timesUsed
       );
       this.save();
       return existing;
@@ -325,7 +363,7 @@ export class LearningMemory {
       problemSignature: signature,
       category: task.category,
       solution: this.buildSolutionSummary(task),
-      filesInvolved: changes.map(c => c.filePath),
+      filesInvolved: changes.map((c) => c.filePath),
       successRate: 1.0,
       timesUsed: 1,
       lastUsed: Date.now(),
@@ -361,7 +399,7 @@ export class LearningMemory {
 
   // ─── Type Guards ───────────────────────────────────────────
 
-  private isPatternInput(input: any): input is PatternInput {
+  private isPatternInput(input: unknown): input is PatternInput {
     return (
       input &&
       typeof input === 'object' &&
@@ -371,7 +409,7 @@ export class LearningMemory {
     );
   }
 
-  private isFailureInput(input: any): input is FailureInput {
+  private isFailureInput(input: unknown): input is FailureInput {
     return (
       input &&
       typeof input === 'object' &&
@@ -387,8 +425,10 @@ export class LearningMemory {
     const parts: string[] = [];
 
     if (task.category) parts.push(task.category);
-    if (task.observation?.affectedArea) parts.push(task.observation.affectedArea);
-    if (task.orientation?.rootCause) parts.push(task.orientation.rootCause.substring(0, 100));
+    if (task.observation?.affectedArea)
+      parts.push(task.observation.affectedArea);
+    if (task.orientation?.rootCause)
+      parts.push(task.orientation.rootCause.substring(0, 100));
     if (task.observation?.detectedFiles) {
       parts.push(...task.observation.detectedFiles.slice(0, 3));
     }
@@ -404,7 +444,7 @@ export class LearningMemory {
     const changes = task.execution?.changes || [];
     if (changes.length === 0) return 'No changes made';
 
-    const parts = changes.map(c => {
+    const parts = changes.map((c) => {
       const fileName = c.filePath.split('/').pop();
       return `${c.changeType} ${fileName}`;
     });
@@ -414,7 +454,7 @@ export class LearningMemory {
   }
 
   private findExactMatch(signature: string): FixPattern | undefined {
-    return this.patterns.find(p => p.problemSignature === signature);
+    return this.patterns.find((p) => p.problemSignature === signature);
   }
 
   private extractKeywords(text: string | undefined | null): string[] {
@@ -424,13 +464,16 @@ export class LearningMemory {
     return safeText
       .toLowerCase()
       .split(/[\s|,;:.!?()\[\]{}'"/\\\u2192]+/)
-      .filter(k => k.length > 2)
-      .filter(k => !['the', 'and', 'for', 'from', 'with', 'that', 'this'].includes(k));
+      .filter((k) => k.length > 2)
+      .filter(
+        (k) =>
+          !['the', 'and', 'for', 'from', 'with', 'that', 'this'].includes(k)
+      );
   }
 
   private prunePatterns(): void {
     const now = Date.now();
-    const scored = this.patterns.map(p => ({
+    const scored = this.patterns.map((p) => ({
       pattern: p,
       score:
         p.successRate * 0.4 +
@@ -439,7 +482,7 @@ export class LearningMemory {
     }));
 
     scored.sort((a, b) => b.score - a.score);
-    this.patterns = scored.slice(0, MAX_PATTERNS).map(s => s.pattern);
+    this.patterns = scored.slice(0, MAX_PATTERNS).map((s) => s.pattern);
   }
 
   private load(): void {

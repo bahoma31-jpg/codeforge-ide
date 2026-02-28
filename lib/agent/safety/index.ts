@@ -6,13 +6,20 @@
  * for the agent-service tool execution loop.
  */
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { ToolCall, ToolDefinition, RiskLevel } from '../types';
 import {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   classifyRisk,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   classifyGitHubRisk,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   isSensitiveFile,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   containsRiskyContent,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   getRiskDescription,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   getRiskEmoji,
 } from './risk-classifier';
 import { ApprovalManager, type ToolNotification } from './approval-manager';

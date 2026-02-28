@@ -10,6 +10,7 @@
  *          git_push, git_create_branch, git_create_pr.
  */
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { ToolDefinition, ToolCallResult } from '../types';
 import type { AgentService } from '../agent-service';
 import { refreshGitState, sendNotification } from '../bridge';
@@ -19,14 +20,16 @@ import { refreshGitState, sendNotification } from '../bridge';
 export const gitTools: ToolDefinition[] = [
   {
     name: 'git_status',
-    description: 'Get the current Git status — shows which files are modified, staged, or untracked.',
+    description:
+      'Get the current Git status — shows which files are modified, staged, or untracked.',
     parameters: { type: 'object', properties: {}, required: [] },
     riskLevel: 'auto',
     category: 'git',
   },
   {
     name: 'git_diff',
-    description: 'Show the diff (changes) for a specific file or all modified files. Returns the actual content differences.',
+    description:
+      'Show the diff (changes) for a specific file or all modified files. Returns the actual content differences.',
     parameters: {
       type: 'object',
       properties: {
@@ -43,7 +46,8 @@ export const gitTools: ToolDefinition[] = [
   // ── NEW: git_log — Show recent commit history ──
   {
     name: 'git_log',
-    description: 'Show recent commit log from the local Git repository. Returns commit messages, SHAs, authors, and dates.',
+    description:
+      'Show recent commit log from the local Git repository. Returns commit messages, SHAs, authors, and dates.',
     parameters: {
       type: 'object',
       properties: {
@@ -92,7 +96,8 @@ export const gitTools: ToolDefinition[] = [
   },
   {
     name: 'git_push',
-    description: 'Push committed changes to GitHub remote repository. Requires user confirmation.',
+    description:
+      'Push committed changes to GitHub remote repository. Requires user confirmation.',
     parameters: {
       type: 'object',
       properties: {
@@ -108,7 +113,8 @@ export const gitTools: ToolDefinition[] = [
   },
   {
     name: 'git_create_branch',
-    description: 'Create a new local Git branch from the current branch or a specified base.',
+    description:
+      'Create a new local Git branch from the current branch or a specified base.',
     parameters: {
       type: 'object',
       properties: {
@@ -118,7 +124,8 @@ export const gitTools: ToolDefinition[] = [
         },
         fromBranch: {
           type: 'string',
-          description: 'Base branch to create from. Defaults to current branch.',
+          description:
+            'Base branch to create from. Defaults to current branch.',
         },
       },
       required: ['name'],
@@ -128,13 +135,20 @@ export const gitTools: ToolDefinition[] = [
   },
   {
     name: 'git_create_pr',
-    description: 'Create a Pull Request on GitHub from a local branch. Requires user confirmation.',
+    description:
+      'Create a Pull Request on GitHub from a local branch. Requires user confirmation.',
     parameters: {
       type: 'object',
       properties: {
         title: { type: 'string', description: 'Title of the Pull Request.' },
-        body: { type: 'string', description: 'Description/body of the Pull Request.' },
-        base: { type: 'string', description: 'Base branch to merge into (e.g., "main").' },
+        body: {
+          type: 'string',
+          description: 'Description/body of the Pull Request.',
+        },
+        base: {
+          type: 'string',
+          description: 'Base branch to merge into (e.g., "main").',
+        },
         head: { type: 'string', description: 'Branch containing changes.' },
       },
       required: ['title', 'base', 'head'],
@@ -162,10 +176,12 @@ export function registerGitExecutors(service: AgentService): void {
           modifiedFiles: store.modifiedFiles || [],
           stagedFiles: store.stagedFiles || [],
           commitCount: (store.commitHistory || []).length,
-          latestCommits: (store.commitHistory || []).slice(0, 5).map((c: any) => ({
-            message: c.message || c.commit?.message,
-            sha: (c.sha || c.oid || '').slice(0, 7),
-          })),
+          latestCommits: (store.commitHistory || [])
+            .slice(0, 5)
+            .map((c: unknown) => ({
+              message: c.message || c.commit?.message,
+              sha: (c.sha || c.oid || '').slice(0, 7),
+            })),
         },
       };
     } catch (error) {
@@ -191,10 +207,15 @@ export function registerGitExecutors(service: AgentService): void {
         let diffContent: string | undefined;
 
         // Try to get diff via store method if available
-        if (typeof (store as any).getDiff === 'function') {
+        const storeWithDiff = store as {
+          getDiff?: (file: string) => Promise<string>;
+        };
+        if (typeof storeWithDiff.getDiff === 'function') {
           try {
-            diffContent = await (store as any).getDiff(file);
-          } catch { /* fallback below */ }
+            diffContent = await storeWithDiff.getDiff(file);
+          } catch {
+            /* fallback below */
+          }
         }
 
         // If no diff method, try reading current file content
@@ -203,7 +224,9 @@ export function registerGitExecutors(service: AgentService): void {
             const { readFileByPath } = await import('@/lib/db/file-operations');
             const currentFile = await readFileByPath(file);
             diffContent = `[Current content - ${(currentFile.content || '').length} chars]\n${(currentFile.content || '').slice(0, 500)}`;
-          } catch { /* file might not exist in DB */ }
+          } catch {
+            /* file might not exist in DB */
+          }
         }
 
         diffs.push({
@@ -234,7 +257,7 @@ export function registerGitExecutors(service: AgentService): void {
 
       const history = (store.commitHistory || []).slice(0, maxCount);
 
-      const commits = history.map((c: any) => {
+      const commits = history.map((c: unknown) => {
         const commit = c.commit || c;
         const author = commit.author || c.author || {};
         return {
@@ -273,7 +296,10 @@ export function registerGitExecutors(service: AgentService): void {
       // ★ Refresh git state so UI updates
       await refreshGitState();
 
-      await sendNotification(`🤖 تم تجهيز ${paths.length} ملف(ات) للحفظ`, 'info');
+      await sendNotification(
+        `🤖 تم تجهيز ${paths.length} ملف(ات) للحفظ`,
+        'info'
+      );
 
       return {
         success: true,
@@ -389,12 +415,18 @@ export function registerGitExecutors(service: AgentService): void {
 
       if (!response.ok) {
         const error = await response.json();
-        return { success: false, error: error.message || 'Failed to create PR' };
+        return {
+          success: false,
+          error: error.message || 'Failed to create PR',
+        };
       }
 
       const pr = await response.json();
 
-      await sendNotification(`🤖 تم إنشاء PR #${pr.number}: ${pr.title}`, 'success');
+      await sendNotification(
+        `🤖 تم إنشاء PR #${pr.number}: ${pr.title}`,
+        'success'
+      );
 
       return {
         success: true,

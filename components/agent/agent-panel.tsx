@@ -63,10 +63,17 @@ export function AgentPanel() {
 
   if (!isPanelOpen) return null;
 
-  const pendingCount = pendingApprovals.filter((a) => a.status === 'pending').length;
+  const pendingCount = pendingApprovals.filter(
+    (a) => a.status === 'pending'
+  ).length;
   const notifyCount = notifications.length;
 
-  const tabs: { id: TabId; label: string; icon: React.ReactNode; count?: number }[] = [
+  const tabs: {
+    id: TabId;
+    label: string;
+    icon: React.ReactNode;
+    count?: number;
+  }[] = [
     {
       id: 'chat',
       label: 'محادثة',
@@ -88,7 +95,9 @@ export function AgentPanel() {
       <div className="flex items-center justify-between px-3 py-2 border-b border-[#313244] bg-[#181825]">
         <div className="flex items-center gap-2">
           <Bot size={18} className="text-[#89b4fa]" />
-          <span className="text-sm font-semibold text-[#cdd6f4]">الوكيل الذكي</span>
+          <span className="text-sm font-semibold text-[#cdd6f4]">
+            الوكيل الذكي
+          </span>
           {isProcessing && (
             <Loader2 size={14} className="animate-spin text-[#89b4fa]" />
           )}
@@ -162,7 +171,10 @@ export function AgentPanel() {
                     <AlertCircle size={14} />
                     <span>{error}</span>
                   </div>
-                  <button onClick={clearError} className="text-[#6c7086] hover:text-[#cdd6f4]">
+                  <button
+                    onClick={clearError}
+                    className="text-[#6c7086] hover:text-[#cdd6f4]"
+                  >
                     <X size={12} />
                   </button>
                 </div>
@@ -190,17 +202,17 @@ export function AgentPanel() {
               ))}
 
               {/* Current tool execution */}
-              {currentToolCall && (
-                <ToolCallStatus toolCall={currentToolCall} />
-              )}
+              {currentToolCall && <ToolCallStatus toolCall={currentToolCall} />}
 
               <div ref={messagesEndRef} />
             </div>
 
             {/* Pending Approvals Inline */}
-            {pendingApprovals.filter((a) => a.status === 'pending').map((approval) => (
-              <ApprovalDialog key={approval.id} approval={approval} />
-            ))}
+            {pendingApprovals
+              .filter((a) => a.status === 'pending')
+              .map((approval) => (
+                <ApprovalDialog key={approval.id} approval={approval} />
+              ))}
 
             {/* NOTIFY Toast Stack — above the input */}
             <NotifyToastStack />
@@ -233,12 +245,20 @@ export function AgentPanel() {
                         : 'bg-[#f9e2af]/10 border-[#f9e2af]/30 text-[#f9e2af]'
                   }`}
                 >
-                  <div className="font-medium">{approval.toolCall.name || approval.toolCall.toolName}</div>
-                  <div className="mt-1 text-[#6c7086]">{approval.description}</div>
+                  <div className="font-medium">
+                    {approval.toolCall.name || approval.toolCall.toolName}
+                  </div>
+                  <div className="mt-1 text-[#6c7086]">
+                    {approval.description}
+                  </div>
                   <div className="mt-1 text-[10px]">
                     {new Date(approval.createdAt).toLocaleTimeString('ar-DZ')}
                     {' — '}
-                    {approval.status === 'pending' ? '⏳ معلق' : approval.status === 'approved' ? '✅ مقبول' : '❌ مرفوض'}
+                    {approval.status === 'pending'
+                      ? '⏳ معلق'
+                      : approval.status === 'approved'
+                        ? '✅ مقبول'
+                        : '❌ مرفوض'}
                   </div>
                 </div>
               ))
@@ -260,7 +280,13 @@ export function AgentPanel() {
                   className="p-2 rounded bg-[#181825] border border-[#313244] text-[10px] font-mono"
                 >
                   <div className="flex items-center justify-between">
-                    <span className={entry.result?.success ? 'text-[#a6e3a1]' : 'text-[#f38ba8]'}>
+                    <span
+                      className={
+                        entry.result?.success
+                          ? 'text-[#a6e3a1]'
+                          : 'text-[#f38ba8]'
+                      }
+                    >
                       {entry.result?.success ? '✓' : '✗'} {entry.toolName}
                     </span>
                     <span className="text-[#45475a]">
@@ -268,14 +294,21 @@ export function AgentPanel() {
                     </span>
                   </div>
                   {entry.riskLevel && (
-                    <span className={`inline-block mt-0.5 px-1 py-0 rounded text-[8px] font-medium ${
-                      entry.riskLevel === 'confirm'
-                        ? 'bg-[#f38ba8]/10 text-[#f38ba8]'
+                    <span
+                      className={`inline-block mt-0.5 px-1 py-0 rounded text-[8px] font-medium ${
+                        entry.riskLevel === 'confirm'
+                          ? 'bg-[#f38ba8]/10 text-[#f38ba8]'
+                          : entry.riskLevel === 'notify'
+                            ? 'bg-[#f9e2af]/10 text-[#f9e2af]'
+                            : 'bg-[#a6e3a1]/10 text-[#a6e3a1]'
+                      }`}
+                    >
+                      {entry.riskLevel === 'confirm'
+                        ? '🔴'
                         : entry.riskLevel === 'notify'
-                          ? 'bg-[#f9e2af]/10 text-[#f9e2af]'
-                          : 'bg-[#a6e3a1]/10 text-[#a6e3a1]'
-                    }`}>
-                      {entry.riskLevel === 'confirm' ? '🔴' : entry.riskLevel === 'notify' ? '🟡' : '🟢'} {entry.riskLevel}
+                          ? '🟡'
+                          : '🟢'}{' '}
+                      {entry.riskLevel}
                     </span>
                   )}
                   {entry.approvedBy && (
