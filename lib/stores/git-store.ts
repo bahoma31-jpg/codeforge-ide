@@ -204,11 +204,20 @@ export const useGitStore = create<GitState>((set, get) => ({
       });
       return;
     }
-    set((state) => ({
-      changes: state.changes.map((c) =>
-        c.path === path ? { ...c, staged: true } : c
-      ),
-    }));
+    try {
+      set((state) => ({
+        changes: state.changes.map((c) =>
+          c.path === path ? { ...c, staged: true } : c
+        ),
+      }));
+    } catch (error) {
+      logger.error(
+        'فشل تجهيز الملف (stage)',
+        error instanceof Error ? error : undefined,
+        { source: 'GitStore.stageFile', path }
+      );
+      set({ error: 'حدث خطأ أثناء تجهيز الملف.' });
+    }
   },
 
   unstageFile: (path) => {
@@ -218,23 +227,50 @@ export const useGitStore = create<GitState>((set, get) => ({
       });
       return;
     }
-    set((state) => ({
-      changes: state.changes.map((c) =>
-        c.path === path ? { ...c, staged: false } : c
-      ),
-    }));
+    try {
+      set((state) => ({
+        changes: state.changes.map((c) =>
+          c.path === path ? { ...c, staged: false } : c
+        ),
+      }));
+    } catch (error) {
+      logger.error(
+        'فشل إلغاء تجهيز الملف (unstage)',
+        error instanceof Error ? error : undefined,
+        { source: 'GitStore.unstageFile', path }
+      );
+      set({ error: 'حدث خطأ أثناء إلغاء تجهيز الملف.' });
+    }
   },
 
   stageAll: () => {
-    set((state) => ({
-      changes: state.changes.map((c) => ({ ...c, staged: true })),
-    }));
+    try {
+      set((state) => ({
+        changes: state.changes.map((c) => ({ ...c, staged: true })),
+      }));
+    } catch (error) {
+      logger.error(
+        'فشل تجهيز جميع الملفات',
+        error instanceof Error ? error : undefined,
+        { source: 'GitStore.stageAll' }
+      );
+      set({ error: 'حدث خطأ أثناء تجهيز الكل.' });
+    }
   },
 
   unstageAll: () => {
-    set((state) => ({
-      changes: state.changes.map((c) => ({ ...c, staged: false })),
-    }));
+    try {
+      set((state) => ({
+        changes: state.changes.map((c) => ({ ...c, staged: false })),
+      }));
+    } catch (error) {
+      logger.error(
+        'فشل إلغاء تجهيز جميع الملفات',
+        error instanceof Error ? error : undefined,
+        { source: 'GitStore.unstageAll' }
+      );
+      set({ error: 'حدث خطأ أثناء إلغاء تجهيز الكل.' });
+    }
   },
 
   setCommitMessage: (msg) => set({ commitMessage: msg }),

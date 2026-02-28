@@ -17,7 +17,7 @@ export async function refreshFileTree(): Promise<void> {
     await useFilesStore.getState().loadFileTree();
   } catch (error) {
     logger.error(
-      '[StoreBridge] Failed to refresh file tree',
+      '[StoreBridge] فشل تحديث شجرة الملفات',
       error instanceof Error ? error : undefined,
       { source: 'refreshFileTree' }
     );
@@ -50,7 +50,7 @@ export async function refreshOpenFile(
     }
   } catch (error) {
     logger.error(
-      '[StoreBridge] Failed to refresh open file',
+      '[StoreBridge] فشل تحديث الملف المفتوح',
       error instanceof Error ? error : undefined,
       { source: 'refreshOpenFile' }
     );
@@ -79,7 +79,7 @@ export async function closeDeletedFileTab(fileId: string): Promise<void> {
     }
   } catch (error) {
     logger.error(
-      '[StoreBridge] Failed to close deleted file tab',
+      '[StoreBridge] فشل إغلاق تبويبة الملف المحذوف',
       error instanceof Error ? error : undefined,
       { source: 'closeDeletedFileTab' }
     );
@@ -98,7 +98,7 @@ export async function expandParentFolder(
     useFilesStore.getState().expandFolder(parentId);
   } catch (error) {
     logger.error(
-      '[StoreBridge] Failed to expand parent folder',
+      '[StoreBridge] فشل توسيع المجلد الأب',
       error instanceof Error ? error : undefined,
       { source: 'expandParentFolder' }
     );
@@ -129,7 +129,7 @@ export async function sendNotification(
     }
   } catch (error) {
     logger.warn(
-      '[StoreBridge] Notification store not available:',
+      '[StoreBridge] مخزن الإشعارات غير متوفر:',
       error instanceof Error ? error : undefined,
       { source: 'sendNotification' }
     );
@@ -154,7 +154,7 @@ export async function refreshGitState(): Promise<void> {
     }
   } catch (error) {
     logger.error(
-      '[StoreBridge] Failed to refresh git state',
+      '[StoreBridge] فشل تحديث حالة Git',
       error instanceof Error ? error : undefined,
       { source: 'refreshGitState' }
     );
@@ -170,7 +170,7 @@ export async function openFileInEditor(fileId: string): Promise<void> {
     useFilesStore.getState().setActiveFile(fileId);
   } catch (error) {
     logger.error(
-      '[StoreBridge] Failed to open file in editor',
+      '[StoreBridge] فشل فتح الملف في المحرر',
       error instanceof Error ? error : undefined,
       { source: 'openFileInEditor' }
     );

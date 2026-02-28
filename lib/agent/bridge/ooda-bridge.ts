@@ -48,11 +48,11 @@ export interface SelfImproveRequest {
   issue: string;
   /** Category of the issue */
   category:
-    | 'ui_bug'
-    | 'logic_error'
-    | 'performance'
-    | 'style'
-    | 'accessibility';
+  | 'ui_bug'
+  | 'logic_error'
+  | 'performance'
+  | 'style'
+  | 'accessibility';
   /** File contents gathered by self_* tools */
   fileContents: Record<string, string>;
   /** Affected file paths */
@@ -137,7 +137,7 @@ export class OODABridge {
   private cycleCounter = 0;
 
   constructor(config: OODABridgeConfig) {
-    this.config = config;
+    this.config = { ...config };
     this.groq = getGroqProvider({
       apiKey: config.groqApiKey,
       defaultModel: config.modelId,
@@ -292,7 +292,9 @@ export class OODABridge {
         phase: 'orient',
         issue: request.issue,
         fileContents: request.fileContents,
-        context: `نتائج الرصد: ${observeResult.analysis}\n\nملاحظات: ${observeResult.suggestions.join(', ')}`,
+        context: `نتائج الرصد: ${observeResult.analysis}\n\nملاحظات: ${(
+          observeResult.suggestions || []
+        ).join(', ')}`,
       });
 
       result.analyses.orient = orientResult;
@@ -311,7 +313,7 @@ export class OODABridge {
         context: [
           `نتائج الرصد: ${observeResult.analysis}`,
           `التحليل: ${orientResult.analysis}`,
-          `الاقتراحات: ${orientResult.suggestions.join(', ')}`,
+          `الاقتراحات: ${(orientResult.suggestions || []).join(', ')}`,
         ].join('\n\n'),
       });
 
