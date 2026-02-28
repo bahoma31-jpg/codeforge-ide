@@ -173,31 +173,60 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   repoTree: [],
   repoTreeLoading: false,
 
-  addTab: (tab) =>
-    set((state) => {
-      const exists = state.tabs.find((t) => t.filePath === tab.filePath);
-      if (exists) {
-        return { activeTabId: exists.id };
-      }
-      return { tabs: [...state.tabs, tab], activeTabId: tab.id };
-    }),
+  addTab: (tab) => {
+    try {
+      set((state) => {
+        const exists = state.tabs.find((t) => t.filePath === tab.filePath);
+        if (exists) {
+          return { activeTabId: exists.id };
+        }
+        return { tabs: [...state.tabs, tab], activeTabId: tab.id };
+      });
+    } catch (error) {
+      logger.error(
+        'فشل إضافة تبويبة جديدة',
+        error instanceof Error ? error : undefined,
+        { source: 'EditorStore.addTab', tab }
+      );
+    }
+  },
 
-  closeTab: (id) =>
-    set((state) => {
-      const newTabs = state.tabs.filter((t) => t.id !== id);
-      const newActiveId =
-        state.activeTabId === id ? (newTabs[0]?.id ?? null) : state.activeTabId;
-      return { tabs: newTabs, activeTabId: newActiveId };
-    }),
+  closeTab: (id) => {
+    try {
+      set((state) => {
+        const newTabs = state.tabs.filter((t) => t.id !== id);
+        const newActiveId =
+          state.activeTabId === id
+            ? (newTabs[0]?.id ?? null)
+            : state.activeTabId;
+        return { tabs: newTabs, activeTabId: newActiveId };
+      });
+    } catch (error) {
+      logger.error(
+        'فشل إغلاق التبويبة',
+        error instanceof Error ? error : undefined,
+        { source: 'EditorStore.closeTab', id }
+      );
+    }
+  },
 
   setActiveTab: (id) => set({ activeTabId: id }),
 
-  updateTabContent: (id, content) =>
-    set((state) => ({
-      tabs: state.tabs.map((t) =>
-        t.id === id ? { ...t, content, isDirty: true } : t
-      ),
-    })),
+  updateTabContent: (id, content) => {
+    try {
+      set((state) => ({
+        tabs: state.tabs.map((t) =>
+          t.id === id ? { ...t, content, isDirty: true } : t
+        ),
+      }));
+    } catch (error) {
+      logger.error(
+        'فشل تحديث محتوى التبويبة',
+        error instanceof Error ? error : undefined,
+        { source: 'EditorStore.updateTabContent', id }
+      );
+    }
+  },
 
   openFile: (file) => {
     try {

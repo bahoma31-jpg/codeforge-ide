@@ -9,12 +9,16 @@
  * - AgentLLMAdapter (3)
  */
 
+import { describe, it, test, expect, beforeEach, afterEach, vi } from 'vitest';
+
 import {
   OODABridge,
+  resetOODABridge,
   type OODABridgeConfig,
   type SelfImproveRequest,
   type BridgeEvent,
 } from '../bridge';
+import { resetGroqProvider } from '../llm';
 
 // ─── Mock Config ────────────────────────────────────────────────
 
@@ -43,11 +47,24 @@ describe('OODABridge — Lifecycle', () => {
   let bridge: OODABridge;
 
   beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        choices: [{ message: { content: JSON.stringify({ analysis: 'test', suggestions: [], confidence: 1 }) } }],
+        usage: { prompt_tokens: 10, completion_tokens: 5 }
+      }),
+      text: () => Promise.resolve('mock response'),
+    }));
+    resetOODABridge();
+    resetGroqProvider();
     bridge = new OODABridge(TEST_CONFIG);
   });
 
   afterEach(() => {
     bridge.dispose();
+    resetOODABridge();
+    resetGroqProvider();
+    vi.unstubAllGlobals();
   });
 
   test('should initialize with correct config', () => {
@@ -56,6 +73,8 @@ describe('OODABridge — Lifecycle', () => {
   });
 
   test('should report not ready without API key', () => {
+    resetGroqProvider();
+    resetOODABridge();
     const emptyBridge = new OODABridge({ groqApiKey: '', modelId: 'test' });
     expect(emptyBridge.isReady()).toBe(false);
     emptyBridge.dispose();
@@ -85,11 +104,24 @@ describe('OODABridge — Safety Enforcement', () => {
   let bridge: OODABridge;
 
   beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        choices: [{ message: { content: JSON.stringify({ analysis: 'test', suggestions: [], confidence: 1 }) } }],
+        usage: { prompt_tokens: 10, completion_tokens: 5 }
+      }),
+      text: () => Promise.resolve('mock response'),
+    }));
+    resetOODABridge();
+    resetGroqProvider();
     bridge = new OODABridge(TEST_CONFIG);
   });
 
   afterEach(() => {
     bridge.dispose();
+    resetOODABridge();
+    resetGroqProvider();
+    vi.unstubAllGlobals();
   });
 
   test('should block protected paths', async () => {
@@ -127,6 +159,8 @@ describe('OODABridge — Safety Enforcement', () => {
   });
 
   test('should block when API key is missing', async () => {
+    resetGroqProvider();
+    resetOODABridge();
     const noBridge = new OODABridge({ groqApiKey: '', modelId: 'test' });
     const result = await noBridge.runAnalysisCycle(SAMPLE_REQUEST);
     expect(result.success).toBe(false);
@@ -139,11 +173,21 @@ describe('OODABridge — Event System', () => {
   let bridge: OODABridge;
 
   beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ choices: [{ message: { content: '{}' } }], usage: { prompt_tokens: 10, completion_tokens: 5 } }),
+      text: () => Promise.resolve('mock response'),
+    }));
+    resetOODABridge();
+    resetGroqProvider();
     bridge = new OODABridge(TEST_CONFIG);
   });
 
   afterEach(() => {
     bridge.dispose();
+    resetOODABridge();
+    resetGroqProvider();
+    vi.unstubAllGlobals();
   });
 
   test('should register and unregister event handlers', () => {
@@ -189,23 +233,20 @@ describe('OODABridge — Event System', () => {
 });
 
 describe('AgentLLMAdapter — Provider Compatibility', () => {
-  test('should import AgentLLMAdapter from bridge', () => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { AgentLLMAdapter } = require('../bridge');
+  test('should import AgentLLMAdapter from bridge', async () => {
+    const { AgentLLMAdapter } = await import('../bridge');
     expect(AgentLLMAdapter).toBeDefined();
     expect(typeof AgentLLMAdapter).toBe('function');
   });
 
-  test('should import OODABridge from bridge', () => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { OODABridge } = require('../bridge');
+  test('should import OODABridge from bridge', async () => {
+    const { OODABridge } = await import('../bridge');
     expect(OODABridge).toBeDefined();
     expect(typeof OODABridge).toBe('function');
   });
 
-  test('should import all bridge exports', () => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const bridge = require('../bridge');
+  test('should import all bridge exports', async () => {
+    const bridge = await import('../bridge');
     expect(bridge.OODABridge).toBeDefined();
     expect(bridge.getOODABridge).toBeDefined();
     expect(bridge.resetOODABridge).toBeDefined();

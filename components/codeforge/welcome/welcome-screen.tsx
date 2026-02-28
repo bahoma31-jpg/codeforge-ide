@@ -279,6 +279,7 @@ export function WelcomeScreen() {
             </h2>
             {isAuthenticated && user ? (
               <div className="flex items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={user.avatar_url}
                   alt={user.login}
